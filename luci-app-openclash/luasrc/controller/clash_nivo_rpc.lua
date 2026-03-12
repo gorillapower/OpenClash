@@ -112,6 +112,16 @@ function handlers.uci_commit(p)
     return true
 end
 
+function handlers.service_status(p)
+    local name = p[1] or "openclash"
+    -- Use pidof to check if the process is running and get its PID
+    local pid_str = sys.exec(string.format("pidof %s 2>/dev/null | tr -d '\\n'", name))
+    if pid_str and pid_str ~= "" then
+        return { running = true, pid = tonumber(pid_str:match("%d+")) }
+    end
+    return { running = false }
+end
+
 function handlers.service_start()
     sys.call("/etc/init.d/openclash start >/dev/null 2>&1")
     return true
@@ -249,6 +259,7 @@ local METHOD_MAP = {
     ["uci.get"]             = handlers.uci_get,
     ["uci.set"]             = handlers.uci_set,
     ["uci.commit"]          = handlers.uci_commit,
+    ["service.status"]      = handlers.service_status,
     ["service.start"]       = handlers.service_start,
     ["service.stop"]        = handlers.service_stop,
     ["service.restart"]     = handlers.service_restart,
