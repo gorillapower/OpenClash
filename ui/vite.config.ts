@@ -31,7 +31,14 @@ export default defineConfig(({ mode }) => {
           {
             target: routerTarget,
             changeOrigin: true,
-            secure: false
+            secure: false,
+            ...(env.VITE_ROUTER_COOKIE ? {
+              configure: (proxy: { on: (event: string, cb: (...args: unknown[]) => void) => void }) => {
+                proxy.on('proxyReq', (proxyReq: { setHeader: (k: string, v: string) => void }) => {
+                  proxyReq.setHeader('Cookie', env.VITE_ROUTER_COOKIE)
+                })
+              }
+            } : {})
           }
         ])
       )
