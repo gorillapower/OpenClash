@@ -153,5 +153,11 @@ export const luciRpc = {
 
   fileWrite(path: string, content: string): Promise<void> {
     return rpcCall('file.write', [path, content])
+  },
+
+  subscriptionAdd(url: string, name?: string): Promise<{ name: string }> {
+    const params: string[] = [url]
+    if (name) params.push(name)
+    return rpcCall('subscription.add', params)
   }
 }

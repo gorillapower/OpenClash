@@ -207,6 +207,42 @@ function handlers.subscription_update(p)
     return true
 end
 
+function handlers.subscription_add(p)
+    local url  = p[1]
+    local name = p[2]
+
+    if not url or url == "" then
+        error("url is required")
+    end
+
+    -- Basic URL sanity check
+    if not url:match("^https?://") then
+        error("url must start with http:// or https://")
+    end
+
+    name = (name and name ~= "") and name or "subscription"
+
+    -- Sanitise for shell use
+    local safe_url  = url:gsub("'", "'\\''")
+    local safe_name = name:gsub("'", "'\\''")
+
+    -- Create a new anonymous UCI config_subscribe section
+    local cursor = uci_mod.cursor()
+    local sid = cursor:add("openclash", "config_subscribe")
+    cursor:set("openclash", sid, "address", url)
+    cursor:set("openclash", sid, "name",    name)
+    cursor:set("openclash", sid, "enabled", "1")
+    cursor:save("openclash")
+    cursor:commit("openclash")
+
+    -- Trigger async subscription download
+    sys.call(string.format(
+        "bash /usr/share/openclash/openclash_config.sh '%s' >/dev/null 2>&1 &",
+        safe_name))
+
+    return { name = name }
+end
+
 -- ── method dispatch table (dot-notation → handler) ─────────────────────────
 
 local METHOD_MAP = {
@@ -222,6 +258,7 @@ local METHOD_MAP = {
     ["log.core"]            = handlers.log_core,
     ["system.info"]         = handlers.system_info,
     ["subscription.update"] = handlers.subscription_update,
+    ["subscription.add"]    = handlers.subscription_add,
 }
 
 -- ── main RPC handler ────────────────────────────────────────────────────────

@@ -126,3 +126,17 @@ export function useSetUciConfig(
     ...opts
   }))
 }
+
+export function useSubscriptionAdd(
+  opts?: Partial<CreateMutationOptions<{ name: string }, unknown, { url: string; name?: string }>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<{ name: string }, unknown, { url: string; name?: string }>(() => ({
+    mutationFn: ({ url, name }) => luciRpc.subscriptionAdd(url, name),
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.uci('openclash') })
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}

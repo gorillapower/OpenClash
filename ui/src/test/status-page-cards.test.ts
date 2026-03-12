@@ -32,7 +32,8 @@ vi.mock('$lib/queries/luci', () => ({
   useServiceStart: vi.fn(),
   useServiceStop: vi.fn(),
   useServiceRestart: vi.fn(),
-  useUciConfig: vi.fn()
+  useUciConfig: vi.fn(),
+  useSubscriptionAdd: vi.fn()
 }))
 
 vi.mock('$lib/queries/clash', () => ({
@@ -47,7 +48,8 @@ import {
   useServiceStart,
   useServiceStop,
   useServiceRestart,
-  useUciConfig
+  useUciConfig,
+  useSubscriptionAdd
 } from '$lib/queries/luci'
 import { useClashConfig, useClashVersion, useConnections, useExternalIp } from '$lib/queries/clash'
 
@@ -110,6 +112,7 @@ function setupMocks({
   vi.mocked(useServiceStart).mockReturnValue(makeMutationResult() as never)
   vi.mocked(useServiceStop).mockReturnValue(makeMutationResult() as never)
   vi.mocked(useServiceRestart).mockReturnValue(makeMutationResult() as never)
+  vi.mocked(useSubscriptionAdd).mockReturnValue(makeMutationResult() as never)
 }
 
 function renderPage() {
