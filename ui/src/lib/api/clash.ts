@@ -83,7 +83,12 @@ export interface ClashClientOptions {
 
 function resolveBaseUrl(): string {
   const env = (import.meta as unknown as { env: Record<string, string> | undefined }).env
-  return env?.VITE_CLASH_URL ?? '/clash-api'
+  // VITE_CLASH_URL overrides everything (set to /clash-api in dev to use Vite proxy)
+  if (env?.VITE_CLASH_URL) return env.VITE_CLASH_URL
+  // Production: derive from current hostname (app is served from the router)
+  return typeof window !== 'undefined'
+    ? `http://${window.location.hostname}:9090`
+    : 'http://192.168.1.1:9090'
 }
 
 export function createClashClient(opts: ClashClientOptions = {}) {

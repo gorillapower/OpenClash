@@ -9,7 +9,7 @@ const proxyPrefixes = ['/cgi-bin', '/rpc', '/api']
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const routerTarget = env.VITE_ROUTER_URL || 'http://192.168.1.1'
-  const clashTarget = env.VITE_CLASH_URL || 'http://192.168.1.1:9090'
+  const clashTarget = env.CLASH_TARGET || env.VITE_CLASH_URL || 'http://192.168.1.1:9090'
   const useMock = env.VITE_MOCK === 'true'
 
   const serverPlugins = useMock ? [mockRpcPlugin()] : []
