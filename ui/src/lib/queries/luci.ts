@@ -20,80 +20,93 @@ export const luciKeys = {
 }
 
 // ---------------------------------------------------------------------------
-// Error handler
+// Error handler (mutations only — queries no longer support onError in v5+)
 // ---------------------------------------------------------------------------
 
-function onQueryError(err: unknown) {
+function onMutationError(err: unknown) {
   const message = isApiError(err) ? err.message : 'An unexpected error occurred'
   toasts.error(message)
 }
 
 // ---------------------------------------------------------------------------
 // Queries
+// v6 requires a getter function: createQuery(() => ({ ... }))
+// The `as` cast is required because spreading Partial<CreateQueryOptions>
+// makes required fields (queryKey, queryFn) potentially undefined, which
+// doesn't match any overload. The cast is safe since we always provide them.
 // ---------------------------------------------------------------------------
 
 export function useUciConfig(pkg: string, opts?: Partial<CreateQueryOptions<UciPackage>>) {
-  return createQuery<UciPackage>({
+  return createQuery<UciPackage>(() => ({
     queryKey: luciKeys.uci(pkg),
     queryFn: () => luciRpc.uciGet(pkg) as Promise<UciPackage>,
-    onError: onQueryError,
     ...opts
-  })
+  } as CreateQueryOptions<UciPackage>))
 }
 
 export function useServiceStatus(
   name: string,
   opts?: Partial<CreateQueryOptions<ServiceStatusResult>>
 ) {
-  return createQuery<ServiceStatusResult>({
+  return createQuery<ServiceStatusResult>(() => ({
     queryKey: luciKeys.serviceStatus(name),
     queryFn: () => luciRpc.serviceStatus(name),
-    onError: onQueryError,
     ...opts
-  })
+  } as CreateQueryOptions<ServiceStatusResult>))
 }
 
 // ---------------------------------------------------------------------------
 // Mutations
+// TError is explicitly typed as `unknown` throughout so that onMutationError
+// (which takes `err: unknown`) is assignable to onError without type errors.
 // ---------------------------------------------------------------------------
 
-export function useServiceStart(name: string, opts?: Partial<CreateMutationOptions>) {
+export function useServiceStart(
+  name: string,
+  opts?: Partial<CreateMutationOptions<void, unknown, void>>
+) {
   const queryClient = useQueryClient()
-  return createMutation<void, unknown, void>({
-    mutationFn: () => luciRpc.serviceStart(name),
+  return createMutation<void, unknown, void>(() => ({
+    mutationFn: () => luciRpc.serviceStart(name) as Promise<void>,
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
       toasts.success(`${name} started`)
     },
-    onError: onQueryError,
+    onError: onMutationError,
     ...opts
-  })
+  }))
 }
 
-export function useServiceStop(name: string, opts?: Partial<CreateMutationOptions>) {
+export function useServiceStop(
+  name: string,
+  opts?: Partial<CreateMutationOptions<void, unknown, void>>
+) {
   const queryClient = useQueryClient()
-  return createMutation<void, unknown, void>({
-    mutationFn: () => luciRpc.serviceStop(name),
+  return createMutation<void, unknown, void>(() => ({
+    mutationFn: () => luciRpc.serviceStop(name) as Promise<void>,
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
       toasts.success(`${name} stopped`)
     },
-    onError: onQueryError,
+    onError: onMutationError,
     ...opts
-  })
+  }))
 }
 
-export function useServiceRestart(name: string, opts?: Partial<CreateMutationOptions>) {
+export function useServiceRestart(
+  name: string,
+  opts?: Partial<CreateMutationOptions<void, unknown, void>>
+) {
   const queryClient = useQueryClient()
-  return createMutation<void, unknown, void>({
-    mutationFn: () => luciRpc.serviceRestart(name),
+  return createMutation<void, unknown, void>(() => ({
+    mutationFn: () => luciRpc.serviceRestart(name) as Promise<void>,
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
       toasts.success(`${name} restarted`)
     },
-    onError: onQueryError,
+    onError: onMutationError,
     ...opts
-  })
+  }))
 }
 
 export function useSetUciConfig(
@@ -103,13 +116,13 @@ export function useSetUciConfig(
   opts?: Partial<CreateMutationOptions<void, unknown, string | string[]>>
 ) {
   const queryClient = useQueryClient()
-  return createMutation<void, unknown, string | string[]>({
-    mutationFn: (value) => luciRpc.uciSet(pkg, section, option, value),
+  return createMutation<void, unknown, string | string[]>(() => ({
+    mutationFn: (value: string | string[]) => luciRpc.uciSet(pkg, section, option, value) as Promise<void>,
     async onSuccess() {
       await luciRpc.uciCommit(pkg)
       queryClient.invalidateQueries({ queryKey: luciKeys.uci(pkg) })
     },
-    onError: onQueryError,
+    onError: onMutationError,
     ...opts
-  })
+  }))
 }

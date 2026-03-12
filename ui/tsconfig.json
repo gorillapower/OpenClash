@@ -12,7 +12,11 @@
     "sourceMap": true,
     "strict": true,
     "target": "ES2022",
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "paths": {
+      "$lib": ["./src/lib/index.ts"],
+      "$lib/*": ["./src/lib/*"]
+    }
   },
   "include": [
     "src/**/*.d.ts",

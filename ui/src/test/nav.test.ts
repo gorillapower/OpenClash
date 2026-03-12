@@ -40,7 +40,6 @@ describe('Route rendering', () => {
     setHash('#/')
     render(App)
     expect(screen.getByRole('heading', { name: 'Status' })).toBeInTheDocument()
-    screen.unmount?.()
   })
 
   it('shows Profiles page at #/profiles', () => {

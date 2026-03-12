@@ -82,7 +82,7 @@ export interface ClashClientOptions {
 }
 
 function resolveBaseUrl(): string {
-  const env = (import.meta as Record<string, unknown>).env as Record<string, string> | undefined
+  const env = (import.meta as unknown as { env: Record<string, string> | undefined }).env
   return env?.VITE_CLASH_URL ?? 'http://192.168.1.1:9090'
 }
 

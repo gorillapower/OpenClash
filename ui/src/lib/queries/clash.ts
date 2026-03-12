@@ -4,8 +4,6 @@ import {
   type QueryClient
 } from '@tanstack/svelte-query'
 import { clashClient, type ClashVersion, type ClashConfig, type ProxiesResponse, type ConnectionsResponse } from '$lib/api/clash'
-import { isApiError } from '$lib/api/errors'
-import { toasts } from '$lib/stores/toasts'
 
 // ---------------------------------------------------------------------------
 // Query keys
@@ -21,67 +19,55 @@ export const clashKeys = {
 }
 
 // ---------------------------------------------------------------------------
-// Error handler
-// ---------------------------------------------------------------------------
-
-function onQueryError(err: unknown) {
-  const message = isApiError(err) ? err.message : 'An unexpected error occurred'
-  toasts.error(message)
-}
-
-// ---------------------------------------------------------------------------
 // Queries
+// v6 requires a getter function: createQuery(() => ({ ... }))
 // ---------------------------------------------------------------------------
 
 export function useClashVersion(opts?: Partial<CreateQueryOptions<ClashVersion>>) {
-  return createQuery<ClashVersion>({
+  return createQuery<ClashVersion>(() => ({
     queryKey: clashKeys.version(),
     queryFn: () => clashClient.getVersion(),
-    onError: onQueryError,
     ...opts
-  })
+  } as CreateQueryOptions<ClashVersion>))
 }
 
 export function useClashConfig(opts?: Partial<CreateQueryOptions<ClashConfig>>) {
-  return createQuery<ClashConfig>({
+  return createQuery<ClashConfig>(() => ({
     queryKey: clashKeys.config(),
     queryFn: () => clashClient.getConfig(),
-    onError: onQueryError,
     ...opts
-  })
+  } as CreateQueryOptions<ClashConfig>))
 }
 
 export function useProxies(opts?: Partial<CreateQueryOptions<ProxiesResponse>>) {
-  return createQuery<ProxiesResponse>({
+  return createQuery<ProxiesResponse>(() => ({
     queryKey: clashKeys.proxies(),
     queryFn: () => clashClient.getProxies(),
-    onError: onQueryError,
     ...opts
-  })
+  } as CreateQueryOptions<ProxiesResponse>))
 }
 
 export function useConnections(opts?: Partial<CreateQueryOptions<ConnectionsResponse>>) {
-  return createQuery<ConnectionsResponse>({
+  return createQuery<ConnectionsResponse>(() => ({
     queryKey: clashKeys.connections(),
     queryFn: () => clashClient.getConnections(),
-    onError: onQueryError,
     ...opts
-  })
+  } as CreateQueryOptions<ConnectionsResponse>))
 }
 
 /**
  * Polls Clash running status every 5 seconds.
  * "Status" is derived from /version — if it resolves, Clash is running.
+ * Polling failures are silent — they just mean Clash isn't reachable.
  */
 export function useClashStatus(opts?: Partial<CreateQueryOptions<ClashVersion>>) {
-  return createQuery<ClashVersion>({
+  return createQuery<ClashVersion>(() => ({
     queryKey: clashKeys.status(),
     queryFn: () => clashClient.getVersion(),
     refetchInterval: 5000,
     retry: false,
-    onError: undefined, // status polling failures are silent
     ...opts
-  })
+  } as CreateQueryOptions<ClashVersion>))
 }
 
 export function invalidateClash(queryClient: QueryClient) {
