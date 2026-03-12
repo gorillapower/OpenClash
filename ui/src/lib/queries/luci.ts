@@ -5,7 +5,13 @@ import {
   type CreateQueryOptions,
   type CreateMutationOptions
 } from '@tanstack/svelte-query'
-import { luciRpc, type UciPackage, type ServiceStatusResult } from '$lib/api/luci'
+import {
+  luciRpc,
+  type UciPackage,
+  type ServiceStatusResult,
+  type Subscription,
+  type SubscriptionEditData
+} from '$lib/api/luci'
 import { isApiError } from '$lib/api/errors'
 import { toasts } from '$lib/stores/toasts'
 
@@ -16,7 +22,8 @@ import { toasts } from '$lib/stores/toasts'
 export const luciKeys = {
   all: ['luci'] as const,
   uci: (pkg: string) => [...luciKeys.all, 'uci', pkg] as const,
-  serviceStatus: (name: string) => [...luciKeys.all, 'service', name, 'status'] as const
+  serviceStatus: (name: string) => [...luciKeys.all, 'service', name, 'status'] as const,
+  subscriptions: [...['luci'], 'subscriptions'] as const
 }
 
 // ---------------------------------------------------------------------------
@@ -135,6 +142,75 @@ export function useSubscriptionAdd(
     mutationFn: ({ url, name }) => luciRpc.subscriptionAdd(url, name),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.uci('openclash') })
+      queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useSubscriptions(opts?: Partial<CreateQueryOptions<Subscription[]>>) {
+  return createQuery<Subscription[]>(() => ({
+    queryKey: luciKeys.subscriptions,
+    queryFn: () => luciRpc.subscriptionList(),
+    refetchInterval: 30_000,
+    ...opts
+  } as CreateQueryOptions<Subscription[]>))
+}
+
+export function useSubscriptionDelete(
+  opts?: Partial<CreateMutationOptions<void, unknown, string>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, string>(() => ({
+    mutationFn: (name: string) => luciRpc.subscriptionDelete(name),
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useSubscriptionUpdate(
+  opts?: Partial<CreateMutationOptions<void, unknown, string>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, string>(() => ({
+    mutationFn: (name: string) => luciRpc.subscriptionUpdate(name),
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useSubscriptionUpdateAll(
+  opts?: Partial<CreateMutationOptions<void, unknown, void>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, void>(() => ({
+    mutationFn: () => luciRpc.subscriptionUpdateAll(),
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+      toasts.success('All subscriptions updated')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useSubscriptionEdit(
+  opts?: Partial<
+    CreateMutationOptions<void, unknown, { name: string; data: SubscriptionEditData }>
+  >
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, { name: string; data: SubscriptionEditData }>(() => ({
+    mutationFn: ({ name, data }) => luciRpc.subscriptionEdit(name, data),
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
     },
     onError: onMutationError,
     ...opts

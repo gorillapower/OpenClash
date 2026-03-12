@@ -47,6 +47,31 @@ export interface FileReadResult {
 }
 
 // ---------------------------------------------------------------------------
+// Subscription types
+// ---------------------------------------------------------------------------
+
+export interface Subscription {
+  name: string
+  url: string
+  /** Auto-update interval in hours; 0 means disabled */
+  autoUpdateInterval?: number
+  /** ISO timestamp of last successful update */
+  lastUpdated?: string
+  /** ISO timestamp of subscription expiry (from subscription user-info) */
+  expiry?: string
+  /** Bytes used (upload + download combined) */
+  dataUsed?: number
+  /** Total data allowance in bytes */
+  dataTotal?: number
+}
+
+export interface SubscriptionEditData {
+  url?: string
+  newName?: string
+  autoUpdateInterval?: number
+}
+
+// ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
 
@@ -159,5 +184,25 @@ export const luciRpc = {
     const params: string[] = [url]
     if (name) params.push(name)
     return rpcCall('subscription.add', params)
+  },
+
+  subscriptionList(): Promise<Subscription[]> {
+    return rpcCall('subscription.list', [])
+  },
+
+  subscriptionDelete(name: string): Promise<void> {
+    return rpcCall('subscription.delete', [name])
+  },
+
+  subscriptionUpdate(name: string): Promise<void> {
+    return rpcCall('subscription.update', [name])
+  },
+
+  subscriptionUpdateAll(): Promise<void> {
+    return rpcCall('subscription.updateAll', [])
+  },
+
+  subscriptionEdit(name: string, data: SubscriptionEditData): Promise<void> {
+    return rpcCall('subscription.edit', [name, data])
   }
 }
