@@ -1,5 +1,6 @@
-# Milestone: UI Rewrite (LuCI App)
+# Milestone: UI Rewrite — Clash Nivo (LuCI App)
 
+**Product name:** Clash Nivo (repo stays `gorillapowerOpenClash` for now)  
 **Status:** Design in progress  
 **Depends on:** Network Layer Rewrite (can run partially in parallel)  
 **Tech stack:** Svelte 5 + Vite + shadcn-svelte + Tailwind CSS v4 + TanStack Query
@@ -172,7 +173,7 @@ Maintenance and health.
 |---------|---------|
 | Clash Core | Current version, latest available, update button, branch selection |
 | Auto Updates | Unified schedule view for all auto-updates (subscriptions, GEO, chnroute) |
-| Logs | OpenClash service log viewer (not Clash core logs — those are in Zashboard) |
+| Logs | Service logs + Clash core logs in separate tabs |
 | Diagnostics | DNS test, connection test, debug report download |
 
 ---
@@ -199,7 +200,7 @@ Evaluated every feature from OpenClash's ~60+ settings against the design philos
 | Config overwrite | Settings → Clash Config | Tweak without editing subscription |
 | Core updates | System | Maintenance |
 | Auto-update schedules | System | Set-and-forget |
-| Service logs | System | Troubleshooting |
+| Logs (service + core) | System | Troubleshooting — both tabs |
 
 ### ✅ KEEP — Visible but not prominent (Tier 2)
 
@@ -326,7 +327,8 @@ into the LuCI package and served as static assets — no Node.js on the router.
 | 7 | Config Overwrite: single YAML merge editor (not 6-tab form) | Mar 2026 |
 | 8 | Dropped: Streaming Unlock, ML groups, Dler Cloud, Game Rules, Small Flash | Mar 2026 |
 | 9 | Dropped: card visibility toggles, archive button | Mar 2026 |
-| 10 | China Bypass: moved to Advanced (subscriptions handle it via rules) | Mar 2026 |
+| 11 | Product name: "Clash Nivo" (repo stays gorillapowerOpenClash for now) | Mar 2026 |
+| 12 | Logs: both service logs + core logs in separate tabs on System page | Mar 2026 |
 
 ---
 
