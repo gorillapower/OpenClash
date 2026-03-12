@@ -46,7 +46,14 @@ export default defineConfig(({ mode }) => {
           target: clashTarget,
           changeOrigin: true,
           secure: false,
-          rewrite: (path: string) => path.replace(/^\/clash-api/, '')
+          rewrite: (path: string) => path.replace(/^\/clash-api/, ''),
+          ...(env.VITE_CLASH_SECRET ? {
+            configure: (proxy: { on: (event: string, cb: (...args: unknown[]) => void) => void }) => {
+              proxy.on('proxyReq', (proxyReq: { setHeader: (k: string, v: string) => void }) => {
+                proxyReq.setHeader('Authorization', `Bearer ${env.VITE_CLASH_SECRET}`)
+              })
+            }
+          } : {})
         }
       }
     },
