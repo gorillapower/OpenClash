@@ -1,5 +1,15 @@
 <script lang="ts">
+  import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query'
   import { Button } from '$lib/components/ui/button'
+
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 10_000,
+        retry: 1
+      }
+    }
+  })
 
   const routerUrl = import.meta.env.VITE_ROUTER_URL ?? 'http://192.168.1.1'
   const proxyPrefixes = ['/cgi-bin', '/rpc', '/api']
@@ -9,6 +19,7 @@
   }
 </script>
 
+<QueryClientProvider client={queryClient}>
 <main class="min-h-screen bg-background text-foreground">
   <div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-12 lg:px-10">
     <header class="flex flex-col gap-4">
@@ -80,3 +91,4 @@
     </section>
   </div>
 </main>
+</QueryClientProvider>
