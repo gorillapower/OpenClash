@@ -51,9 +51,54 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
   'service.restart': () => true,
   'subscription.add': (params) => {
     console.log('[mock] subscription.add called with:', params)
-    return { name: 'subscription' }
+    return { name: 'my-subscription' }
   },
-  'subscription.update': () => true,
+  'subscription.list': () => {
+    if (MOCK_STATE === 'empty') return []
+    const now = Date.now()
+    return [
+      {
+        name: 'My VPN',
+        url: 'https://example.com/sub/token123',
+        autoUpdateInterval: 24,
+        lastUpdated: new Date(now - 2 * 3_600_000).toISOString(),
+        expiry: new Date(now + 28 * 24 * 3_600_000).toISOString(),
+        dataUsed:  12 * 1024 * 1024 * 1024,
+        dataTotal: 100 * 1024 * 1024 * 1024
+      },
+      {
+        name: 'Work Proxy',
+        url: 'https://corp.example.com/sub/abc',
+        autoUpdateInterval: 6,
+        lastUpdated: new Date(now - 86_400_000).toISOString(),
+        expiry: new Date(now + 5 * 24 * 3_600_000).toISOString(),
+        dataUsed:  95 * 1024 * 1024 * 1024,
+        dataTotal: 100 * 1024 * 1024 * 1024
+      },
+      {
+        name: 'Backup',
+        url: 'https://backup.example.com/sub/xyz',
+        autoUpdateInterval: 0,
+        lastUpdated: new Date(now - 7 * 86_400_000).toISOString()
+      }
+    ]
+  },
+  'subscription.delete': (params) => {
+    console.log('[mock] subscription.delete called with:', params)
+    return true
+  },
+  'subscription.update': (params) => {
+    console.log('[mock] subscription.update called with:', params)
+    return true
+  },
+  'subscription.updateAll': () => {
+    console.log('[mock] subscription.updateAll called')
+    return true
+  },
+  'subscription.edit': (params) => {
+    console.log('[mock] subscription.edit called with:', params)
+    return true
+  },
   'file.read':   () => ({ content: '' }),
   'file.write':  () => true,
   'log.service': () => '[mock] OpenClash started\n[mock] Rules loaded\n',
