@@ -1,11 +1,14 @@
 <script lang="ts">
   import { useServiceStatus, useServiceStart, useServiceStop, useServiceRestart, useUciConfig } from '$lib/queries/luci'
-  import { useClashConfig } from '$lib/queries/clash'
+  import { useClashConfig, useClashVersion, useConnections, useExternalIp } from '$lib/queries/clash'
   import Button from '$lib/components/ui/button/button.svelte'
+  import { Card, CardHeader, CardTitle, CardContent } from '$lib/components/ui/card/index'
+  import { formatBytes } from '$lib/utils'
 
   const serviceStatus = useServiceStatus('openclash', { refetchInterval: 5000 })
   const clashConfig = useClashConfig()
   const uciConfig = useUciConfig('openclash')
+  const clashVersion = useClashVersion()
 
   const startMutation = useServiceStart('openclash')
   const stopMutation = useServiceStop('openclash')
@@ -25,6 +28,10 @@
   const configName = $derived(configPath ? configPath.split('/').pop()?.replace(/\.ya?ml$/i, '') ?? configPath : null)
   const operationMode = $derived((uciConfig.data?.config as Record<string, string> | undefined)?.operation_mode ?? null)
   const proxyMode = $derived(clashConfig.data?.mode ?? null)
+
+  // Info cards — fetch continuously, fail silently when Clash is stopped
+  const connections = useConnections({ refetchInterval: 5000, retry: false } as never)
+  const geoIp = useExternalIp({ retry: false } as never)
 
   function formatOperationMode(mode: string): string {
     if (mode === 'fake-ip') return 'Fake-IP'
@@ -134,5 +141,61 @@
         <path d="M7 7h10v10"/><path d="M7 17 17 7"/>
       </svg>
     </a>
+  </div>
+
+  <!-- Info cards -->
+  <div class="grid gap-4 sm:grid-cols-3">
+    <!-- External IP card -->
+    <Card>
+      <CardHeader>External IP</CardHeader>
+      <CardContent>
+        {#if geoIp.data}
+          <p class="text-lg font-semibold tabular-nums">{geoIp.data.ip}</p>
+          {#if geoIp.data.city || geoIp.data.country}
+            <p class="mt-0.5 text-sm text-muted-foreground">
+              {[geoIp.data.city, geoIp.data.country].filter(Boolean).join(', ')}
+            </p>
+          {/if}
+        {:else}
+          <p class="text-lg font-semibold text-muted-foreground">—</p>
+        {/if}
+      </CardContent>
+    </Card>
+
+    <!-- Traffic card -->
+    <Card>
+      <CardHeader>Traffic</CardHeader>
+      <CardContent>
+        {#if connections.data}
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-muted-foreground">↑ Up</span>
+              <span class="font-medium tabular-nums">{formatBytes(connections.data.uploadTotal)}</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-muted-foreground">↓ Down</span>
+              <span class="font-medium tabular-nums">{formatBytes(connections.data.downloadTotal)}</span>
+            </div>
+          </div>
+        {:else}
+          <p class="text-lg font-semibold text-muted-foreground">—</p>
+        {/if}
+      </CardContent>
+    </Card>
+
+    <!-- Core version card -->
+    <Card>
+      <CardHeader>Core Version</CardHeader>
+      <CardContent>
+        {#if clashVersion.data}
+          <p class="text-lg font-semibold tabular-nums">{clashVersion.data.version}</p>
+          {#if clashVersion.data.meta}
+            <p class="mt-0.5 text-sm text-muted-foreground">Mihomo</p>
+          {/if}
+        {:else}
+          <p class="text-lg font-semibold text-muted-foreground">—</p>
+        {/if}
+      </CardContent>
+    </Card>
   </div>
 </div>

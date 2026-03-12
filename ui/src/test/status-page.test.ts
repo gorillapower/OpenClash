@@ -33,7 +33,10 @@ vi.mock('$lib/queries/luci', () => ({
 }))
 
 vi.mock('$lib/queries/clash', () => ({
-  useClashConfig: vi.fn()
+  useClashConfig: vi.fn(),
+  useClashVersion: vi.fn(),
+  useConnections: vi.fn(),
+  useExternalIp: vi.fn()
 }))
 
 import {
@@ -43,7 +46,7 @@ import {
   useServiceRestart,
   useUciConfig
 } from '$lib/queries/luci'
-import { useClashConfig } from '$lib/queries/clash'
+import { useClashConfig, useClashVersion, useConnections, useExternalIp } from '$lib/queries/clash'
 
 // ---------------------------------------------------------------------------
 // Test utilities
@@ -66,6 +69,15 @@ function setupMocks({
   )
   vi.mocked(useClashConfig).mockReturnValue(
     makeQueryResult({ mode: proxyMode, port: 7890, 'socks-port': 7891, 'redir-port': 0, 'tproxy-port': 7895, 'log-level': 'info', ipv6: false, 'allow-lan': true, 'external-controller': '0.0.0.0:9090' }) as CreateQueryResult<ClashConfig>
+  )
+  vi.mocked(useClashVersion).mockReturnValue(
+    makeQueryResult({ version: '1.18.0', meta: true }) as unknown as ReturnType<typeof useClashVersion>
+  )
+  vi.mocked(useConnections).mockReturnValue(
+    makeQueryResult({ downloadTotal: 0, uploadTotal: 0, connections: [] }) as unknown as ReturnType<typeof useConnections>
+  )
+  vi.mocked(useExternalIp).mockReturnValue(
+    makeQueryResult({ ip: '1.2.3.4', country: 'Japan' }) as unknown as ReturnType<typeof useExternalIp>
   )
   vi.mocked(useServiceStart).mockReturnValue(makeMutationResult(startMutate) as CreateMutationResult<void, unknown, void, unknown>)
   vi.mocked(useServiceStop).mockReturnValue(makeMutationResult(stopMutate) as CreateMutationResult<void, unknown, void, unknown>)

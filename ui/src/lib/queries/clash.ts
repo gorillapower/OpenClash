@@ -4,6 +4,7 @@ import {
   type QueryClient
 } from '@tanstack/svelte-query'
 import { clashClient, type ClashVersion, type ClashConfig, type ProxiesResponse, type ConnectionsResponse } from '$lib/api/clash'
+import { fetchGeoIp, type GeoIpResult } from '$lib/api/ip'
 
 // ---------------------------------------------------------------------------
 // Query keys
@@ -72,4 +73,27 @@ export function useClashStatus(opts?: Partial<CreateQueryOptions<ClashVersion>>)
 
 export function invalidateClash(queryClient: QueryClient) {
   return queryClient.invalidateQueries({ queryKey: clashKeys.all })
+}
+
+// ---------------------------------------------------------------------------
+// External IP / Geolocation
+// ---------------------------------------------------------------------------
+
+export const geoIpKeys = {
+  all: ['geoip'] as const,
+  current: () => [...geoIpKeys.all, 'current'] as const
+}
+
+/**
+ * Fetches external IP + geolocation from api.ip.sb/geoip.
+ * Pass `enabled: false` when Clash is stopped so we don't fetch unnecessarily.
+ */
+export function useExternalIp(opts?: Partial<CreateQueryOptions<GeoIpResult>>) {
+  return createQuery<GeoIpResult>(() => ({
+    queryKey: geoIpKeys.current(),
+    queryFn: fetchGeoIp,
+    staleTime: 60_000,
+    retry: false,
+    ...opts
+  } as CreateQueryOptions<GeoIpResult>))
 }
