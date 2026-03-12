@@ -1,10 +1,8 @@
 # Milestone: UI Rewrite (LuCI App)
 
 **Status:** Design in progress  
-**Depends on:** Network Layer Rewrite (can run partially in parallel)
-
-> ⚠️ This document is a work in progress. Design decisions are still being made.
-> See the discussion log for full context.
+**Depends on:** Network Layer Rewrite (can run partially in parallel)  
+**Tech stack:** Svelte 5 + Vite + shadcn-svelte + Tailwind CSS v4 + TanStack Query
 
 ---
 
@@ -242,21 +240,49 @@ Based on analysis of all ~100 OpenClash features:
 
 ---
 
-## Technology Stack (Decision Pending)
+## Technology Stack
 
-The current UI uses LuCI's CBI (Configuration Binding Interface) framework in Lua.
-Options for the rewrite:
+**Decision: Svelte SPA (served as LuCI static asset)**
 
-| Option | Pros | Cons |
-|--------|------|------|
-| **LuCI CBI (Lua)** | No new dependencies, standard OpenWrt way | Clunky, hard to do good UX, limited JS |
-| **LuCI htmx** | Modern HTML, minimal JS, no build step | Less common in OpenWrt world |
-| **Custom SPA (Vue/React)** | Best UX potential, Verge-quality UI | Build toolchain, larger bundle |
-| **LuCI JS framework** | LuCI's own JS client framework | Limited documentation, experimental |
+The current UI uses LuCI's CBI (Configuration Binding Interface) in Lua — this is why the UX
+is poor. The rewrite uses a modern frontend stack to achieve a Verge-quality interface.
 
-> **Decision needed:** This choice significantly affects implementation complexity and the
-> quality of UX achievable. Recommendation: evaluate LuCI's JS framework first, fall back
-> to a small Vue SPA if it's insufficient.
+### Stack
+
+| Layer | Choice | Rationale |
+|-------|--------|-----------|
+| **Framework** | [Svelte 5](https://svelte.dev) + [Vite](https://vitejs.dev) | Smallest bundle of any modern framework (~30–50KB vs Vue's ~150KB). Compiles to vanilla JS — no runtime overhead. Syntax is simpler than Vue/React. |
+| **Components** | [shadcn-svelte](https://next.shadcn-svelte.com) | Copy-paste components (no library lock-in), built on Tailwind, clean design system |
+| **Styling** | [Tailwind CSS v4](https://tailwindcss.com) | Utility-first, required by shadcn-svelte, excellent for responsive layout |
+| **Data fetching** | [TanStack Query for Svelte](https://tanstack.com/query/latest/docs/framework/svelte/overview) | Server state management, caching, polling — same pattern Verge uses with SWR |
+| **Routing** | [svelte-routing](https://github.com/EmilTholin/svelte-routing) or SvelteKit | Client-side routing for the 4-page structure |
+| **Backend RPC** | LuCI JSON-RPC (Lua) | Thin Lua layer for OpenWrt-specific ops: UCI reads/writes, service control, filesystem |
+
+### Architecture
+
+```
+Browser
+  └── Svelte SPA (static files served by LuCI at /luci-static/openclash/)
+        ├── Clash REST API (http://router:9090) — proxy status, switching, traffic
+        └── LuCI JSON-RPC (/cgi-bin/luci/rpc/*) — UCI config, service control, file ops
+```
+
+The Svelte app is built with Vite at development time. The output (`dist/`) is committed
+into the LuCI package and served as static assets — no Node.js on the router.
+
+### Why not the alternatives
+
+| Option | Verdict |
+|--------|---------|
+| LuCI CBI (Lua) | Rejected — proven ceiling on UX quality; the existing app demonstrates its limits |
+| LuCI htmx | Rejected — better than CBI but still server-rendered fragments; can't match SPA UX |
+| Vue SPA | Considered — good choice, but Svelte is smaller and syntax is cleaner |
+| LuCI JS framework | Rejected — sparse docs, experimental, limited community |
+
+### Bundle size target
+
+- Total initial load: **< 150KB gzipped** (including all components)
+- Router has limited RAM; keeping the bundle small is a real constraint
 
 ---
 
@@ -277,10 +303,10 @@ Options for the rewrite:
 
 ## Open Questions
 
-- [ ] **Technology stack** — LuCI Lua CBI vs custom SPA? (see above)
-- [ ] **Mobile UX** — GL.iNet users sometimes configure via phone. How responsive?
-- [ ] **Internationalisation** — English first, but should we plan for i18n from the start?
-- [ ] **Dark mode** — Should the LuCI app support it? (GL.iNet UI has both)
+- [x] ~~**Technology stack**~~ — **Decided: Svelte 5 + Vite + shadcn-svelte + Tailwind + TanStack Query**
+- [ ] **Mobile UX** — GL.iNet users sometimes configure via phone. How responsive should the layout be?
+- [ ] **Internationalisation** — English first, but should we architect for i18n from the start?
+- [ ] **Dark mode** — Support it? (shadcn-svelte has built-in light/dark theming)
 - [ ] **Scope of Clash Config tab** — How much proxy/group management belongs here vs
       "just use a subscription and configure via the YAML editor"?
 - [ ] **Connections/Rules read-only views** — Worth adding lightweight read-only views
@@ -288,5 +314,5 @@ Options for the rewrite:
 
 ---
 
-*Status: Design in progress — technology stack and detailed page designs still being finalised*  
+*Status: Design in progress — detailed page designs still being finalised*  
 *Last updated: March 2026*
