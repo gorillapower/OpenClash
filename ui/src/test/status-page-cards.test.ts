@@ -33,8 +33,17 @@ vi.mock('$lib/queries/luci', () => ({
   useServiceStop: vi.fn(),
   useServiceRestart: vi.fn(),
   useUciConfig: vi.fn(),
-  useSubscriptionAdd: vi.fn()
+  useSubscriptionAdd: vi.fn(),
+  luciKeys: {
+    all: ['luci'],
+    uci: (pkg: string) => ['luci', 'uci', pkg]
+  }
 }))
+
+vi.mock('@tanstack/svelte-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/svelte-query')>()
+  return { ...actual, useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })) }
+})
 
 vi.mock('$lib/queries/clash', () => ({
   useClashConfig: vi.fn(),

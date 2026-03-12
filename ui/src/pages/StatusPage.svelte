@@ -1,14 +1,17 @@
 <script lang="ts">
-  import { useServiceStatus, useServiceStart, useServiceStop, useServiceRestart, useUciConfig, useSubscriptionAdd } from '$lib/queries/luci'
+  import { useServiceStatus, useServiceStart, useServiceStop, useServiceRestart, useUciConfig, useSubscriptionAdd, luciKeys } from '$lib/queries/luci'
   import { useClashConfig, useClashVersion, useConnections, useExternalIp } from '$lib/queries/clash'
+  import { useQueryClient } from '@tanstack/svelte-query'
   import Button from '$lib/components/ui/button/button.svelte'
   import { Input } from '$lib/components/ui/input/index'
   import { Card, CardHeader, CardTitle, CardContent } from '$lib/components/ui/card/index'
   import { formatBytes } from '$lib/utils'
 
+  const queryClient = useQueryClient()
+
   const serviceStatus = useServiceStatus('openclash', { refetchInterval: 5000 })
   const clashConfig = useClashConfig()
-  const uciConfig = useUciConfig('openclash', { refetchInterval: 3000 })
+  const uciConfig = useUciConfig('openclash')   // no polling — only re-fetched on demand
   const clashVersion = useClashVersion()
 
   const startMutation = useServiceStart('openclash')
@@ -76,8 +79,15 @@
 
     try {
       await subscriptionAdd.mutateAsync({ url: subscriptionUrl.trim() })
-      // Config will appear via the polling uciConfig — once configPath is set,
-      // isEmpty becomes false and the normal view renders.
+
+      // Poll uciConfig every 2s until the config_path appears (download complete)
+      const interval = setInterval(async () => {
+        await queryClient.invalidateQueries({ queryKey: luciKeys.uci('openclash') })
+        if (configPath) clearInterval(interval)
+      }, 2000)
+
+      // Safety: stop polling after 2 minutes regardless
+      setTimeout(() => clearInterval(interval), 120_000)
     } catch {
       // Error toast handled by mutation onError
     }
