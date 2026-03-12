@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:mock": "VITE_MOCK=true VITE_CLASH_URL=http://localhost:5173/mock-clash vite",
+    "dev:mock:empty": "VITE_MOCK=true MOCK_STATE=empty VITE_CLASH_URL=http://localhost:5173/mock-clash vite",
+    "dev:mock:stopped": "VITE_MOCK=true MOCK_STATE=stopped VITE_CLASH_URL=http://localhost:5173/mock-clash vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
