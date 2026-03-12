@@ -56,3 +56,33 @@ The legacy OpenWrt package (`luci-app-openclash/`) is compiled via the OpenWrt S
 - **Component library**: shadcn-svelte components live in `ui/src/lib/components/ui/`
 - **Test setup**: Vitest uses `ui/src/test/setup.ts`; e2e tests live in `ui/src/test/e2e/`
 - **Custom Clash rules**: `docs/dev-settings.md` is a Ruby script (run by OpenClash's shell layer) that injects custom proxy-groups, rule-providers, and rules into the Clash YAML at startup
+
+## Styling Conventions
+
+The design system is Tailwind CSS v4 + shadcn-svelte. All colours and radii are defined as CSS custom properties in `ui/src/app.css` and exposed to Tailwind via `@theme inline`.
+
+**Colours — always use theme tokens, never hardcode:**
+```
+bg-background      text-foreground
+bg-card            text-card-foreground
+bg-muted           text-muted-foreground
+bg-primary         text-primary-foreground
+bg-secondary       text-secondary-foreground
+bg-destructive     text-destructive-foreground
+border-border      ring-ring
+```
+
+**Border radius — always use the token-mapped scale:**
+```
+rounded-sm   rounded-md   rounded-lg   rounded-xl
+```
+These map to `--radius-sm/md/lg/xl` in the theme, so they stay consistent if the base radius changes.
+
+**Units:**
+- Use Tailwind spacing/sizing utilities (`p-4`, `gap-2`, `h-14`, `text-sm`) — they are rem-based automatically.
+- In any raw CSS (e.g. `@layer base` or `<style>` blocks), use `rem` for sizes/spacing, `em` for component-relative values. `px` is acceptable only for 1px borders and fixed pixel offsets in `calc()` expressions.
+
+**Adding a new token:**
+Add it to `:root` and `@theme inline` in `ui/src/app.css`. Never hardcode a one-off value inline.
+
+**When raw CSS is unavoidable:** keep it minimal — one or two lines in a `<style>` block with a comment explaining why Tailwind couldn't handle it.

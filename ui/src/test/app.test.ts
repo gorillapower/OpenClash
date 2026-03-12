@@ -1,15 +1,24 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/svelte'
 import App from '../App.svelte'
 
-describe('App.svelte', () => {
-  it('renders without errors', () => {
-    render(App)
-    expect(screen.getByRole('main')).toBeInTheDocument()
+function setHash(path: string) {
+  window.location.hash = path
+  window.dispatchEvent(new HashChangeEvent('hashchange'))
+}
+
+describe('App routing', () => {
+  beforeEach(() => {
+    setHash('#/')
   })
 
-  it('shows the product name', () => {
+  it('shows Status page by default', () => {
     render(App)
-    expect(screen.getByText('Clash Nivo')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Status' })).toBeInTheDocument()
+  })
+
+  it('renders the nav', () => {
+    render(App)
+    expect(screen.getByRole('navigation')).toBeInTheDocument()
   })
 })
