@@ -6,14 +6,23 @@
 
 ---
 
+## Design Philosophy
+
+> **Purposeful minimalism.** Every button, card, and setting must earn its place.
+> No "nice to haves" — only things that are beautiful to use.
+> Question everything: does this need to exist? What problem does it solve?
+> The result should feel simple, aesthetic, and super intuitive.
+
+---
+
 ## Goal
 
 Redesign the OpenClash LuCI plugin from scratch to be:
 - **Intuitive** — a new user can get up and running in under 5 minutes
 - **English-first** — all labels, tooltips, and help text in English
 - **Focused** — does configuration and management only; does not duplicate the Clash dashboard
-- **Organised** — clear separation between Router Integration settings and Clash Config settings
-- **Modern** — clean design, progressive disclosure, sensible defaults
+- **Organised** — clear separation between Network settings and Clash Config settings
+- **Minimal** — only features that serve a clear purpose; no clutter
 
 ---
 
@@ -21,8 +30,7 @@ Redesign the OpenClash LuCI plugin from scratch to be:
 
 **This LuCI app is a configuration and management tool. It is NOT a dashboard.**
 
-The Clash binary already serves a fully-featured web dashboard (Zashboard, MetaCubeXD, yacd)
-at `http://[router-ip]:9090/ui`. That dashboard handles:
+The Clash binary serves Zashboard at `http://[router-ip]:9090/ui`. That dashboard handles:
 - Live proxy group switching
 - Active connections monitor
 - Rules viewer
@@ -30,7 +38,8 @@ at `http://[router-ip]:9090/ui`. That dashboard handles:
 - Clash core logs
 - Proxy latency testing
 
-**We do not rebuild any of that.** The LuCI app links to the dashboard prominently.
+**We do not rebuild any of that.** The LuCI app links to Zashboard prominently.
+One dashboard. One button. No dashboard picker or installer UI.
 
 ### What Only the LuCI App Can Do
 
@@ -43,7 +52,6 @@ at `http://[router-ip]:9090/ui`. That dashboard handles:
 | Core binary updates | Writes to router filesystem |
 | Auto-update scheduling | Manages router cron jobs |
 | LAN device control | Modifies router nftables sets |
-| China bypass config | Manages router IP sets |
 
 ---
 
@@ -51,23 +59,18 @@ at `http://[router-ip]:9090/ui`. That dashboard handles:
 
 All settings in this app fall into one of two layers. The UI must make this distinction clear.
 
-**Router Integration** — How traffic flows through the router into Clash:
+**Network** — How traffic flows through the router into Clash:
 - Operation mode (fake-ip, redir-host, TUN)
 - DNS hijacking method
-- China traffic routing
 - LAN device control (whitelist/blacklist by IP/MAC)
 - UDP proxy
-- Common port filtering
-- Custom bypass lists
-- IPv6 proxy settings
+- *Advanced:* China bypass, IPv6, common ports, QUIC, custom firewall rules, gateway compatible
 
-**Clash Configuration** — What Clash does once it receives the traffic:
-- Proxy groups and servers (if not using subscriptions)
-- Rule providers
-- Streaming unlock (per-service proxy selection)
-- Config overwrite YAML
-- Dashboard settings (port, password)
-- DNS resolver settings
+**Clash Config** — What Clash does once it receives the traffic:
+- Custom proxy groups (form + YAML merge)
+- Custom rules (YAML merge)
+- Config overwrite (YAML snippet merged into active config)
+- *Advanced:* Rule providers
 
 ---
 
@@ -91,16 +94,16 @@ The home page. Users land here every time.
 - Currently active config name
 - Current operation mode (fake-ip / redir-host / TUN) + proxy mode (rule/global/direct)
 - Start / Stop / Restart buttons
-- **Prominent "Open Dashboard →" button** (links to Clash web UI)
+- **Prominent "Open Dashboard →" button** (links to Zashboard)
 
-**Optional cards (user can toggle visibility):**
+**Info cards (always shown when data is available, no visibility toggles):**
 - Current external IP + geolocation
 - Traffic stats (upload/download)
 - Core version and update availability
-- Auto-update schedule status
 
-**First-time state:** If no config is loaded, shows a "Get Started" prompt
-leading to the setup wizard.
+**First-time state:** If no config is loaded, the Status page shows a clean
+inline prompt: "Add your first subscription" with a URL input field and a
+"Get Started" button. No wizard. One action, one screen.
 
 ### Page 2: Profiles
 
@@ -108,7 +111,7 @@ Everything about getting proxy configs into the system.
 
 **Subscriptions tab:**
 - Card grid showing each subscription with: name, expiry date, data remaining, last updated
-- "Add Subscription" button → URL input modal
+- "Add Subscription" button → slide-over panel with URL input
 - "Update All" button
 - Per-card: Update, Edit, Delete actions
 
@@ -122,28 +125,44 @@ Everything about getting proxy configs into the system.
 
 All configuration, split into two clear tabs.
 
-**Router Integration tab:**
+**Every setting has:**
+- A short inline plain-English description
+- An `ⓘ` tooltip icon with detailed explanation (or link to docs page)
+
+**UX pattern:** Simple settings shown inline (toggle/select). Complex settings
+open in a **slide-over panel** (Sheet component) from the right — the page
+stays visible behind so you don't lose context. No modals.
+
+**Network tab:**
 
 | Section | Settings |
 |---------|----------|
-| Traffic Mode | Operation mode (fake-ip recommended), UDP proxy toggle, TUN stack type |
-| DNS | Redirect method (dnsmasq / firewall / disabled), flush cache button |
-| China Bypass | Bypass mode (bypass domestic / proxy domestic / disabled), custom bypass lists |
+| Traffic Mode | Operation mode (fake-ip recommended) ⓘ, UDP proxy toggle ⓘ, TUN stack type ⓘ |
+| DNS | Redirect method (dnsmasq / firewall / disabled) ⓘ, flush cache button |
 | Device Control | Mode (all / blacklist / whitelist), device list management |
-| Advanced | Common ports, router self-proxy, QUIC disable, custom firewall rules |
+| Advanced ▸ | China bypass ⓘ, common ports ⓘ, router self-proxy ⓘ, QUIC disable ⓘ, IPv6 settings ⓘ, gateway compatible ⓘ, custom firewall rules |
 
 **Clash Config tab:**
 
 | Section | Settings |
 |---------|----------|
-| Proxy Groups | Create/edit proxy groups (for manual configs) |
-| Streaming Unlock | Per-service unlock config (Netflix, Disney+, etc.) |
-| Config Overwrite | YAML snippet merged into active config on start |
-| Dashboard | Port, password, dashboard version selection |
-| Advanced | Rule providers, game rules |
+| Custom Proxy Groups | Simple form: name, type, test URL, proxy filter regex. Appended to subscription config, never replaces. |
+| Custom Rules | Simple form: rule type, value, target group. Prepended to subscription rules. |
+| Config Overwrite | YAML editor — snippets merged into active config on start. Preview before apply. |
+| Advanced ▸ | Rule providers ⓘ, YAML editor for advanced group/rule definitions |
 
-**UX pattern:** Simple settings shown inline (toggle/select). Complex settings open a modal.
-This is inspired by Clash Verge Rev's SettingItem pattern — keeps the page uncluttered.
+**Proxy Groups — Design rationale:**
+
+The biggest pain point in existing OpenClash was the proxy group editor destroying
+subscription configs. Our approach:
+
+1. **Merge, never replace** — Custom groups are *appended* to subscription proxy-groups.
+   Custom rules are *prepended* to subscription rules. The subscription YAML is never modified.
+2. **Simple form for common cases** — Name, type (select/url-test/fallback/load-balance),
+   test URL, interval, proxy filter (regex to select which nodes go in the group).
+3. **YAML editor for power users** — Full YAML snippets for complex setups (e.g. AND rules,
+   device-specific routing). Accessible via the Advanced section.
+4. **Preview** — Show what the merged config will look like before applying.
 
 ### Page 4: System
 
@@ -152,91 +171,68 @@ Maintenance and health.
 | Section | Content |
 |---------|---------|
 | Clash Core | Current version, latest available, update button, branch selection |
-| Auto Updates | Unified schedule view for all auto-updates (subscriptions, rules, GEO, chnroute) |
-| Logs | OpenClash service log viewer (not Clash core logs — those are in the dashboard) |
+| Auto Updates | Unified schedule view for all auto-updates (subscriptions, GEO, chnroute) |
+| Logs | OpenClash service log viewer (not Clash core logs — those are in Zashboard) |
 | Diagnostics | DNS test, connection test, debug report download |
 
 ---
 
-## First-Time Setup Wizard
+## Feature Triage
 
-New users arriving at an unconfigured OpenClash should be guided through setup:
+Evaluated every feature from OpenClash's ~60+ settings against the design philosophy:
+*"Does it have a purpose? Does it need to exist? Is there a reason it's here?"*
 
-```
-Step 1 of 4 — Add your subscription
-  "Paste your subscription URL from your proxy service provider"
-  [URL input field]
-  [+ Add another URL]
-  [Next →]
+### ✅ KEEP — Essential (Tier 1)
 
-Step 2 of 4 — Choose operation mode
-  ● Fake-IP (Recommended)
-    Best performance. Works with all protocols.
-  ○ Redir-Host
-    Compatible mode. Try this if Fake-IP causes issues.
-  ○ TUN Mode
-    Advanced. Requires kmod-tun kernel module.
-  [← Back] [Next →]
+| Feature | Page | Purpose |
+|---------|------|---------|
+| Running status | Status | At-a-glance health |
+| Start/Stop/Restart | Status | Primary user action |
+| Open Dashboard (Zashboard) | Status | Most-used feature after setup |
+| Current config/mode display | Status | Context at a glance |
+| Subscription management | Profiles | Core setup workflow |
+| Config file switching | Profiles | Core workflow |
+| Operation mode | Settings → Network | Core setup |
+| DNS redirect method | Settings → Network | Core setup |
+| LAN device control | Settings → Network | Who gets proxied |
+| Custom proxy groups | Settings → Clash Config | Key user need (merge approach) |
+| Config overwrite | Settings → Clash Config | Tweak without editing subscription |
+| Core updates | System | Maintenance |
+| Auto-update schedules | System | Set-and-forget |
+| Service logs | System | Troubleshooting |
 
-Step 3 of 4 — China traffic
-  ● Bypass (go direct — faster for domestic services)
-  ○ Proxy everything through your proxy server
-  ○ Disabled (don't apply China routing)
-  [← Back] [Next →]
+### ✅ KEEP — Visible but not prominent (Tier 2)
 
-Step 4 of 4 — Starting...
-  [✓] Subscription downloaded
-  [✓] Configuration applied
-  [⟳] Starting Clash...
-  [✓] Running!
+| Feature | Page | Purpose |
+|---------|------|---------|
+| UDP proxy toggle | Settings → Network | Setup once |
+| Custom rules | Settings → Clash Config | Prepend rules to subscription |
 
-  [Open Dashboard →]
-  [Finish]
-```
+### ✅ KEEP — Advanced, collapsed (Tier 3)
 
----
+| Feature | Where | Purpose |
+|---------|-------|---------|
+| China bypass | Network → Advanced | Performance for China users |
+| IPv6 settings | Network → Advanced | Setup when needed |
+| Common ports | Network → Advanced | Edge case optimization |
+| QUIC disable | Network → Advanced | Force HTTPS fallback |
+| Router self-proxy | Network → Advanced | Router's own traffic routing |
+| Gateway compatible | Network → Advanced | Escape hatch for routing edge cases |
+| Custom firewall rules | Network → Advanced | Power users |
+| Rule providers | Clash Config → Advanced | External rule files |
+| YAML group/rule editor | Clash Config → Advanced | Power user alternative to forms |
 
-## Feature Priority Matrix
+### ❌ DROPPED — Failed the purpose test
 
-Based on analysis of all ~100 OpenClash features:
-
-### Tier 1 — Always visible, top-level UI
-
-| Feature | Page | Notes |
-|---------|------|-------|
-| Running status | Status | Big, clear, prominent |
-| Start/Stop/Restart | Status | Primary actions |
-| Open Dashboard link | Status | Most-used feature after setup |
-| Current config/mode | Status | At a glance |
-| Subscription management | Profiles | Most common setup task |
-| Config file switching | Profiles | Regular use |
-| Operation mode selection | Settings → Router | Core setup setting |
-| China bypass mode | Settings → Router | High-impact setting |
-
-### Tier 2 — Settings page, visible but not prominent
-
-| Feature | Page | Notes |
-|---------|------|-------|
-| DNS redirect method | Settings → Router | Setup once |
-| LAN device control | Settings → Router | Setup once, occasional changes |
-| UDP proxy toggle | Settings → Router | Setup once |
-| Streaming unlock | Settings → Clash | Frequently adjusted |
-| Dashboard port/password | Settings → Clash | Setup once |
-| Core update | System | Occasional |
-| Auto-update schedules | System | Setup once |
-
-### Tier 3 — Advanced, collapsed by default
-
-| Feature | Where | Notes |
-|---------|-------|-------|
-| Custom bypass lists | Settings → Router → Advanced | Power users |
-| Custom proxy groups | Settings → Clash → Advanced | Users not on subscriptions |
-| Rule providers | Settings → Clash → Advanced | Power users |
-| Game rules | Settings → Clash → Advanced | Specific use case |
-| Config overwrite YAML | Settings → Clash → Advanced | Power users |
-| Custom firewall rules | Settings → Router → Advanced | Very advanced |
-| IPv6 settings | Settings → Router → Advanced | Setup when needed |
-| Dler cloud integration | Settings → Clash → Advanced | Service-specific |
+| Feature | Why dropped |
+|---------|-------------|
+| Streaming Unlock | Convenience automation. Switch nodes manually in Zashboard. |
+| Smart/ML proxy groups | Over-engineered. url-test picks fastest node reliably. |
+| Dashboard switcher | Zashboard only. One dashboard, one button. |
+| Dler Cloud integration | Service-specific, too niche. |
+| Small flash mode | Handle in installation docs, not runtime UI. |
+| Game rules | Niche. Achievable via custom rules. |
+| Multiple dashboard install/switch | Zashboard only. |
 
 ---
 
@@ -286,33 +282,68 @@ into the LuCI package and served as static assets — no Node.js on the router.
 
 ---
 
+## Interaction Patterns
+
+- **Slide-over panels** (shadcn-svelte `Sheet`) for complex settings — slides in from the
+  right, page stays visible behind. No modals.
+- **Inline toggles/selects** for simple settings — no extra interaction needed.
+- **Collapsible Advanced sections** — collapsed by default, one click to expand. Settings
+  are never hidden, just not front-and-centre.
+- **Tooltips** — Every setting has an `ⓘ` icon with a plain-English explanation. Could link
+  to a hosted docs page for deeper context.
+
+---
+
 ## Design Principles
 
-1. **English first** — No Chinese. All labels in plain English with descriptions.
-2. **Sensible defaults** — Fake-IP mode, China bypass on, DNS via dnsmasq. A user who clicks
-   through the wizard with defaults should have a working setup.
-3. **Progressive disclosure** — The top-level shows what matters. Advanced options are one
+1. **Purposeful minimalism** — Every element earns its place. If it doesn't have a clear
+   purpose, it doesn't exist. No "nice to haves."
+2. **English first** — No Chinese. All labels in plain English with descriptions.
+3. **Sensible defaults** — Fake-IP mode, DNS via dnsmasq. A user who adds a subscription
+   and clicks Start should have a working setup. No wizard needed.
+4. **Progressive disclosure** — The top-level shows what matters. Advanced options are one
    click deeper, never hidden — just not front-and-centre.
-4. **Explain settings** — Every setting has a one-line plain-English description. No more
-   guessing what `bypass_gateway_compatible` means.
-5. **Router vs Clash separation** — Settings tabs are clearly labelled so users understand
+5. **Explain settings** — Every setting has a one-line plain-English description plus a
+   tooltip. No more guessing what `bypass_gateway_compatible` means.
+6. **Network vs Clash separation** — Settings tabs are clearly labelled so users understand
    why changing "operation mode" has a different nature to changing "proxy groups".
-6. **Don't duplicate the dashboard** — If Zashboard does it, we link to Zashboard.
+7. **Don't duplicate the dashboard** — If Zashboard does it, we link to Zashboard.
+8. **Merge, never replace** — Custom proxy groups and rules are appended/prepended to
+   subscription configs. The subscription YAML is never modified directly.
+
+---
+
+## Decisions Log
+
+| # | Decision | Date |
+|---|----------|------|
+| 1 | Tech stack: Svelte 5 + Vite + shadcn-svelte + Tailwind v4 + TanStack Query | Mar 2026 |
+| 2 | Dashboard: Zashboard only — no picker, no installer | Mar 2026 |
+| 3 | No setup wizard — smart empty state on Status page instead | Mar 2026 |
+| 4 | Settings tab naming: "Network" + "Clash Config" | Mar 2026 |
+| 5 | Interaction: slide-over panels, no modals | Mar 2026 |
+| 6 | Proxy groups: simple form + YAML editor, merge approach | Mar 2026 |
+| 7 | Config Overwrite: single YAML merge editor (not 6-tab form) | Mar 2026 |
+| 8 | Dropped: Streaming Unlock, ML groups, Dler Cloud, Game Rules, Small Flash | Mar 2026 |
+| 9 | Dropped: card visibility toggles, archive button | Mar 2026 |
+| 10 | China Bypass: moved to Advanced (subscriptions handle it via rules) | Mar 2026 |
 
 ---
 
 ## Open Questions
 
-- [x] ~~**Technology stack**~~ — **Decided: Svelte 5 + Vite + shadcn-svelte + Tailwind + TanStack Query**
+- [x] ~~**Technology stack**~~ — Svelte 5 + Vite + shadcn-svelte + Tailwind + TanStack Query
+- [x] ~~**Scope of Clash Config tab**~~ — Custom groups/rules via merge + config overwrite YAML editor
+- [x] ~~**Dashboard selection**~~ — Zashboard only
+- [x] ~~**Wizard vs no wizard**~~ — No wizard, smart empty state
+- [x] ~~**Modal vs alternatives**~~ — Slide-over panels
 - [ ] **Mobile UX** — GL.iNet users sometimes configure via phone. How responsive should the layout be?
 - [ ] **Internationalisation** — English first, but should we architect for i18n from the start?
-- [ ] **Dark mode** — Support it? (shadcn-svelte has built-in light/dark theming)
-- [ ] **Scope of Clash Config tab** — How much proxy/group management belongs here vs
-      "just use a subscription and configure via the YAML editor"?
-- [ ] **Connections/Rules read-only views** — Worth adding lightweight read-only views
-      into the LuCI app, or strictly leave to dashboard?
+- [ ] **Dark mode** — Support it? (shadcn-svelte has built-in light/dark theming, low cost)
+- [ ] **Connections/Rules read-only views** — Strictly leave to Zashboard?
+- [ ] **Tooltip content** — Host docs internally (GitHub Pages) or inline-only tooltips?
 
 ---
 
-*Status: Design in progress — detailed page designs still being finalised*  
+*Status: Design in progress — page designs being finalised*  
 *Last updated: March 2026*
