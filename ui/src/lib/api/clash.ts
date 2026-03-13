@@ -135,6 +135,18 @@ export function createClashClient(opts: ClashClientOptions = {}) {
     }
   }
 
+  async function post(path: string): Promise<void> {
+    try {
+      const res = await fetch(`${baseUrl}${path}`, {
+        method: 'POST',
+        headers: headers()
+      })
+      await assertOk(res)
+    } catch (err) {
+      throw await normaliseError(err)
+    }
+  }
+
   return {
     getVersion: () => get<ClashVersion>('/version'),
     getConfig: () => get<ClashConfig>('/configs'),
@@ -145,6 +157,12 @@ export function createClashClient(opts: ClashClientOptions = {}) {
 
     /** One-shot traffic snapshot (polls manually — use getTrafficStream for live data). */
     getTraffic: () => get<TrafficSnapshot>('/traffic'),
+
+    /** Flushes both the fake-IP and DNS caches in Clash. */
+    flushDnsCache: async () => {
+      await post('/cache/fakeip/flush')
+      await post('/cache/dns/flush')
+    },
 
     /** Returns base URL for constructing WebSocket/SSE URLs externally. */
     getBaseUrl: () => baseUrl

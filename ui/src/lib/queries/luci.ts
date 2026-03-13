@@ -13,6 +13,7 @@ import {
   type SubscriptionEditData,
   type ConfigFile
 } from '$lib/api/luci'
+import { clashClient } from '$lib/api/clash'
 import { isApiError } from '$lib/api/errors'
 import { toasts } from '$lib/stores/toasts'
 
@@ -270,6 +271,19 @@ export function useConfigWrite(
     onSuccess(_, { name }) {
       queryClient.invalidateQueries({ queryKey: luciKeys.configs })
       toasts.success(`${name} saved`)
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useFlushDnsCache(
+  opts?: Partial<CreateMutationOptions<void, unknown, void>>
+) {
+  return createMutation<void, unknown, void>(() => ({
+    mutationFn: () => clashClient.flushDnsCache(),
+    onSuccess() {
+      toasts.success('DNS cache flushed')
     },
     onError: onMutationError,
     ...opts
