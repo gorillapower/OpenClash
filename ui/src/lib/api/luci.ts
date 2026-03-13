@@ -47,6 +47,19 @@ export interface FileReadResult {
 }
 
 // ---------------------------------------------------------------------------
+// Config file types
+// ---------------------------------------------------------------------------
+
+export interface ConfigFile {
+  name: string
+  active: boolean
+  /** File size in bytes */
+  size?: number
+  /** ISO timestamp of last modification */
+  lastModified?: string
+}
+
+// ---------------------------------------------------------------------------
 // Subscription types
 // ---------------------------------------------------------------------------
 
@@ -204,5 +217,26 @@ export const luciRpc = {
 
   subscriptionEdit(name: string, data: SubscriptionEditData): Promise<void> {
     return rpcCall('subscription.edit', [name, data])
+  },
+
+  // Config files
+  configList(): Promise<ConfigFile[]> {
+    return rpcCall('config.list', [])
+  },
+
+  configSetActive(name: string): Promise<void> {
+    return rpcCall('config.setActive', [name])
+  },
+
+  configDelete(name: string): Promise<void> {
+    return rpcCall('config.delete', [name])
+  },
+
+  configRead(name: string): Promise<FileReadResult> {
+    return rpcCall('config.read', [name])
+  },
+
+  configWrite(name: string, content: string): Promise<void> {
+    return rpcCall('config.write', [name, content])
   }
 }

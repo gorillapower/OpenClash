@@ -10,7 +10,8 @@ import {
   type UciPackage,
   type ServiceStatusResult,
   type Subscription,
-  type SubscriptionEditData
+  type SubscriptionEditData,
+  type ConfigFile
 } from '$lib/api/luci'
 import { isApiError } from '$lib/api/errors'
 import { toasts } from '$lib/stores/toasts'
@@ -23,7 +24,8 @@ export const luciKeys = {
   all: ['luci'] as const,
   uci: (pkg: string) => [...luciKeys.all, 'uci', pkg] as const,
   serviceStatus: (name: string) => [...luciKeys.all, 'service', name, 'status'] as const,
-  subscriptions: [...['luci'], 'subscriptions'] as const
+  subscriptions: [...['luci'], 'subscriptions'] as const,
+  configs: [...['luci'], 'configs'] as const
 }
 
 // ---------------------------------------------------------------------------
@@ -178,8 +180,9 @@ export function useSubscriptionUpdate(
   const queryClient = useQueryClient()
   return createMutation<void, unknown, string>(() => ({
     mutationFn: (name: string) => luciRpc.subscriptionUpdate(name),
-    onSuccess() {
+    onSuccess(_, name) {
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+      toasts.success(`${name} updated`)
     },
     onError: onMutationError,
     ...opts
@@ -211,6 +214,62 @@ export function useSubscriptionEdit(
     mutationFn: ({ name, data }) => luciRpc.subscriptionEdit(name, data),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// Config file hooks
+// ---------------------------------------------------------------------------
+
+export function useConfigs(opts?: Partial<CreateQueryOptions<ConfigFile[]>>) {
+  return createQuery<ConfigFile[]>(() => ({
+    queryKey: luciKeys.configs,
+    queryFn: () => luciRpc.configList(),
+    ...opts
+  } as CreateQueryOptions<ConfigFile[]>))
+}
+
+export function useConfigSetActive(
+  opts?: Partial<CreateMutationOptions<void, unknown, string>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, string>(() => ({
+    mutationFn: (name: string) => luciRpc.configSetActive(name),
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.configs })
+      toasts.success('Config switched — Clash is restarting')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useConfigDelete(
+  opts?: Partial<CreateMutationOptions<void, unknown, string>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, string>(() => ({
+    mutationFn: (name: string) => luciRpc.configDelete(name),
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.configs })
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useConfigWrite(
+  opts?: Partial<CreateMutationOptions<void, unknown, { name: string; content: string }>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, { name: string; content: string }>(() => ({
+    mutationFn: ({ name, content }) => luciRpc.configWrite(name, content),
+    onSuccess(_, { name }) {
+      queryClient.invalidateQueries({ queryKey: luciKeys.configs })
+      toasts.success(`${name} saved`)
     },
     onError: onMutationError,
     ...opts

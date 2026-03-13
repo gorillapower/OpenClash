@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte'
 import type { CreateQueryResult, CreateMutationResult } from '@tanstack/svelte-query'
-import type { Subscription } from '$lib/api/luci'
+import type { Subscription, ConfigFile } from '$lib/api/luci'
 import ProfilesPage from '../pages/ProfilesPage.svelte'
 
 // ---------------------------------------------------------------------------
@@ -26,6 +26,24 @@ function makeMutation(mutateAsync = vi.fn().mockResolvedValue(undefined), isPend
 // Module mocks
 // ---------------------------------------------------------------------------
 
+// Stub YamlEditor so CodeMirror (which uses DOM APIs unavailable in jsdom) doesn't error.
+// We also keep configRead pending so the edit slide-over stays in "Loading…" state,
+// meaning YamlEditor is never rendered during unit tests.
+vi.mock('$lib/api/luci', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('$lib/api/luci')>()
+  return {
+    ...actual,
+    luciRpc: {
+      ...actual.luciRpc,
+      configRead: vi.fn().mockImplementation(() => new Promise(() => {})) // intentionally never resolves
+    }
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Module mocks
+// ---------------------------------------------------------------------------
+
 vi.mock('$lib/queries/luci', () => ({
   useSubscriptions: vi.fn(),
   useSubscriptionAdd: vi.fn(),
@@ -33,9 +51,14 @@ vi.mock('$lib/queries/luci', () => ({
   useSubscriptionUpdate: vi.fn(),
   useSubscriptionUpdateAll: vi.fn(),
   useSubscriptionEdit: vi.fn(),
+  useConfigs: vi.fn(),
+  useConfigSetActive: vi.fn(),
+  useConfigDelete: vi.fn(),
+  useConfigWrite: vi.fn(),
   luciKeys: {
     all: ['luci'],
-    subscriptions: ['luci', 'subscriptions']
+    subscriptions: ['luci', 'subscriptions'],
+    configs: ['luci', 'configs']
   }
 }))
 
@@ -50,7 +73,11 @@ import {
   useSubscriptionDelete,
   useSubscriptionUpdate,
   useSubscriptionUpdateAll,
-  useSubscriptionEdit
+  useSubscriptionEdit,
+  useConfigs,
+  useConfigSetActive,
+  useConfigDelete,
+  useConfigWrite
 } from '$lib/queries/luci'
 
 // ---------------------------------------------------------------------------
@@ -74,18 +101,37 @@ const mockSubs: Subscription[] = [
   }
 ]
 
+const mockConfigs: ConfigFile[] = [
+  {
+    name: 'config.yaml',
+    active: true,
+    size: 2048,
+    lastModified: new Date(Date.now() - 86_400_000).toISOString()
+  },
+  {
+    name: 'backup.yaml',
+    active: false,
+    size: 1024,
+    lastModified: new Date(Date.now() - 7 * 86_400_000).toISOString()
+  }
+]
+
 // ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
 
 function setupMocks({
   subs = mockSubs,
+  configs = mockConfigs,
   isPending = false,
   addMutateAsync = vi.fn().mockResolvedValue({ name: 'My VPN' }),
   deleteMutateAsync = vi.fn().mockResolvedValue(undefined),
   updateMutateAsync = vi.fn().mockResolvedValue(undefined),
   updateAllMutate = vi.fn(),
-  editMutateAsync = vi.fn().mockResolvedValue(undefined)
+  editMutateAsync = vi.fn().mockResolvedValue(undefined),
+  configSetActiveMutateAsync = vi.fn().mockResolvedValue(undefined),
+  configDeleteMutateAsync = vi.fn().mockResolvedValue(undefined),
+  configWriteMutateAsync = vi.fn().mockResolvedValue(undefined)
 } = {}) {
   vi.mocked(useSubscriptions).mockReturnValue(makeQuery(subs, isPending) as never)
   vi.mocked(useSubscriptionAdd).mockReturnValue(makeMutation(addMutateAsync) as never)
@@ -97,6 +143,10 @@ function setupMocks({
     isPending: false
   } as never)
   vi.mocked(useSubscriptionEdit).mockReturnValue(makeMutation(editMutateAsync) as never)
+  vi.mocked(useConfigs).mockReturnValue(makeQuery(configs, isPending) as never)
+  vi.mocked(useConfigSetActive).mockReturnValue(makeMutation(configSetActiveMutateAsync) as never)
+  vi.mocked(useConfigDelete).mockReturnValue(makeMutation(configDeleteMutateAsync) as never)
+  vi.mocked(useConfigWrite).mockReturnValue(makeMutation(configWriteMutateAsync) as never)
 }
 
 // ---------------------------------------------------------------------------
@@ -261,11 +311,140 @@ describe('ProfilesPage — Subscriptions tab', () => {
     )
   })
 
-  it('switching to Config Files tab shows stub content', async () => {
+  it('switching to Config Files tab shows toolbar and list', async () => {
     setupMocks()
     render(ProfilesPage)
     await fireEvent.click(screen.getByRole('button', { name: 'Config Files' }))
-    expect(screen.getByText(/config files coming soon/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /upload config/i })).toBeInTheDocument()
+  })
+
+  it('per-card update calls mutation with the subscription name', async () => {
+    const updateMutateAsync = vi.fn().mockResolvedValue(undefined)
+    setupMocks({ updateMutateAsync })
+    render(ProfilesPage)
+    const updateBtn = screen.getByRole('button', { name: /update my vpn/i })
+    await fireEvent.click(updateBtn)
+    await waitFor(() => expect(updateMutateAsync).toHaveBeenCalledWith('My VPN'))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Config Files tab tests
+// ---------------------------------------------------------------------------
+
+describe('ProfilesPage — Config Files tab', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  async function switchToConfigsTab() {
+    render(ProfilesPage)
+    await fireEvent.click(screen.getByRole('button', { name: 'Config Files' }))
+  }
+
+  it('renders all config files', async () => {
+    setupMocks()
+    await switchToConfigsTab()
+    expect(screen.getByText('config.yaml')).toBeInTheDocument()
+    expect(screen.getByText('backup.yaml')).toBeInTheDocument()
+  })
+
+  it('active config has "Active" badge', async () => {
+    setupMocks()
+    await switchToConfigsTab()
+    expect(screen.getByText('Active')).toBeInTheDocument()
+  })
+
+  it('active config row has data-active attribute', async () => {
+    setupMocks()
+    const { container } = render(ProfilesPage)
+    await fireEvent.click(screen.getByRole('button', { name: 'Config Files' }))
+    const activeRow = container.querySelector('[data-active="true"]')
+    expect(activeRow).not.toBeNull()
+    expect(activeRow?.textContent).toContain('config.yaml')
+  })
+
+  it('inactive config shows Switch button', async () => {
+    setupMocks()
+    await switchToConfigsTab()
+    expect(screen.getByRole('button', { name: /switch to backup\.yaml/i })).toBeInTheDocument()
+  })
+
+  it('active config does not show Switch button', async () => {
+    setupMocks()
+    await switchToConfigsTab()
+    expect(screen.queryByRole('button', { name: /switch to config\.yaml/i })).not.toBeInTheDocument()
+  })
+
+  it('switch action shows inline confirmation', async () => {
+    setupMocks()
+    await switchToConfigsTab()
+    await fireEvent.click(screen.getByRole('button', { name: /switch to backup\.yaml/i }))
+    expect(screen.getByRole('button', { name: /confirm switch/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /cancel switch/i })).toBeInTheDocument()
+  })
+
+  it('confirming switch calls mutation with config name', async () => {
+    const configSetActiveMutateAsync = vi.fn().mockResolvedValue(undefined)
+    setupMocks({ configSetActiveMutateAsync })
+    await switchToConfigsTab()
+    await fireEvent.click(screen.getByRole('button', { name: /switch to backup\.yaml/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /confirm switch/i }))
+    await waitFor(() => expect(configSetActiveMutateAsync).toHaveBeenCalledWith('backup.yaml'))
+  })
+
+  it('cancelling switch hides confirmation', async () => {
+    setupMocks()
+    await switchToConfigsTab()
+    await fireEvent.click(screen.getByRole('button', { name: /switch to backup\.yaml/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /cancel switch/i }))
+    expect(screen.queryByRole('button', { name: /confirm switch/i })).not.toBeInTheDocument()
+  })
+
+  it('delete action shows inline confirmation', async () => {
+    setupMocks()
+    await switchToConfigsTab()
+    await fireEvent.click(screen.getByRole('button', { name: /delete backup\.yaml/i }))
+    expect(screen.getByRole('button', { name: /confirm delete/i })).toBeInTheDocument()
+  })
+
+  it('confirming delete calls mutation with config name', async () => {
+    const configDeleteMutateAsync = vi.fn().mockResolvedValue(undefined)
+    setupMocks({ configDeleteMutateAsync })
+    await switchToConfigsTab()
+    await fireEvent.click(screen.getByRole('button', { name: /delete backup\.yaml/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }))
+    await waitFor(() => expect(configDeleteMutateAsync).toHaveBeenCalledWith('backup.yaml'))
+  })
+
+  it('shows empty state when no configs', async () => {
+    setupMocks({ configs: [] })
+    await switchToConfigsTab()
+    expect(screen.getByText(/no config files yet/i)).toBeInTheDocument()
+  })
+
+  it('Upload Config button opens slide-over', async () => {
+    setupMocks()
+    await switchToConfigsTab()
+    await fireEvent.click(screen.getByRole('button', { name: /upload config/i }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByLabelText(/config name/i)).toBeInTheDocument()
+  })
+
+  it('upload form rejects empty name', async () => {
+    setupMocks()
+    await switchToConfigsTab()
+    await fireEvent.click(screen.getByRole('button', { name: /upload config/i }))
+    const form = screen.getByRole('dialog').querySelector('form')!
+    await fireEvent.submit(form)
+    expect(screen.getByText(/name is required/i)).toBeInTheDocument()
+  })
+
+  it('edit button opens edit slide-over', async () => {
+    setupMocks()
+    await switchToConfigsTab()
+    await fireEvent.click(screen.getByRole('button', { name: /edit config\.yaml/i }))
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toBeInTheDocument()
+    expect(dialog.textContent).toContain('config.yaml')
   })
 })
 

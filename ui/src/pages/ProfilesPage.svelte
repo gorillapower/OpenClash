@@ -1,16 +1,23 @@
 <script lang="ts">
-  import type { Subscription } from '$lib/api/luci'
+  import type { Subscription, ConfigFile } from '$lib/api/luci'
+  import { luciRpc } from '$lib/api/luci'
   import { Sheet } from '$lib/components/ui/sheet'
   import { Button } from '$lib/components/ui/button'
   import { Input } from '$lib/components/ui/input'
   import SubscriptionCard from '$lib/components/SubscriptionCard.svelte'
+  import ConfigFileRow from '$lib/components/ConfigFileRow.svelte'
+  import YamlEditor from '$lib/components/YamlEditor.svelte'
   import {
     useSubscriptions,
     useSubscriptionAdd,
     useSubscriptionDelete,
     useSubscriptionUpdate,
     useSubscriptionUpdateAll,
-    useSubscriptionEdit
+    useSubscriptionEdit,
+    useConfigs,
+    useConfigSetActive,
+    useConfigDelete,
+    useConfigWrite
   } from '$lib/queries/luci'
 
   // ---------------------------------------------------------------------------
@@ -30,6 +37,11 @@
   const subscriptionUpdate = useSubscriptionUpdate()
   const subscriptionUpdateAll = useSubscriptionUpdateAll()
   const subscriptionEdit = useSubscriptionEdit()
+
+  const configs = useConfigs()
+  const configSetActive = useConfigSetActive()
+  const configDelete = useConfigDelete()
+  const configWrite = useConfigWrite()
 
   // ---------------------------------------------------------------------------
   // Add slide-over
@@ -148,6 +160,124 @@
   async function handleDelete(name: string) {
     await subscriptionDelete.mutateAsync(name)
   }
+
+  // ---------------------------------------------------------------------------
+  // Config: switch
+  // ---------------------------------------------------------------------------
+
+  let switchingNames = $state(new Set<string>())
+
+  async function handleConfigSwitch(name: string) {
+    switchingNames = new Set([...switchingNames, name])
+    try {
+      await configSetActive.mutateAsync(name)
+    } finally {
+      switchingNames = new Set([...switchingNames].filter((n) => n !== name))
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Config: delete
+  // ---------------------------------------------------------------------------
+
+  async function handleConfigDelete(name: string) {
+    await configDelete.mutateAsync(name)
+  }
+
+  // ---------------------------------------------------------------------------
+  // Config: download (client-side)
+  // ---------------------------------------------------------------------------
+
+  async function handleConfigDownload(name: string) {
+    try {
+      const result = await luciRpc.configRead(name)
+      const blob = new Blob([result.content], { type: 'text/yaml' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = name.endsWith('.yaml') || name.endsWith('.yml') ? name : `${name}.yaml`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      // error toast is handled by the RPC layer for server errors;
+      // silent on client-side blob failures
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Config: edit slide-over
+  // ---------------------------------------------------------------------------
+
+  let editConfigOpen = $state(false)
+  let editConfigTarget = $state<ConfigFile | null>(null)
+  let editConfigContent = $state('')
+  let editConfigLoading = $state(false)
+
+  async function openEditConfig(config: ConfigFile) {
+    editConfigTarget = config
+    editConfigContent = ''
+    editConfigLoading = true
+    editConfigOpen = true
+    try {
+      const result = await luciRpc.configRead(config.name)
+      editConfigContent = result.content
+    } finally {
+      editConfigLoading = false
+    }
+  }
+
+  async function handleSaveConfig() {
+    if (!editConfigTarget) return
+    await configWrite.mutateAsync({ name: editConfigTarget.name, content: editConfigContent })
+    editConfigOpen = false
+    editConfigTarget = null
+    editConfigContent = ''
+  }
+
+  // ---------------------------------------------------------------------------
+  // Config: upload slide-over
+  // ---------------------------------------------------------------------------
+
+  let uploadConfigOpen = $state(false)
+  let uploadConfigName = $state('')
+  let uploadConfigContent = $state('')
+  let uploadConfigNameError = $state('')
+  let uploadFileInput: HTMLInputElement
+
+  function openUploadConfig() {
+    uploadConfigName = ''
+    uploadConfigContent = ''
+    uploadConfigNameError = ''
+    uploadConfigOpen = true
+  }
+
+  function handleFileSelect(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (!file) return
+    if (!uploadConfigName) {
+      uploadConfigName = file.name
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      uploadConfigContent = (ev.target?.result as string) ?? ''
+    }
+    reader.readAsText(file)
+  }
+
+  async function handleUploadConfig() {
+    if (!uploadConfigName.trim()) {
+      uploadConfigNameError = 'Name is required'
+      return
+    }
+    uploadConfigNameError = ''
+    const name = uploadConfigName.trim().endsWith('.yaml') || uploadConfigName.trim().endsWith('.yml')
+      ? uploadConfigName.trim()
+      : `${uploadConfigName.trim()}.yaml`
+    await configWrite.mutateAsync({ name, content: uploadConfigContent })
+    uploadConfigOpen = false
+    uploadConfigName = ''
+    uploadConfigContent = ''
+  }
 </script>
 
 <div class="space-y-6">
@@ -242,8 +372,46 @@
 
   <!-- Config Files tab -->
   {#if activeTab === 'configs'}
-    <div class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16 text-center">
-      <p class="text-sm font-medium text-muted-foreground">Config Files coming soon</p>
+    <div class="space-y-4">
+      <!-- Toolbar -->
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="sr-only">Config Files</h2>
+        <div class="ml-auto">
+          <Button size="sm" onclick={openUploadConfig}>Upload Config</Button>
+        </div>
+      </div>
+
+      <!-- Loading skeleton -->
+      {#if configs.isPending}
+        <div class="space-y-2">
+          {#each { length: 3 } as _}
+            <div class="h-14 animate-pulse rounded-lg bg-muted"></div>
+          {/each}
+        </div>
+
+      <!-- Empty state -->
+      {:else if !configs.data || configs.data.length === 0}
+        <div class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16 text-center">
+          <p class="text-sm font-medium">No config files yet</p>
+          <p class="mt-1 text-sm text-muted-foreground">Upload a YAML config to get started.</p>
+          <Button class="mt-4" size="sm" onclick={openUploadConfig}>Upload your first config</Button>
+        </div>
+
+      <!-- Config list -->
+      {:else}
+        <div class="space-y-2">
+          {#each configs.data as config (config.name)}
+            <ConfigFileRow
+              {config}
+              onSwitch={handleConfigSwitch}
+              onEdit={openEditConfig}
+              onDownload={handleConfigDownload}
+              onDelete={handleConfigDelete}
+              switching={switchingNames.has(config.name)}
+            />
+          {/each}
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
@@ -333,4 +501,70 @@
       </Button>
     </form>
   {/if}
+</Sheet>
+
+<!-- Edit Config slide-over -->
+<Sheet
+  open={editConfigOpen}
+  onClose={() => { editConfigOpen = false; editConfigTarget = null; editConfigContent = '' }}
+  title={editConfigTarget ? `Edit — ${editConfigTarget.name}` : 'Edit Config'}
+>
+  <div class="flex h-full flex-col gap-4">
+    {#if editConfigLoading}
+      <div class="flex flex-1 items-center justify-center">
+        <p class="text-sm text-muted-foreground">Loading…</p>
+      </div>
+    {:else}
+      <div class="flex-1 overflow-hidden" style="min-height: 24rem;">
+        <YamlEditor
+          content={editConfigContent}
+          onChange={(v) => (editConfigContent = v)}
+        />
+      </div>
+      <Button
+        class="w-full shrink-0"
+        disabled={configWrite.isPending}
+        onclick={handleSaveConfig}
+      >
+        {configWrite.isPending ? 'Saving…' : 'Save Changes'}
+      </Button>
+    {/if}
+  </div>
+</Sheet>
+
+<!-- Upload Config slide-over -->
+<Sheet open={uploadConfigOpen} onClose={() => (uploadConfigOpen = false)} title="Upload Config">
+  <form class="space-y-4" onsubmit={(e) => { e.preventDefault(); handleUploadConfig() }}>
+    <div class="space-y-1.5">
+      <label for="upload-name" class="text-sm font-medium">Config name</label>
+      <Input
+        id="upload-name"
+        type="text"
+        placeholder="my-config.yaml"
+        bind:value={uploadConfigName}
+        oninput={() => (uploadConfigNameError = '')}
+        aria-invalid={!!uploadConfigNameError}
+        aria-describedby={uploadConfigNameError ? 'upload-name-error' : undefined}
+      />
+      {#if uploadConfigNameError}
+        <p id="upload-name-error" class="text-xs text-destructive">{uploadConfigNameError}</p>
+      {/if}
+    </div>
+
+    <div class="space-y-1.5">
+      <label for="upload-file" class="text-sm font-medium">YAML file</label>
+      <input
+        id="upload-file"
+        bind:this={uploadFileInput}
+        type="file"
+        accept=".yaml,.yml"
+        onchange={handleFileSelect}
+        class="block w-full cursor-pointer rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs file:font-medium file:text-foreground"
+      />
+    </div>
+
+    <Button type="submit" class="w-full" disabled={configWrite.isPending || !uploadConfigContent}>
+      {configWrite.isPending ? 'Uploading…' : 'Upload Config'}
+    </Button>
+  </form>
 </Sheet>
