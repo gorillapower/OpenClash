@@ -99,6 +99,68 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
     console.log('[mock] subscription.edit called with:', params)
     return true
   },
+  'config.list': () => {
+    if (MOCK_STATE === 'empty') return []
+    const now = Date.now()
+    return [
+      {
+        name: 'my-subscription.yaml',
+        active: true,
+        size: 48320,
+        lastModified: new Date(now - 2 * 3_600_000).toISOString()
+      },
+      {
+        name: 'backup-2024.yaml',
+        active: false,
+        size: 21504,
+        lastModified: new Date(now - 7 * 86_400_000).toISOString()
+      },
+      {
+        name: 'test-direct.yaml',
+        active: false,
+        size: 4096,
+        lastModified: new Date(now - 30 * 86_400_000).toISOString()
+      }
+    ]
+  },
+  'config.setActive': (params) => {
+    console.log('[mock] config.setActive called with:', params)
+    return true
+  },
+  'config.delete': (params) => {
+    console.log('[mock] config.delete called with:', params)
+    return true
+  },
+  'config.read': (params) => {
+    console.log('[mock] config.read called with:', params)
+    return {
+      content: [
+        '# Mock config — read-only preview',
+        'mixed-port: 7890',
+        'allow-lan: true',
+        'mode: rule',
+        'log-level: info',
+        '',
+        'dns:',
+        '  enable: true',
+        '  enhanced-mode: fake-ip',
+        '  nameserver:',
+        '    - 114.114.114.114',
+        '    - 8.8.8.8',
+        '',
+        'proxies: []',
+        '',
+        'proxy-groups: []',
+        '',
+        'rules:',
+        '  - MATCH,DIRECT'
+      ].join('\n')
+    }
+  },
+  'config.write': (params) => {
+    console.log('[mock] config.write called with name:', (params as unknown[])[0])
+    return true
+  },
   'file.read':   () => ({ content: '' }),
   'file.write':  () => true,
   'log.service': () => '[mock] OpenClash started\n[mock] Rules loaded\n',
