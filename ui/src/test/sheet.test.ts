@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/svelte'
+import { createRawSnippet } from 'svelte'
 import Sheet from '$lib/components/ui/sheet/sheet.svelte'
 
 // Svelte 5 snippet workaround: pass children as a string rendered in a wrapper.
@@ -55,5 +56,19 @@ describe('Sheet component', () => {
     render(Sheet, { props: { open: true, title: 'Test', onClose } })
     await fireEvent.keyDown(window, { key: 'Enter' })
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('renders children content inside the panel', () => {
+    const children = createRawSnippet(() => ({
+      render: () => '<p>Sheet body text</p>',
+    }))
+    render(Sheet, { props: { open: true, title: 'Test', children } })
+    expect(screen.getByText('Sheet body text')).toBeInTheDocument()
+  })
+
+  it('scroll container has overflow-y-auto class for long content', () => {
+    const { container } = render(Sheet, { props: { open: true, title: 'Test' } })
+    const scrollContainer = container.querySelector('.overflow-y-auto')
+    expect(scrollContainer).toBeInTheDocument()
   })
 })
