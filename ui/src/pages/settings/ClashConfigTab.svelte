@@ -6,11 +6,17 @@
     useToggleProxyGroup,
     useCustomRules,
     useSetCustomRules,
+    useRuleProviders,
+    useDeleteRuleProvider,
+    useToggleRuleProvider,
     type ProxyGroup,
-    type CustomRule
+    type CustomRule,
+    type RuleProvider
   } from '$lib/queries/luci'
   import ProxyGroupSheet from './ProxyGroupSheet.svelte'
   import ConfigOverwriteSheet from './ConfigOverwriteSheet.svelte'
+  import RuleProviderSheet from './RuleProviderSheet.svelte'
+  import AdvancedYamlSheet from './AdvancedYamlSheet.svelte'
 
   // ---------------------------------------------------------------------------
   // Proxy groups
@@ -20,13 +26,8 @@
   const deleteProxyGroup = useDeleteProxyGroup()
   const toggleProxyGroup = useToggleProxyGroup()
 
-  // Sync to local $state so template re-renders reliably after mutations
-  // (same pattern as custom rules below — accessing query.data in $effect
-  // is the reliable way to trigger Svelte 5 reactivity with TanStack Query)
-  let localGroups = $state<ProxyGroup[]>([])
-  $effect(() => {
-    if (proxyGroups.data) localGroups = [...proxyGroups.data]
-  })
+  // $derived is more reliable than $effect+$state for read-only derived lists
+  const localGroups = $derived(proxyGroups.data ?? [])
 
   // Local overrides drive the toggle visual instantly on click.
   // Keyed by group.id, cleared on error so UI reverts if the mutation fails.
@@ -48,14 +49,17 @@
 
   let proxyGroupSheetOpen = $state(false)
   let editingGroup = $state<ProxyGroup | undefined>(undefined)
+  let confirmDeleteId = $state<string | undefined>(undefined)
 
   function openAddGroup() {
     editingGroup = undefined
+    confirmDeleteId = undefined
     proxyGroupSheetOpen = true
   }
 
   function openEditGroup(group: ProxyGroup) {
     editingGroup = group
+    confirmDeleteId = undefined
     proxyGroupSheetOpen = true
   }
 
@@ -160,6 +164,55 @@
   // ---------------------------------------------------------------------------
 
   let configOverwriteSheetOpen = $state(false)
+
+  // ---------------------------------------------------------------------------
+  // Rule providers (Advanced)
+  // ---------------------------------------------------------------------------
+
+  const ruleProviders = useRuleProviders()
+  const deleteRuleProvider = useDeleteRuleProvider()
+  const toggleRuleProvider = useToggleRuleProvider()
+
+  const localProviders = $derived(ruleProviders.data ?? [])
+
+  let providerEnabledOverrides = $state<Record<string, boolean>>({})
+
+  function getProviderEnabled(provider: RuleProvider): boolean {
+    const override = providerEnabledOverrides[provider.id]
+    return override !== undefined ? override : provider.enabled
+  }
+
+  function handleProviderToggle(provider: RuleProvider) {
+    const newEnabled = !getProviderEnabled(provider)
+    providerEnabledOverrides[provider.id] = newEnabled
+    toggleRuleProvider.mutate(
+      { id: provider.id, enabled: newEnabled },
+      { onError() { delete providerEnabledOverrides[provider.id] } }
+    )
+  }
+
+  let ruleProviderSheetOpen = $state(false)
+  let editingProvider = $state<RuleProvider | undefined>(undefined)
+  let confirmDeleteProviderId = $state<string | undefined>(undefined)
+  let advancedOpen = $state(false)
+  let advancedYamlSheetOpen = $state(false)
+
+  function openAddProvider() {
+    editingProvider = undefined
+    confirmDeleteProviderId = undefined
+    ruleProviderSheetOpen = true
+  }
+
+  function openEditProvider(provider: RuleProvider) {
+    editingProvider = provider
+    confirmDeleteProviderId = undefined
+    ruleProviderSheetOpen = true
+  }
+
+  function closeRuleProviderSheet() {
+    ruleProviderSheetOpen = false
+    editingProvider = undefined
+  }
 </script>
 
 <div class="space-y-8">
@@ -221,16 +274,33 @@
               >
                 Edit
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onclick={() => deleteProxyGroup.mutate(group.id)}
-                disabled={deleteProxyGroup.isPending}
-                aria-label="Delete {group.name}"
-                class="text-destructive hover:text-destructive"
-              >
-                Delete
-              </Button>
+              {#if confirmDeleteId === group.id}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onclick={() => { deleteProxyGroup.mutate(group.id); confirmDeleteId = undefined }}
+                  disabled={deleteProxyGroup.isPending}
+                >
+                  Confirm
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onclick={() => (confirmDeleteId = undefined)}
+                >
+                  Cancel
+                </Button>
+              {:else}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onclick={() => (confirmDeleteId = group.id)}
+                  aria-label="Delete {group.name}"
+                  class="text-destructive hover:text-destructive"
+                >
+                  Delete
+                </Button>
+              {/if}
             </div>
           </div>
         {/each}
@@ -393,6 +463,155 @@
       active Clash YAML at startup. The file opens with annotated examples.
     </div>
   </div>
+
+  <!-- ============================================================
+       Section 4: Advanced (collapsed by default)
+  ============================================================ -->
+  <div class="space-y-1">
+    <button
+      type="button"
+      class="flex w-full items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+      onclick={() => (advancedOpen = !advancedOpen)}
+      aria-expanded={advancedOpen}
+      aria-controls="clash-advanced-section"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="transition-transform duration-200 {advancedOpen ? 'rotate-180' : ''}"
+        aria-hidden="true"
+      >
+        <path d="m6 9 6 6 6-6" />
+      </svg>
+      Advanced
+    </button>
+
+    {#if advancedOpen}
+      <div id="clash-advanced-section" class="space-y-8 pt-4">
+        <!-- Rule Providers -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Rule Providers
+              </h2>
+              <p class="mt-0.5 text-xs text-muted-foreground">
+                External rule files (URL or inline) merged into your Clash config at startup.
+                Each provider adds a <code class="font-mono">RULE-SET</code> entry routing matched
+                traffic to a target proxy group.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onclick={openAddProvider}>Add provider</Button>
+          </div>
+
+          {#if ruleProviders.isPending}
+            <div class="h-10 animate-pulse rounded-lg bg-muted"></div>
+          {:else if localProviders.length === 0}
+            <div
+              class="rounded-lg border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground"
+            >
+              No rule providers yet. Add one to pull in external rule lists.
+            </div>
+          {:else}
+            <div class="divide-y divide-border rounded-lg border border-border bg-card">
+              {#each localProviders as provider (provider.id)}
+                <div class="flex items-center gap-3 px-4 py-3">
+                  <!-- Enable toggle -->
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={getProviderEnabled(provider)}
+                    aria-label="Enable {provider.name}"
+                    class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 {getProviderEnabled(provider) ? 'bg-primary' : 'bg-muted'}"
+                    onclick={() => handleProviderToggle(provider)}
+                  >
+                    <span
+                      class="pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform {getProviderEnabled(provider) ? 'translate-x-4' : 'translate-x-0'}"
+                    ></span>
+                  </button>
+
+                  <!-- Info -->
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate text-sm font-medium text-foreground">{provider.name}</p>
+                    <p class="truncate text-xs text-muted-foreground">
+                      {provider.behavior} · {provider.type}{provider.group ? ` → ${provider.group}` : ''}
+                    </p>
+                  </div>
+
+                  <!-- Actions -->
+                  {#if confirmDeleteProviderId === provider.id}
+                    <div class="flex items-center gap-1.5">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onclick={() => {
+                          deleteRuleProvider.mutate(provider.id)
+                          confirmDeleteProviderId = undefined
+                        }}
+                      >
+                        Confirm
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onclick={() => (confirmDeleteProviderId = undefined)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  {:else}
+                    <div class="flex items-center gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Edit {provider.name}"
+                        onclick={() => openEditProvider(provider)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Delete {provider.name}"
+                        onclick={() => (confirmDeleteProviderId = provider.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+
+        <!-- Advanced YAML editor -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Advanced YAML
+              </h2>
+              <p class="mt-0.5 text-xs text-muted-foreground">
+                Raw YAML proxy-group and rule definitions merged into the active config at startup.
+                Use this for complex setups that the simple forms can't express.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onclick={() => (advancedYamlSheetOpen = true)}>
+              Edit YAML
+            </Button>
+          </div>
+        </div>
+      </div>
+    {/if}
+  </div>
 </div>
 
 <ProxyGroupSheet
@@ -404,4 +623,15 @@
 <ConfigOverwriteSheet
   open={configOverwriteSheetOpen}
   onClose={() => (configOverwriteSheetOpen = false)}
+/>
+
+<RuleProviderSheet
+  open={ruleProviderSheetOpen}
+  onClose={closeRuleProviderSheet}
+  provider={editingProvider}
+/>
+
+<AdvancedYamlSheet
+  open={advancedYamlSheetOpen}
+  onClose={() => (advancedYamlSheetOpen = false)}
 />

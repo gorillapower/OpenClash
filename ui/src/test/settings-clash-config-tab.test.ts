@@ -35,7 +35,14 @@ vi.mock('$lib/queries/luci', () => ({
   useCustomRules: vi.fn(),
   useSetCustomRules: vi.fn(),
   useConfigOverwrite: vi.fn(),
-  useSetConfigOverwrite: vi.fn()
+  useSetConfigOverwrite: vi.fn(),
+  useRuleProviders: vi.fn(),
+  useDeleteRuleProvider: vi.fn(),
+  useToggleRuleProvider: vi.fn(),
+  useAddRuleProvider: vi.fn(),
+  useUpdateRuleProvider: vi.fn(),
+  useAdvancedYaml: vi.fn(),
+  useSetAdvancedYaml: vi.fn()
 }))
 
 vi.mock('@tanstack/svelte-query', async (importOriginal) => {
@@ -43,7 +50,7 @@ vi.mock('@tanstack/svelte-query', async (importOriginal) => {
   return { ...actual, useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })) }
 })
 
-import type { ProxyGroup, CustomRule } from '$lib/queries/luci'
+import type { ProxyGroup, CustomRule, RuleProvider } from '$lib/queries/luci'
 import {
   useProxyGroups,
   useDeleteProxyGroup,
@@ -53,7 +60,14 @@ import {
   useCustomRules,
   useSetCustomRules,
   useConfigOverwrite,
-  useSetConfigOverwrite
+  useSetConfigOverwrite,
+  useRuleProviders,
+  useDeleteRuleProvider,
+  useToggleRuleProvider,
+  useAddRuleProvider,
+  useUpdateRuleProvider,
+  useAdvancedYaml,
+  useSetAdvancedYaml
 } from '$lib/queries/luci'
 
 // ---------------------------------------------------------------------------
@@ -70,24 +84,37 @@ const mockRules: CustomRule[] = [
   { type: 'IP-CIDR', value: '1.1.1.1/32', target: 'HK Select' }
 ]
 
+const mockRuleProviders: RuleProvider[] = [
+  { id: 'rp1', name: 'Azure_West_Europe', enabled: true, type: 'http', behavior: 'ipcidr', url: 'https://example.com/azure.yaml', interval: '86400', format: 'yaml', group: 'PROXY', position: '0' },
+  { id: 'rp2', name: 'BlockAds', enabled: false, type: 'http', behavior: 'domain', url: 'https://example.com/ads.yaml', interval: '86400', format: 'yaml', group: 'REJECT', position: '1' }
+]
+
 function setupMocks({
   groups = mockProxyGroups as ProxyGroup[] | undefined,
   groupsPending = false,
   rules = mockRules,
   rulesPending = false,
+  providers = mockRuleProviders as RuleProvider[] | undefined,
+  providersPending = false,
   addMutateAsync = vi.fn().mockResolvedValue(undefined),
   updateMutateAsync = vi.fn().mockResolvedValue(undefined),
   deleteMutateAsync = vi.fn().mockResolvedValue(undefined),
-  setRulesMutateAsync = vi.fn().mockResolvedValue(undefined)
+  setRulesMutateAsync = vi.fn().mockResolvedValue(undefined),
+  addProviderMutateAsync = vi.fn().mockResolvedValue(undefined),
+  deleteProviderMutateAsync = vi.fn().mockResolvedValue(undefined)
 }: {
   groups?: ProxyGroup[] | undefined
   groupsPending?: boolean
   rules?: CustomRule[]
   rulesPending?: boolean
+  providers?: RuleProvider[] | undefined
+  providersPending?: boolean
   addMutateAsync?: ReturnType<typeof vi.fn>
   updateMutateAsync?: ReturnType<typeof vi.fn>
   deleteMutateAsync?: ReturnType<typeof vi.fn>
   setRulesMutateAsync?: ReturnType<typeof vi.fn>
+  addProviderMutateAsync?: ReturnType<typeof vi.fn>
+  deleteProviderMutateAsync?: ReturnType<typeof vi.fn>
 } = {}) {
   vi.mocked(useProxyGroups).mockReturnValue(makeQuery(groups, groupsPending) as never)
   vi.mocked(useDeleteProxyGroup).mockReturnValue(makeMutation(deleteMutateAsync) as never)
@@ -98,6 +125,13 @@ function setupMocks({
   vi.mocked(useSetCustomRules).mockReturnValue(makeMutation(setRulesMutateAsync) as never)
   vi.mocked(useConfigOverwrite).mockReturnValue(makeQuery<FileReadResult>({ content: '#!/bin/sh\n' }) as never)
   vi.mocked(useSetConfigOverwrite).mockReturnValue(makeMutation() as never)
+  vi.mocked(useRuleProviders).mockReturnValue(makeQuery(providers, providersPending) as never)
+  vi.mocked(useDeleteRuleProvider).mockReturnValue(makeMutation(deleteProviderMutateAsync) as never)
+  vi.mocked(useToggleRuleProvider).mockReturnValue(makeMutation() as never)
+  vi.mocked(useAddRuleProvider).mockReturnValue(makeMutation(addProviderMutateAsync) as never)
+  vi.mocked(useUpdateRuleProvider).mockReturnValue(makeMutation() as never)
+  vi.mocked(useAdvancedYaml).mockReturnValue(makeQuery<FileReadResult>({ content: '# Advanced YAML\n' }) as never)
+  vi.mocked(useSetAdvancedYaml).mockReturnValue(makeMutation() as never)
 }
 
 // ---------------------------------------------------------------------------
@@ -157,19 +191,22 @@ describe('ClashConfigTab', () => {
       expect(screen.getByRole('button', { name: /delete Auto/i })).toBeInTheDocument()
     })
 
-    it('calls deleteProxyGroup.mutate when Delete is clicked', async () => {
+    it('calls deleteProxyGroup.mutate after two-step confirmation', async () => {
       const deleteMutateAsync = vi.fn().mockResolvedValue(undefined)
       setupMocks({ deleteMutateAsync })
-      // Need to get the mutate fn from the mock
       const deleteMock = makeMutation(deleteMutateAsync)
       vi.mocked(useDeleteProxyGroup).mockReturnValue({ ...deleteMock, mutate: vi.fn() } as never)
 
       render(ClashConfigTab)
 
+      // First click shows Confirm/Cancel
       const deleteBtn = screen.getByRole('button', { name: /delete HK Select/i })
       await fireEvent.click(deleteBtn)
 
-      // The mutate fn on the returned mock should have been called
+      // Confirm button should now be visible
+      const confirmBtn = screen.getByRole('button', { name: /confirm/i })
+      await fireEvent.click(confirmBtn)
+
       expect(vi.mocked(useDeleteProxyGroup)().mutate).toHaveBeenCalled()
     })
 
@@ -450,6 +487,142 @@ describe('ClashConfigTab', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('dialog')).toBeInTheDocument()
+      })
+    })
+  })
+
+  // --------------------------------------------------------------------------
+  // Advanced section (collapsed by default)
+  // --------------------------------------------------------------------------
+
+  describe('Advanced section', () => {
+    it('is collapsed by default — rule providers not visible', () => {
+      setupMocks()
+      render(ClashConfigTab)
+
+      expect(screen.queryByText('Azure_West_Europe')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /add provider/i })).not.toBeInTheDocument()
+    })
+
+    it('expands when the Advanced toggle is clicked', async () => {
+      setupMocks()
+      render(ClashConfigTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /add provider/i })).toBeInTheDocument()
+      })
+    })
+
+    it('shows rule providers list after expanding', async () => {
+      setupMocks()
+      render(ClashConfigTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText('Azure_West_Europe')).toBeInTheDocument()
+        expect(screen.getByText('BlockAds')).toBeInTheDocument()
+      })
+    })
+
+    it('shows empty state when no rule providers exist', async () => {
+      setupMocks({ providers: [] })
+      render(ClashConfigTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText(/no rule providers yet/i)).toBeInTheDocument()
+      })
+    })
+
+    it('opens add rule provider sheet when Add provider is clicked', async () => {
+      setupMocks()
+      render(ClashConfigTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+      await fireEvent.click(screen.getByRole('button', { name: /add provider/i }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByText('Add Rule Provider')).toBeInTheDocument()
+      })
+    })
+
+    it('opens edit rule provider sheet when Edit is clicked', async () => {
+      setupMocks()
+      render(ClashConfigTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      const editBtn = await screen.findByRole('button', { name: /edit azure_west_europe/i })
+      await fireEvent.click(editBtn)
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByText('Edit Rule Provider')).toBeInTheDocument()
+      })
+    })
+
+    it('shows two-step delete confirmation for rule providers', async () => {
+      const deleteProviderMutateAsync = vi.fn().mockResolvedValue(undefined)
+      setupMocks({ deleteProviderMutateAsync })
+      const deleteMock = makeMutation(deleteProviderMutateAsync)
+      vi.mocked(useDeleteRuleProvider).mockReturnValue({ ...deleteMock, mutate: vi.fn() } as never)
+      render(ClashConfigTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      const deleteBtn = await screen.findByRole('button', { name: /delete azure_west_europe/i })
+      await fireEvent.click(deleteBtn)
+
+      // First click shows Confirm
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
+      })
+
+      await fireEvent.click(screen.getByRole('button', { name: /confirm/i }))
+
+      await waitFor(() => {
+        expect(vi.mocked(useDeleteRuleProvider)().mutate).toHaveBeenCalled()
+      })
+    })
+
+    it('cancels rule provider delete on Cancel click', async () => {
+      setupMocks()
+      render(ClashConfigTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      const deleteBtn = await screen.findByRole('button', { name: /delete azure_west_europe/i })
+      await fireEvent.click(deleteBtn)
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument()
+      })
+
+      await fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: /confirm/i })).not.toBeInTheDocument()
+        expect(screen.getByText('Azure_West_Europe')).toBeInTheDocument()
+      })
+    })
+
+    it('opens the Advanced YAML sheet when Edit YAML is clicked', async () => {
+      setupMocks()
+      render(ClashConfigTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+      await fireEvent.click(screen.getByRole('button', { name: /edit yaml/i }))
+
+      await waitFor(() => {
+        const dialog = screen.getByRole('dialog')
+        expect(dialog).toBeInTheDocument()
+        expect(within(dialog).getByText('Advanced YAML')).toBeInTheDocument()
       })
     })
   })

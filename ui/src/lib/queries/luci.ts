@@ -32,7 +32,9 @@ export const luciKeys = {
   firewallRules: [...['luci'], 'firewall-rules'] as const,
   proxyGroups: [...['luci'], 'proxy-groups'] as const,
   customRules: [...['luci'], 'custom-rules'] as const,
-  configOverwrite: [...['luci'], 'config-overwrite'] as const
+  configOverwrite: [...['luci'], 'config-overwrite'] as const,
+  ruleProviders: [...['luci'], 'rule-providers'] as const,
+  advancedYaml: [...['luci'], 'advanced-yaml'] as const
 }
 
 // ---------------------------------------------------------------------------
@@ -581,6 +583,213 @@ export function useSetConfigOverwrite(
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.configOverwrite })
       toasts.success('Config overwrite saved')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// Rule providers
+// ---------------------------------------------------------------------------
+
+export interface RuleProvider {
+  /** UCI section ID (auto-generated) */
+  id: string
+  name: string
+  /** Whether this provider is injected at startup (default: true) */
+  enabled: boolean
+  /** http = remote URL, inline = embedded YAML */
+  type: 'http' | 'inline'
+  /** Rule matching mode */
+  behavior: 'domain' | 'ipcidr' | 'classical'
+  /** Remote URL — required when type=http */
+  url?: string
+  /** Refresh interval in seconds (default 86400) */
+  interval?: string
+  /** File format (default yaml) */
+  format: 'yaml' | 'text'
+  /** Proxy group that matched traffic is routed to */
+  group?: string
+  /** Where the RULE-SET rule is inserted: 0=top (default), 1=bottom */
+  position: '0' | '1'
+}
+
+export interface RuleProviderInput {
+  name: string
+  type: RuleProvider['type']
+  behavior: RuleProvider['behavior']
+  url?: string
+  interval?: string
+  format?: RuleProvider['format']
+  group?: string
+  position?: RuleProvider['position']
+  enabled?: boolean
+}
+
+function sectionsToRuleProviders(pkg: UciPackage): RuleProvider[] {
+  return Object.entries(pkg)
+    .filter(([, section]) => (section as UciSection & { '.type'?: string })['.type'] === 'rule_providers')
+    .map(([id, section]) => {
+      const s = section as Record<string, string>
+      return {
+        id,
+        name: s['name'] ?? '',
+        enabled: s['enabled'] !== '0',
+        type: (s['type'] as RuleProvider['type']) ?? 'http',
+        behavior: (s['behavior'] as RuleProvider['behavior']) ?? 'domain',
+        url: s['url'] || undefined,
+        interval: s['interval'] || undefined,
+        format: (s['format'] as RuleProvider['format']) ?? 'yaml',
+        group: s['group'] || undefined,
+        position: (s['position'] as RuleProvider['position']) ?? '0'
+      }
+    })
+}
+
+export function useRuleProviders(opts?: Partial<CreateQueryOptions<RuleProvider[]>>) {
+  return createQuery<RuleProvider[]>(() => ({
+    queryKey: luciKeys.ruleProviders,
+    queryFn: async () => {
+      const pkg = (await luciRpc.uciGet('openclash')) as UciPackage
+      return sectionsToRuleProviders(pkg)
+    },
+    ...opts
+  } as CreateQueryOptions<RuleProvider[]>))
+}
+
+export function useAddRuleProvider(
+  opts?: Partial<CreateMutationOptions<void, unknown, RuleProviderInput>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, RuleProviderInput>(() => ({
+    mutationFn: async (input) => {
+      const id = await luciRpc.uciAddSection('openclash', 'rule_providers')
+      await luciRpc.uciSet('openclash', id, 'name', input.name)
+      await luciRpc.uciSet('openclash', id, 'type', input.type)
+      await luciRpc.uciSet('openclash', id, 'behavior', input.behavior)
+      await luciRpc.uciSet('openclash', id, 'enabled', (input.enabled ?? true) ? '1' : '0')
+      await luciRpc.uciSet('openclash', id, 'format', input.format ?? 'yaml')
+      await luciRpc.uciSet('openclash', id, 'position', input.position ?? '0')
+      if (input.url) await luciRpc.uciSet('openclash', id, 'url', input.url)
+      if (input.interval) await luciRpc.uciSet('openclash', id, 'interval', input.interval)
+      if (input.group) await luciRpc.uciSet('openclash', id, 'group', input.group)
+      await luciRpc.uciCommit('openclash')
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.ruleProviders })
+      toasts.success('Rule provider added')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useUpdateRuleProvider(
+  opts?: Partial<CreateMutationOptions<void, unknown, { id: string } & RuleProviderInput>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, { id: string } & RuleProviderInput>(() => ({
+    mutationFn: async ({ id, ...input }) => {
+      await luciRpc.uciSet('openclash', id, 'name', input.name)
+      await luciRpc.uciSet('openclash', id, 'type', input.type)
+      await luciRpc.uciSet('openclash', id, 'behavior', input.behavior)
+      await luciRpc.uciSet('openclash', id, 'format', input.format ?? 'yaml')
+      await luciRpc.uciSet('openclash', id, 'position', input.position ?? '0')
+      if (input.url) {
+        await luciRpc.uciSet('openclash', id, 'url', input.url)
+        await luciRpc.uciSet('openclash', id, 'interval', input.interval ?? '86400')
+      } else {
+        await luciRpc.uciDelete('openclash', id, 'url')
+        await luciRpc.uciDelete('openclash', id, 'interval')
+      }
+      if (input.group) {
+        await luciRpc.uciSet('openclash', id, 'group', input.group)
+      } else {
+        await luciRpc.uciDelete('openclash', id, 'group')
+      }
+      await luciRpc.uciCommit('openclash')
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.ruleProviders })
+      toasts.success('Rule provider updated')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useDeleteRuleProvider(
+  opts?: Partial<CreateMutationOptions<void, unknown, string>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, string>(() => ({
+    mutationFn: async (id: string) => {
+      await luciRpc.uciDelete('openclash', id)
+      await luciRpc.uciCommit('openclash')
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.ruleProviders })
+      toasts.success('Rule provider deleted')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useToggleRuleProvider(
+  opts?: Partial<CreateMutationOptions<void, unknown, { id: string; enabled: boolean }>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, { id: string; enabled: boolean }, { previous?: RuleProvider[] }>(() => ({
+    async onMutate({ id, enabled }) {
+      await queryClient.cancelQueries({ queryKey: luciKeys.ruleProviders })
+      const previous = queryClient.getQueryData<RuleProvider[]>(luciKeys.ruleProviders)
+      queryClient.setQueryData<RuleProvider[]>(luciKeys.ruleProviders, (old) =>
+        old?.map((p) => (p.id === id ? { ...p, enabled } : p)) ?? []
+      )
+      return { previous }
+    },
+    mutationFn: async ({ id, enabled }) => {
+      await luciRpc.uciSet('openclash', id, 'enabled', enabled ? '1' : '0')
+      await luciRpc.uciCommit('openclash')
+    },
+    onError(err, _vars, context) {
+      if (context?.previous) {
+        queryClient.setQueryData(luciKeys.ruleProviders, context.previous)
+      }
+      onMutationError(err)
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.ruleProviders })
+    },
+    ...opts
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// Advanced YAML editor
+// ---------------------------------------------------------------------------
+
+const ADVANCED_YAML_PATH = '/etc/openclash/custom/openclash_advanced_yaml.yaml'
+
+export function useAdvancedYaml(opts?: Partial<CreateQueryOptions<FileReadResult>>) {
+  return createQuery<FileReadResult>(() => ({
+    queryKey: luciKeys.advancedYaml,
+    queryFn: () => luciRpc.fileRead(ADVANCED_YAML_PATH),
+    ...opts
+  } as CreateQueryOptions<FileReadResult>))
+}
+
+export function useSetAdvancedYaml(
+  opts?: Partial<CreateMutationOptions<void, unknown, string>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, string>(() => ({
+    mutationFn: (content: string) => luciRpc.fileWrite(ADVANCED_YAML_PATH, content),
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.advancedYaml })
+      toasts.success('Advanced YAML saved')
     },
     onError: onMutationError,
     ...opts

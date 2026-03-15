@@ -34,6 +34,12 @@ let mockGroups: Record<string, Record<string, string>> = {
 }
 let mockGroupCounter = 10
 
+let mockRuleProviders: Record<string, Record<string, string>> = {
+  rp1: { '.type': 'rule_providers', name: 'Azure_West_Europe', enabled: '1', type: 'http', behavior: 'ipcidr', url: 'https://raw.githubusercontent.com/gorillapower/azure-ips-westeurope-clash/refs/heads/main/azure_west_europe.yaml', interval: '86400', format: 'yaml', group: 'PROXY', position: '0' },
+  rp2: { '.type': 'rule_providers', name: 'BlockAds', enabled: '1', type: 'http', behavior: 'domain', url: 'https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD@master/anti-ad-clash.yaml', interval: '86400', format: 'yaml', group: 'REJECT', position: '1' }
+}
+let mockRuleProviderCounter = 10
+
 // Mutable config section — mirrors real UCI 'config' section
 let mockConfig: Record<string, string> = {
   config_path: '/etc/openclash/config/my-subscription.yaml',
@@ -55,29 +61,40 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
     }
     return {
       config: { ...mockConfig },
-      ...mockGroups
+      ...mockGroups,
+      ...mockRuleProviders
     }
   },
   'uci.set': (params) => {
-    const [, section, option, value] = params as string[]
+    const [_pkg, section, option, value] = params as string[]
     if (section === 'config') {
       mockConfig[option] = value
     } else if (mockGroups[section]) {
       mockGroups[section][option] = value
+    } else if (mockRuleProviders[section]) {
+      mockRuleProviders[section][option] = value
     }
     return true
   },
   'uci.add': (params) => {
+    const type = (params as string[])[1] ?? 'groups'
+    if (type === 'rule_providers') {
+      const id = `rp${++mockRuleProviderCounter}`
+      mockRuleProviders[id] = { '.type': 'rule_providers', name: '', type: 'http', behavior: 'domain', enabled: '1', format: 'yaml', position: '0' }
+      return id
+    }
     const id = `cfg${++mockGroupCounter}`
-    mockGroups[id] = { '.type': (params as string[])[1] ?? 'groups', name: '', type: 'select', enabled: '1' }
+    mockGroups[id] = { '.type': type, name: '', type: 'select', enabled: '1' }
     return id
   },
   'uci.delete': (params) => {
-    const [, section, option] = params as string[]
+    const [_pkg, section, option] = params as string[]
     if (option) {
       if (mockGroups[section]) delete (mockGroups[section] as Record<string, string>)[option]
+      else if (mockRuleProviders[section]) delete (mockRuleProviders[section] as Record<string, string>)[option]
     } else {
       delete mockGroups[section]
+      delete mockRuleProviders[section]
     }
     return true
   },
@@ -212,6 +229,17 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
         ].join('\n') + '\n'
       }
     }
+    if (path.includes('openclash_advanced_yaml.yaml')) {
+      return {
+        content: [
+          '# Advanced YAML — proxy-groups and rules merged at startup',
+          '# proxy-groups:',
+          '#   - name: MyGroup',
+          '#     type: select',
+          '#     proxies: [DIRECT]'
+        ].join('\n') + '\n'
+      }
+    }
     // firewall rules, config overwrite, etc. — return the file stub with comments
     return { content: '#!/bin/sh\n# Add custom overwrite commands here\n' }
   },
@@ -271,7 +299,8 @@ export function mockRpcPlugin(): Plugin {
           try {
             const body = await readBody(req)
             const rpc = JSON.parse(body) as { jsonrpc: string; id: number; method: string; params?: unknown[] }
-            const params = Array.isArray(rpc.params) ? rpc.params.slice(1) : []
+            // In dev:mock there is no auth token prepended — params are raw
+            const params = Array.isArray(rpc.params) ? rpc.params : []
             const handler = RPC_HANDLERS[rpc.method]
             if (!handler) {
               console.warn(`[mock] Unknown RPC: ${rpc.method}`)
