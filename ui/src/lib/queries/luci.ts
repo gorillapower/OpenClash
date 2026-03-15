@@ -464,15 +464,30 @@ export function useToggleProxyGroup(
   opts?: Partial<CreateMutationOptions<void, unknown, { id: string; enabled: boolean }>>
 ) {
   const queryClient = useQueryClient()
-  return createMutation<void, unknown, { id: string; enabled: boolean }>(() => ({
+  return createMutation<void, unknown, { id: string; enabled: boolean }, { previous?: ProxyGroup[] }>(() => ({
+    async onMutate({ id, enabled }) {
+      // Optimistically update so the toggle feels instant
+      await queryClient.cancelQueries({ queryKey: luciKeys.proxyGroups })
+      const previous = queryClient.getQueryData<ProxyGroup[]>(luciKeys.proxyGroups)
+      queryClient.setQueryData<ProxyGroup[]>(luciKeys.proxyGroups, (old) =>
+        old?.map((g) => (g.id === id ? { ...g, enabled } : g)) ?? []
+      )
+      return { previous }
+    },
     mutationFn: async ({ id, enabled }) => {
       await luciRpc.uciSet('openclash', id, 'enabled', enabled ? '1' : '0')
       await luciRpc.uciCommit('openclash')
     },
+    onError(err, _vars, context) {
+      // Roll back the optimistic update
+      if (context?.previous) {
+        queryClient.setQueryData(luciKeys.proxyGroups, context.previous)
+      }
+      onMutationError(err)
+    },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.proxyGroups })
     },
-    onError: onMutationError,
     ...opts
   }))
 }
