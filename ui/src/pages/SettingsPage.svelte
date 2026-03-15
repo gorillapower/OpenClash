@@ -2,8 +2,8 @@
   import NetworkTab from './settings/NetworkTab.svelte'
   import ClashConfigTab from './settings/ClashConfigTab.svelte'
 
-  type Tab = 'network' | 'clash-config'
-  let activeTab = $state<Tab>('network')
+  type Tab = 'clash-config' | 'network'
+  let activeTab = $state<Tab>('clash-config')
 </script>
 
 <div class="space-y-6">
@@ -17,18 +17,6 @@
     <nav class="-mb-px flex gap-6" aria-label="Settings sections">
       <button
         class="border-b-2 pb-3 text-sm font-medium transition-colors"
-        class:border-primary={activeTab === 'network'}
-        class:text-foreground={activeTab === 'network'}
-        class:border-transparent={activeTab !== 'network'}
-        class:text-muted-foreground={activeTab !== 'network'}
-        onclick={() => (activeTab = 'network')}
-        type="button"
-        aria-current={activeTab === 'network' ? 'page' : undefined}
-      >
-        Network
-      </button>
-      <button
-        class="border-b-2 pb-3 text-sm font-medium transition-colors"
         class:border-primary={activeTab === 'clash-config'}
         class:text-foreground={activeTab === 'clash-config'}
         class:border-transparent={activeTab !== 'clash-config'}
@@ -39,12 +27,24 @@
       >
         Clash Config
       </button>
+      <button
+        class="border-b-2 pb-3 text-sm font-medium transition-colors"
+        class:border-primary={activeTab === 'network'}
+        class:text-foreground={activeTab === 'network'}
+        class:border-transparent={activeTab !== 'network'}
+        class:text-muted-foreground={activeTab !== 'network'}
+        onclick={() => (activeTab = 'network')}
+        type="button"
+        aria-current={activeTab === 'network' ? 'page' : undefined}
+      >
+        Network
+      </button>
     </nav>
   </div>
 
-  {#if activeTab === 'network'}
-    <NetworkTab />
-  {:else if activeTab === 'clash-config'}
+  {#if activeTab === 'clash-config'}
     <ClashConfigTab />
+  {:else if activeTab === 'network'}
+    <NetworkTab />
   {/if}
 </div>

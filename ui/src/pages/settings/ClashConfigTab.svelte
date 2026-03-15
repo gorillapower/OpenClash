@@ -20,12 +20,21 @@
   const deleteProxyGroup = useDeleteProxyGroup()
   const toggleProxyGroup = useToggleProxyGroup()
 
+  // Sync to local $state so template re-renders reliably after mutations
+  // (same pattern as custom rules below — accessing query.data in $effect
+  // is the reliable way to trigger Svelte 5 reactivity with TanStack Query)
+  let localGroups = $state<ProxyGroup[]>([])
+  $effect(() => {
+    if (proxyGroups.data) localGroups = [...proxyGroups.data]
+  })
+
   // Local overrides drive the toggle visual instantly on click.
-  // Cleared in onSettled so the component falls back to query data after sync.
+  // Keyed by group.id, cleared on error so UI reverts if the mutation fails.
   let enabledOverrides = $state<Record<string, boolean>>({})
 
   function getEnabled(group: ProxyGroup): boolean {
-    return group.id in enabledOverrides ? enabledOverrides[group.id] : group.enabled
+    const override = enabledOverrides[group.id]
+    return override !== undefined ? override : group.enabled
   }
 
   function handleToggle(group: ProxyGroup) {
@@ -33,7 +42,7 @@
     enabledOverrides[group.id] = newEnabled
     toggleProxyGroup.mutate(
       { id: group.id, enabled: newEnabled },
-      { onSettled() { delete enabledOverrides[group.id] } }
+      { onError() { delete enabledOverrides[group.id] } }
     )
   }
 
@@ -173,7 +182,7 @@
 
     {#if proxyGroups.isPending}
       <div class="h-16 animate-pulse rounded-lg bg-muted"></div>
-    {:else if !proxyGroups.data || proxyGroups.data.length === 0}
+    {:else if localGroups.length === 0}
       <div
         class="rounded-lg border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground"
       >
@@ -181,7 +190,7 @@
       </div>
     {:else}
       <div class="divide-y divide-border rounded-lg border border-border bg-card">
-        {#each proxyGroups.data as group (group.id)}
+        {#each localGroups as group (group.id)}
           {@const enabled = getEnabled(group)}
           <div class="flex items-center gap-3 px-4 py-3">
             <!-- Enable/disable toggle -->

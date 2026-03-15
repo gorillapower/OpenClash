@@ -28,11 +28,25 @@ const MOCK_STATE: MockState = (process.env.MOCK_STATE as MockState) ?? 'running'
 type RpcHandler = (params: unknown[]) => unknown
 
 // Simple in-memory store so add/edit/delete survive the session
-let mockGroups: Record<string, { '.type': string; name: string; type: string; enabled: string; test_url?: string; test_interval?: string; policy_filter?: string }> = {
+let mockGroups: Record<string, Record<string, string>> = {
   cfg1: { '.type': 'groups', name: 'HK Select', type: 'select', enabled: '1', policy_filter: '.*HK.*' },
   cfg2: { '.type': 'groups', name: 'Auto Fastest', type: 'url-test', enabled: '1', test_url: 'https://cp.cloudflare.com/generate_204', test_interval: '300', policy_filter: '.*' }
 }
 let mockGroupCounter = 10
+
+// Mutable config section — mirrors real UCI 'config' section
+let mockConfig: Record<string, string> = {
+  config_path: '/etc/openclash/config/my-subscription.yaml',
+  operation_mode: 'fake-ip',
+  core_path: '/etc/openclash/core/clash_meta',
+  en_mode: 'fake-ip',
+  enable_udp_proxy: '1',
+  stack_type: 'gvisor',
+  enable_redirect_dns: '1',
+  china_ip_route: '0',
+  router_self_proxy: '1',
+  disable_udp_quic: '1',
+}
 
 const RPC_HANDLERS: Record<string, RpcHandler> = {
   'uci.get': () => {
@@ -40,18 +54,16 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
       return { config: {} }
     }
     return {
-      config: {
-        config_path: '/etc/openclash/config/my-subscription.yaml',
-        operation_mode: 'fake-ip',
-        core_path: '/etc/openclash/core/clash_meta'
-      },
+      config: { ...mockConfig },
       ...mockGroups
     }
   },
   'uci.set': (params) => {
     const [, section, option, value] = params as string[]
-    if (mockGroups[section]) {
-      (mockGroups[section] as Record<string, string>)[option] = value
+    if (section === 'config') {
+      mockConfig[option] = value
+    } else if (mockGroups[section]) {
+      mockGroups[section][option] = value
     }
     return true
   },
