@@ -29,6 +29,7 @@ function makeMutation(mutateAsync = vi.fn().mockResolvedValue(undefined), isPend
 vi.mock('$lib/queries/luci', () => ({
   useProxyGroups: vi.fn(),
   useDeleteProxyGroup: vi.fn(),
+  useToggleProxyGroup: vi.fn(),
   useAddProxyGroup: vi.fn(),
   useUpdateProxyGroup: vi.fn(),
   useCustomRules: vi.fn(),
@@ -46,6 +47,7 @@ import type { ProxyGroup, CustomRule } from '$lib/queries/luci'
 import {
   useProxyGroups,
   useDeleteProxyGroup,
+  useToggleProxyGroup,
   useAddProxyGroup,
   useUpdateProxyGroup,
   useCustomRules,
@@ -59,8 +61,8 @@ import {
 // ---------------------------------------------------------------------------
 
 const mockProxyGroups: ProxyGroup[] = [
-  { id: 'cfg1', name: 'HK Select', type: 'select', policyFilter: '.*HK.*' },
-  { id: 'cfg2', name: 'Auto', type: 'url-test', testUrl: 'https://cp.cloudflare.com/generate_204', testInterval: '300' }
+  { id: 'cfg1', name: 'HK Select', type: 'select', policyFilter: '.*HK.*', enabled: true },
+  { id: 'cfg2', name: 'Auto', type: 'url-test', testUrl: 'https://cp.cloudflare.com/generate_204', testInterval: '300', enabled: true }
 ]
 
 const mockRules: CustomRule[] = [
@@ -89,6 +91,7 @@ function setupMocks({
 } = {}) {
   vi.mocked(useProxyGroups).mockReturnValue(makeQuery(groups, groupsPending) as never)
   vi.mocked(useDeleteProxyGroup).mockReturnValue(makeMutation(deleteMutateAsync) as never)
+  vi.mocked(useToggleProxyGroup).mockReturnValue(makeMutation() as never)
   vi.mocked(useAddProxyGroup).mockReturnValue(makeMutation(addMutateAsync) as never)
   vi.mocked(useUpdateProxyGroup).mockReturnValue(makeMutation(updateMutateAsync) as never)
   vi.mocked(useCustomRules).mockReturnValue(makeQuery(rules, rulesPending) as never)
@@ -168,6 +171,36 @@ describe('ClashConfigTab', () => {
 
       // The mutate fn on the returned mock should have been called
       expect(vi.mocked(useDeleteProxyGroup)().mutate).toHaveBeenCalled()
+    })
+
+    it('renders enabled toggle for each group', () => {
+      setupMocks()
+      render(ClashConfigTab)
+
+      expect(screen.getByRole('switch', { name: /disable HK Select/i })).toBeInTheDocument()
+      expect(screen.getByRole('switch', { name: /disable Auto/i })).toBeInTheDocument()
+    })
+
+    it('calls toggleProxyGroup.mutate when toggle is clicked', async () => {
+      const toggleMutate = vi.fn()
+      setupMocks()
+      vi.mocked(useToggleProxyGroup).mockReturnValue({ ...makeMutation(), mutate: toggleMutate } as never)
+
+      render(ClashConfigTab)
+
+      await fireEvent.click(screen.getByRole('switch', { name: /disable HK Select/i }))
+
+      expect(toggleMutate).toHaveBeenCalledWith({ id: 'cfg1', enabled: false })
+    })
+
+    it('shows disabled group as dimmed with enable toggle label', () => {
+      setupMocks({
+        groups: [{ id: 'cfg1', name: 'HK Select', type: 'select', enabled: false }]
+      })
+      render(ClashConfigTab)
+
+      const toggle = screen.getByRole('switch', { name: /enable HK Select/i })
+      expect(toggle).toHaveAttribute('aria-checked', 'false')
     })
 
     it('opens edit sheet with group data when Edit is clicked', async () => {

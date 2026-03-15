@@ -133,10 +133,10 @@
         </div>
       {/if}
 
-      <!-- Proxy filter -->
+      <!-- Server filter -->
       <div class="space-y-1.5">
         <label for="pg-filter" class="text-sm font-medium text-foreground">
-          Proxy filter
+          Server filter
           <span class="font-normal text-muted-foreground">(regex)</span>
         </label>
         <Input
@@ -145,7 +145,8 @@
           placeholder="e.g. .*HK.* to match all HK servers"
         />
         <p class="text-xs text-muted-foreground">
-          Regex applied to proxy names from your subscription. Leave blank to include all.
+          Matched against server names from your subscription. Only matching servers are included
+          in this group. Leave blank to include all.
         </p>
       </div>
     </div>

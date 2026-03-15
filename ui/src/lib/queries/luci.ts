@@ -338,6 +338,8 @@ export interface ProxyGroup {
   testInterval?: string
   /** Regex to filter proxy names from active subscription */
   policyFilter?: string
+  /** Whether this group is injected at startup (default: true) */
+  enabled: boolean
 }
 
 function sectionsToProxyGroups(pkg: UciPackage): ProxyGroup[] {
@@ -355,7 +357,9 @@ function sectionsToProxyGroups(pkg: UciPackage): ProxyGroup[] {
         type: (s['type'] as ProxyGroup['type']) ?? 'select',
         testUrl: s['test_url'] || undefined,
         testInterval: s['test_interval'] || undefined,
-        policyFilter: s['policy_filter'] || undefined
+        policyFilter: s['policy_filter'] || undefined,
+        // UCI bool: '0' = disabled, anything else (or absent) = enabled
+        enabled: s['enabled'] !== '0'
       }
     })
 }
@@ -377,6 +381,7 @@ export interface ProxyGroupInput {
   testUrl?: string
   testInterval?: string
   policyFilter?: string
+  enabled?: boolean
 }
 
 export function useAddProxyGroup(
@@ -388,6 +393,7 @@ export function useAddProxyGroup(
       const id = await luciRpc.uciAddSection('openclash', 'groups')
       await luciRpc.uciSet('openclash', id, 'name', input.name)
       await luciRpc.uciSet('openclash', id, 'type', input.type)
+      await luciRpc.uciSet('openclash', id, 'enabled', (input.enabled ?? true) ? '1' : '0')
       if (input.testUrl) await luciRpc.uciSet('openclash', id, 'test_url', input.testUrl)
       if (input.testInterval) await luciRpc.uciSet('openclash', id, 'test_interval', input.testInterval)
       if (input.policyFilter) await luciRpc.uciSet('openclash', id, 'policy_filter', input.policyFilter)
@@ -448,6 +454,23 @@ export function useDeleteProxyGroup(
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.proxyGroups })
       toasts.success('Proxy group deleted')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useToggleProxyGroup(
+  opts?: Partial<CreateMutationOptions<void, unknown, { id: string; enabled: boolean }>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, { id: string; enabled: boolean }>(() => ({
+    mutationFn: async ({ id, enabled }) => {
+      await luciRpc.uciSet('openclash', id, 'enabled', enabled ? '1' : '0')
+      await luciRpc.uciCommit('openclash')
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.proxyGroups })
     },
     onError: onMutationError,
     ...opts

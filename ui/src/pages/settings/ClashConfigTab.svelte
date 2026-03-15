@@ -3,6 +3,7 @@
   import {
     useProxyGroups,
     useDeleteProxyGroup,
+    useToggleProxyGroup,
     useCustomRules,
     useSetCustomRules,
     type ProxyGroup,
@@ -17,6 +18,7 @@
 
   const proxyGroups = useProxyGroups()
   const deleteProxyGroup = useDeleteProxyGroup()
+  const toggleProxyGroup = useToggleProxyGroup()
 
   let proxyGroupSheetOpen = $state(false)
   let editingGroup = $state<ProxyGroup | undefined>(undefined)
@@ -145,8 +147,8 @@
           Custom Proxy Groups
         </h2>
         <p class="mt-0.5 text-xs text-muted-foreground">
-          Groups appended to your subscription config at startup. Use a proxy filter to select
-          servers by name.
+          Named groups injected into your Clash config at startup. Each group exposes a filtered
+          set of servers from your subscription — use them as routing targets in your rules.
         </p>
       </div>
       <Button variant="outline" size="sm" onclick={openAddGroup}>Add group</Button>
@@ -163,14 +165,27 @@
     {:else}
       <div class="divide-y divide-border rounded-lg border border-border bg-card">
         {#each proxyGroups.data as group (group.id)}
-          <div class="flex items-center justify-between px-4 py-3">
-            <div class="min-w-0 space-y-0.5">
+          <div class="flex items-center gap-3 px-4 py-3">
+            <!-- Enable/disable toggle -->
+            <button
+              role="switch"
+              aria-checked={group.enabled}
+              aria-label="{group.enabled ? 'Disable' : 'Enable'} {group.name}"
+              onclick={() => toggleProxyGroup.mutate({ id: group.id, enabled: !group.enabled })}
+              class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {group.enabled ? 'bg-primary' : 'bg-muted-foreground/30'}"
+            >
+              <span
+                class="inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform {group.enabled ? 'translate-x-4' : 'translate-x-0.5'}"
+              ></span>
+            </button>
+
+            <div class="min-w-0 flex-1 space-y-0.5 {group.enabled ? '' : 'opacity-50'}">
               <p class="truncate text-sm font-medium text-foreground">{group.name}</p>
               <p class="text-xs text-muted-foreground">
-                {group.type}{group.policyFilter ? ` · filter: ${group.policyFilter}` : ''}
+                {group.type}{group.policyFilter ? ` · ${group.policyFilter}` : ''}
               </p>
             </div>
-            <div class="ml-4 flex shrink-0 gap-2">
+            <div class="ml-2 flex shrink-0 gap-2">
               <Button
                 variant="ghost"
                 size="sm"

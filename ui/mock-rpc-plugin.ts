@@ -28,9 +28,9 @@ const MOCK_STATE: MockState = (process.env.MOCK_STATE as MockState) ?? 'running'
 type RpcHandler = (params: unknown[]) => unknown
 
 // Simple in-memory store so add/edit/delete survive the session
-let mockGroups: Record<string, { '.type': string; name: string; type: string; test_url?: string; test_interval?: string; policy_filter?: string }> = {
-  cfg1: { '.type': 'groups', name: 'HK Select', type: 'select', policy_filter: '.*HK.*' },
-  cfg2: { '.type': 'groups', name: 'Auto Fastest', type: 'url-test', test_url: 'https://cp.cloudflare.com/generate_204', test_interval: '300', policy_filter: '.*' }
+let mockGroups: Record<string, { '.type': string; name: string; type: string; enabled: string; test_url?: string; test_interval?: string; policy_filter?: string }> = {
+  cfg1: { '.type': 'groups', name: 'HK Select', type: 'select', enabled: '1', policy_filter: '.*HK.*' },
+  cfg2: { '.type': 'groups', name: 'Auto Fastest', type: 'url-test', enabled: '1', test_url: 'https://cp.cloudflare.com/generate_204', test_interval: '300', policy_filter: '.*' }
 }
 let mockGroupCounter = 10
 
@@ -57,7 +57,7 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
   },
   'uci.add': (params) => {
     const id = `cfg${++mockGroupCounter}`
-    mockGroups[id] = { '.type': (params as string[])[1] ?? 'groups', name: '', type: 'select' }
+    mockGroups[id] = { '.type': (params as string[])[1] ?? 'groups', name: '', type: 'select', enabled: '1' }
     return id
   },
   'uci.delete': (params) => {
