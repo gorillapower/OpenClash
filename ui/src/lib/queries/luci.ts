@@ -13,7 +13,9 @@ import {
   type Subscription,
   type SubscriptionEditData,
   type ConfigFile,
-  type FileReadResult
+  type FileReadResult,
+  type CoreVersionResult,
+  type CoreUpdateStatus
 } from '$lib/api/luci'
 import { clashClient } from '$lib/api/clash'
 import { isApiError } from '$lib/api/errors'
@@ -34,7 +36,9 @@ export const luciKeys = {
   customRules: [...['luci'], 'custom-rules'] as const,
   configOverwrite: [...['luci'], 'config-overwrite'] as const,
   ruleProviders: [...['luci'], 'rule-providers'] as const,
-  advancedYaml: [...['luci'], 'advanced-yaml'] as const
+  advancedYaml: [...['luci'], 'advanced-yaml'] as const,
+  coreLatestVersion: [...['luci'], 'core-latest-version'] as const,
+  coreUpdateStatus: [...['luci'], 'core-update-status'] as const
 }
 
 // ---------------------------------------------------------------------------
@@ -790,6 +794,48 @@ export function useSetAdvancedYaml(
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.advancedYaml })
       toasts.success('Advanced YAML saved')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// Core management
+// ---------------------------------------------------------------------------
+
+export function useCoreLatestVersion(opts?: Partial<CreateQueryOptions<CoreVersionResult>>) {
+  return createQuery<CoreVersionResult>(() => ({
+    queryKey: luciKeys.coreLatestVersion,
+    queryFn: () => luciRpc.coreLatestVersion(),
+    // Check once per hour — avoid hammering GitHub on every page load
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+    ...opts
+  } as CreateQueryOptions<CoreVersionResult>))
+}
+
+export function useCoreUpdateStatus(
+  opts?: Partial<CreateQueryOptions<CoreUpdateStatus>>
+) {
+  return createQuery<CoreUpdateStatus>(() => ({
+    queryKey: luciKeys.coreUpdateStatus,
+    queryFn: () => luciRpc.coreUpdateStatus(),
+    retry: false,
+    ...opts
+  } as CreateQueryOptions<CoreUpdateStatus>))
+}
+
+export function useCoreUpdate(
+  opts?: Partial<CreateMutationOptions<void, unknown, void>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, void>(() => ({
+    mutationFn: () => luciRpc.coreUpdate(),
+    onSuccess() {
+      // Invalidate both so version + status refresh after update completes
+      queryClient.invalidateQueries({ queryKey: luciKeys.coreLatestVersion })
+      queryClient.invalidateQueries({ queryKey: luciKeys.coreUpdateStatus })
     },
     onError: onMutationError,
     ...opts

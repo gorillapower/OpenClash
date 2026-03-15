@@ -47,6 +47,21 @@ export interface FileReadResult {
 }
 
 // ---------------------------------------------------------------------------
+// Core management types
+// ---------------------------------------------------------------------------
+
+export interface CoreVersionResult {
+  version: string
+}
+
+export type CoreUpdateState = 'idle' | 'downloading' | 'installing' | 'done' | 'error'
+
+export interface CoreUpdateStatus {
+  status: CoreUpdateState
+  message?: string
+}
+
+// ---------------------------------------------------------------------------
 // Config file types
 // ---------------------------------------------------------------------------
 
@@ -242,5 +257,18 @@ export const luciRpc = {
 
   configWrite(name: string, content: string): Promise<void> {
     return rpcCall('config.write', [name, content])
+  },
+
+  // Core management
+  coreLatestVersion(): Promise<CoreVersionResult> {
+    return rpcCall('core.latestVersion', [])
+  },
+
+  coreUpdate(): Promise<void> {
+    return rpcCall('core.update', [])
+  },
+
+  coreUpdateStatus(): Promise<CoreUpdateStatus> {
+    return rpcCall('core.updateStatus', [])
   }
 }
