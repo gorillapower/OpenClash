@@ -11,7 +11,8 @@ import {
   type ServiceStatusResult,
   type Subscription,
   type SubscriptionEditData,
-  type ConfigFile
+  type ConfigFile,
+  type FileReadResult
 } from '$lib/api/luci'
 import { clashClient } from '$lib/api/clash'
 import { isApiError } from '$lib/api/errors'
@@ -26,7 +27,8 @@ export const luciKeys = {
   uci: (pkg: string) => [...luciKeys.all, 'uci', pkg] as const,
   serviceStatus: (name: string) => [...luciKeys.all, 'service', name, 'status'] as const,
   subscriptions: [...['luci'], 'subscriptions'] as const,
-  configs: [...['luci'], 'configs'] as const
+  configs: [...['luci'], 'configs'] as const,
+  firewallRules: [...['luci'], 'firewall-rules'] as const
 }
 
 // ---------------------------------------------------------------------------
@@ -284,6 +286,35 @@ export function useFlushDnsCache(
     mutationFn: () => clashClient.flushDnsCache(),
     onSuccess() {
       toasts.success('DNS cache flushed')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// Firewall rules file hooks
+// ---------------------------------------------------------------------------
+
+const FIREWALL_RULES_PATH = '/etc/openclash/custom/openclash_custom_firewall_rules.sh'
+
+export function useFirewallRules(opts?: Partial<CreateQueryOptions<FileReadResult>>) {
+  return createQuery<FileReadResult>(() => ({
+    queryKey: luciKeys.firewallRules,
+    queryFn: () => luciRpc.fileRead(FIREWALL_RULES_PATH),
+    ...opts
+  } as CreateQueryOptions<FileReadResult>))
+}
+
+export function useSetFirewallRules(
+  opts?: Partial<CreateMutationOptions<void, unknown, string>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, string>(() => ({
+    mutationFn: (content: string) => luciRpc.fileWrite(FIREWALL_RULES_PATH, content),
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.firewallRules })
+      toasts.success('Firewall rules saved')
     },
     onError: onMutationError,
     ...opts

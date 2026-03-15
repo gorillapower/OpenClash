@@ -29,7 +29,9 @@ function makeMutation(mutateAsync = vi.fn().mockResolvedValue(undefined), isPend
 vi.mock('$lib/queries/luci', () => ({
   useUciConfig: vi.fn(),
   useSetUciConfig: vi.fn(),
-  useFlushDnsCache: vi.fn()
+  useFlushDnsCache: vi.fn(),
+  useFirewallRules: vi.fn(),
+  useSetFirewallRules: vi.fn()
 }))
 
 vi.mock('@tanstack/svelte-query', async (importOriginal) => {
@@ -37,7 +39,8 @@ vi.mock('@tanstack/svelte-query', async (importOriginal) => {
   return { ...actual, useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })) }
 })
 
-import { useUciConfig, useSetUciConfig, useFlushDnsCache } from '$lib/queries/luci'
+import type { FileReadResult } from '$lib/api/luci'
+import { useUciConfig, useSetUciConfig, useFlushDnsCache, useFirewallRules, useSetFirewallRules } from '$lib/queries/luci'
 
 // ---------------------------------------------------------------------------
 // Mock UCI data
@@ -80,6 +83,8 @@ function setupMocks({
   vi.mocked(useUciConfig).mockReturnValue(makeQuery(uciData, isPending) as never)
   vi.mocked(useSetUciConfig).mockReturnValue(makeMutation(setMutateAsync) as never)
   vi.mocked(useFlushDnsCache).mockReturnValue(makeMutation(flushMutateAsync, flushIsPending) as never)
+  vi.mocked(useFirewallRules).mockReturnValue(makeQuery<FileReadResult>({ content: '' }) as never)
+  vi.mocked(useSetFirewallRules).mockReturnValue(makeMutation() as never)
 }
 
 // ---------------------------------------------------------------------------
@@ -344,6 +349,187 @@ describe('NetworkTab', () => {
       render(NetworkTab)
 
       expect(screen.queryByRole('combobox', { name: /operation mode/i })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Advanced section', () => {
+    it('Advanced section is collapsed (hidden) on initial render', () => {
+      setupMocks()
+      render(NetworkTab)
+
+      expect(screen.queryByRole('combobox', { name: /china bypass mode/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('switch', { name: /common ports only/i })).not.toBeInTheDocument()
+    })
+
+    it('clicking the disclosure arrow expands the Advanced section', async () => {
+      setupMocks()
+      render(NetworkTab)
+
+      const toggle = screen.getByRole('button', { name: /advanced/i })
+      await fireEvent.click(toggle)
+
+      expect(screen.getByRole('combobox', { name: /china bypass mode/i })).toBeInTheDocument()
+    })
+
+    it('renders all 7 advanced settings with correct control types after expanding', async () => {
+      setupMocks()
+      render(NetworkTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      expect(screen.getByRole('combobox', { name: /china bypass mode/i })).toBeInTheDocument()
+      expect(screen.getByRole('switch', { name: /common ports only/i })).toBeInTheDocument()
+      expect(screen.getByRole('switch', { name: /router self-proxy/i })).toBeInTheDocument()
+      expect(screen.getByRole('switch', { name: /disable quic/i })).toBeInTheDocument()
+      expect(screen.getByRole('switch', { name: /ipv6 proxy/i })).toBeInTheDocument()
+      expect(screen.getByRole('switch', { name: /gateway compatible/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
+    })
+
+    it('china bypass mode select has 3 options', async () => {
+      setupMocks()
+      render(NetworkTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      const select = screen.getByRole('combobox', { name: /china bypass mode/i })
+      expect(select.querySelectorAll('option')).toHaveLength(3)
+    })
+
+    it('china bypass mode defaults to disabled (value 0)', async () => {
+      setupMocks()
+      render(NetworkTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      const select = screen.getByRole('combobox', { name: /china bypass mode/i }) as HTMLSelectElement
+      expect(select.value).toBe('0')
+    })
+
+    it('router self-proxy toggle defaults to checked when not set (default on)', async () => {
+      setupMocks()
+      render(NetworkTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      const toggle = screen.getByRole('switch', { name: /router self-proxy/i })
+      expect(toggle).toHaveAttribute('aria-checked', 'true')
+    })
+
+    it('router self-proxy toggle is unchecked when router_self_proxy is 0', async () => {
+      setupMocks({ uciData: makeUciPackage({ router_self_proxy: '0' }) })
+      render(NetworkTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      const toggle = screen.getByRole('switch', { name: /router self-proxy/i })
+      expect(toggle).toHaveAttribute('aria-checked', 'false')
+    })
+
+    it('IPv6 mode select is NOT shown when ipv6_enable is 0', async () => {
+      setupMocks({ uciData: makeUciPackage({ ipv6_enable: '0' }) })
+      render(NetworkTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      expect(screen.queryByRole('combobox', { name: /ipv6 proxy mode/i })).not.toBeInTheDocument()
+    })
+
+    it('IPv6 mode select IS shown when ipv6_enable is 1', async () => {
+      setupMocks({ uciData: makeUciPackage({ ipv6_enable: '1' }) })
+      render(NetworkTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      expect(screen.getByRole('combobox', { name: /ipv6 proxy mode/i })).toBeInTheDocument()
+    })
+
+    it('IPv6 mode select has 4 options', async () => {
+      setupMocks({ uciData: makeUciPackage({ ipv6_enable: '1' }) })
+      render(NetworkTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      const select = screen.getByRole('combobox', { name: /ipv6 proxy mode/i })
+      expect(select.querySelectorAll('option')).toHaveLength(4)
+    })
+
+    it('each advanced setting has an info tooltip', async () => {
+      setupMocks()
+      render(NetworkTab)
+
+      const tooltipsBefore = screen.getAllByRole('button', { name: /more information/i }).length
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      const tooltipsAfter = screen.getAllByRole('button', { name: /more information/i }).length
+      // 7 new tooltip buttons should appear (one per advanced setting)
+      expect(tooltipsAfter - tooltipsBefore).toBe(7)
+    })
+
+    it('clicking the Edit button opens the firewall rules sheet', async () => {
+      setupMocks()
+      render(NetworkTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+      await fireEvent.click(screen.getByRole('button', { name: /edit/i }))
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    })
+
+    it('calls uci.set with correct key when china bypass mode changes', async () => {
+      const setMutateAsync = vi.fn().mockResolvedValue(undefined)
+      setupMocks({ setMutateAsync })
+      render(NetworkTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+
+      const select = screen.getByRole('combobox', { name: /china bypass mode/i })
+      await fireEvent.change(select, { target: { value: '1' } })
+
+      await waitFor(() => expect(setMutateAsync).toHaveBeenCalledWith('1'))
+    })
+
+    it('calls uci.set when common ports toggle is clicked (enabling)', async () => {
+      const setMutateAsync = vi.fn().mockResolvedValue(undefined)
+      setupMocks({ setMutateAsync, uciData: makeUciPackage({ common_ports: '0' }) })
+      render(NetworkTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+      await fireEvent.click(screen.getByRole('switch', { name: /common ports only/i }))
+
+      await waitFor(() => {
+        const calls = setMutateAsync.mock.calls
+        expect(calls.some((c: unknown[]) => typeof c[0] === 'string' && c[0].includes('443'))).toBe(true)
+      })
+    })
+
+    it('calls uci.set with 0 when common ports toggle is clicked (disabling)', async () => {
+      const setMutateAsync = vi.fn().mockResolvedValue(undefined)
+      setupMocks({
+        setMutateAsync,
+        uciData: makeUciPackage({ common_ports: '21 22 443' })
+      })
+      render(NetworkTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+      await fireEvent.click(screen.getByRole('switch', { name: /common ports only/i }))
+
+      await waitFor(() => expect(setMutateAsync).toHaveBeenCalledWith('0'))
+    })
+
+    it('calls uci.set when gateway compatible toggle is clicked', async () => {
+      const setMutateAsync = vi.fn().mockResolvedValue(undefined)
+      setupMocks({
+        setMutateAsync,
+        uciData: makeUciPackage({ bypass_gateway_compatible: '0' })
+      })
+      render(NetworkTab)
+
+      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
+      await fireEvent.click(screen.getByRole('switch', { name: /gateway compatible/i }))
+
+      await waitFor(() => expect(setMutateAsync).toHaveBeenCalledWith('1'))
     })
   })
 })
