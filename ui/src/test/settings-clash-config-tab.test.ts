@@ -190,7 +190,7 @@ describe('ClashConfigTab', () => {
 
       await fireEvent.click(screen.getByRole('switch', { name: /disable HK Select/i }))
 
-      expect(toggleMutate).toHaveBeenCalledWith({ id: 'cfg1', enabled: false })
+      expect(toggleMutate).toHaveBeenCalledWith({ id: 'cfg1', enabled: false }, expect.anything())
     })
 
     it('shows disabled group as dimmed with enable toggle label', () => {

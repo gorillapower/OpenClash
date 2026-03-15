@@ -20,6 +20,23 @@
   const deleteProxyGroup = useDeleteProxyGroup()
   const toggleProxyGroup = useToggleProxyGroup()
 
+  // Local overrides drive the toggle visual instantly on click.
+  // Cleared in onSettled so the component falls back to query data after sync.
+  let enabledOverrides = $state<Record<string, boolean>>({})
+
+  function getEnabled(group: ProxyGroup): boolean {
+    return group.id in enabledOverrides ? enabledOverrides[group.id] : group.enabled
+  }
+
+  function handleToggle(group: ProxyGroup) {
+    const newEnabled = !getEnabled(group)
+    enabledOverrides[group.id] = newEnabled
+    toggleProxyGroup.mutate(
+      { id: group.id, enabled: newEnabled },
+      { onSettled() { delete enabledOverrides[group.id] } }
+    )
+  }
+
   let proxyGroupSheetOpen = $state(false)
   let editingGroup = $state<ProxyGroup | undefined>(undefined)
 
@@ -165,21 +182,22 @@
     {:else}
       <div class="divide-y divide-border rounded-lg border border-border bg-card">
         {#each proxyGroups.data as group (group.id)}
+          {@const enabled = getEnabled(group)}
           <div class="flex items-center gap-3 px-4 py-3">
             <!-- Enable/disable toggle -->
             <button
               role="switch"
-              aria-checked={group.enabled}
-              aria-label="{group.enabled ? 'Disable' : 'Enable'} {group.name}"
-              onclick={() => toggleProxyGroup.mutate({ id: group.id, enabled: !group.enabled })}
-              class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {group.enabled ? 'bg-primary' : 'bg-muted-foreground/30'}"
+              aria-checked={enabled}
+              aria-label="{enabled ? 'Disable' : 'Enable'} {group.name}"
+              onclick={() => handleToggle(group)}
+              class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {enabled ? 'bg-primary' : 'bg-muted-foreground/30'}"
             >
               <span
-                class="inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform {group.enabled ? 'translate-x-4' : 'translate-x-0.5'}"
+                class="inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform {enabled ? 'translate-x-4' : 'translate-x-0.5'}"
               ></span>
             </button>
 
-            <div class="min-w-0 flex-1 space-y-0.5 {group.enabled ? '' : 'opacity-50'}">
+            <div class="min-w-0 flex-1 space-y-0.5 {enabled ? '' : 'opacity-50'}">
               <p class="truncate text-sm font-medium text-foreground">{group.name}</p>
               <p class="text-xs text-muted-foreground">
                 {group.type}{group.policyFilter ? ` · ${group.policyFilter}` : ''}
