@@ -42,7 +42,12 @@ vi.mock('$lib/queries/luci', () => ({
   useAddRuleProvider: vi.fn(),
   useUpdateRuleProvider: vi.fn(),
   useAdvancedYaml: vi.fn(),
-  useSetAdvancedYaml: vi.fn()
+  useSetAdvancedYaml: vi.fn(),
+  useCustomProxies: vi.fn(),
+  useDeleteCustomProxy: vi.fn(),
+  useToggleCustomProxy: vi.fn(),
+  useAddCustomProxy: vi.fn(),
+  useUpdateCustomProxy: vi.fn()
 }))
 
 vi.mock('@tanstack/svelte-query', async (importOriginal) => {
@@ -50,7 +55,7 @@ vi.mock('@tanstack/svelte-query', async (importOriginal) => {
   return { ...actual, useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })) }
 })
 
-import type { ProxyGroup, CustomRule, RuleProvider } from '$lib/queries/luci'
+import type { ProxyGroup, CustomRule, RuleProvider, CustomProxy } from '$lib/queries/luci'
 import {
   useProxyGroups,
   useDeleteProxyGroup,
@@ -67,7 +72,12 @@ import {
   useAddRuleProvider,
   useUpdateRuleProvider,
   useAdvancedYaml,
-  useSetAdvancedYaml
+  useSetAdvancedYaml,
+  useCustomProxies,
+  useDeleteCustomProxy,
+  useToggleCustomProxy,
+  useAddCustomProxy,
+  useUpdateCustomProxy
 } from '$lib/queries/luci'
 
 // ---------------------------------------------------------------------------
@@ -87,6 +97,11 @@ const mockRules: CustomRule[] = [
 const mockRuleProviders: RuleProvider[] = [
   { id: 'rp1', name: 'Azure_West_Europe', enabled: true, type: 'http', behavior: 'ipcidr', url: 'https://example.com/azure.yaml', interval: '86400', format: 'yaml', group: 'PROXY', position: '0' },
   { id: 'rp2', name: 'BlockAds', enabled: false, type: 'http', behavior: 'domain', url: 'https://example.com/ads.yaml', interval: '86400', format: 'yaml', group: 'REJECT', position: '1' }
+]
+
+const mockCustomProxies: CustomProxy[] = [
+  { id: 'cp1', name: 'My VPS', proxyType: 'ss', server: '1.2.3.4', port: '8388', enabled: true, cipher: 'aes-256-gcm', password: 'secret', udp: true },
+  { id: 'cp2', name: 'Work Server', proxyType: 'trojan', server: 'vpn.example.com', port: '443', enabled: false, password: 'pass', sni: 'vpn.example.com' }
 ]
 
 function setupMocks({
@@ -132,6 +147,11 @@ function setupMocks({
   vi.mocked(useUpdateRuleProvider).mockReturnValue(makeMutation() as never)
   vi.mocked(useAdvancedYaml).mockReturnValue(makeQuery<FileReadResult>({ content: '# Advanced YAML\n' }) as never)
   vi.mocked(useSetAdvancedYaml).mockReturnValue(makeMutation() as never)
+  vi.mocked(useCustomProxies).mockReturnValue(makeQuery(mockCustomProxies) as never)
+  vi.mocked(useDeleteCustomProxy).mockReturnValue(makeMutation() as never)
+  vi.mocked(useToggleCustomProxy).mockReturnValue(makeMutation() as never)
+  vi.mocked(useAddCustomProxy).mockReturnValue(makeMutation() as never)
+  vi.mocked(useUpdateCustomProxy).mockReturnValue(makeMutation() as never)
 }
 
 // ---------------------------------------------------------------------------

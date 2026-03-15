@@ -9,11 +9,16 @@
     useRuleProviders,
     useDeleteRuleProvider,
     useToggleRuleProvider,
+    useCustomProxies,
+    useDeleteCustomProxy,
+    useToggleCustomProxy,
     type ProxyGroup,
     type CustomRule,
-    type RuleProvider
+    type RuleProvider,
+    type CustomProxy
   } from '$lib/queries/luci'
   import ProxyGroupSheet from './ProxyGroupSheet.svelte'
+  import CustomProxySheet from './CustomProxySheet.svelte'
   import ConfigOverwriteSheet from './ConfigOverwriteSheet.svelte'
   import RuleProviderSheet from './RuleProviderSheet.svelte'
   import AdvancedYamlSheet from './AdvancedYamlSheet.svelte'
@@ -66,6 +71,60 @@
   function closeProxyGroupSheet() {
     proxyGroupSheetOpen = false
     editingGroup = undefined
+  }
+
+  // ---------------------------------------------------------------------------
+  // Custom proxies
+  // ---------------------------------------------------------------------------
+
+  const customProxies = useCustomProxies()
+  const deleteCustomProxy = useDeleteCustomProxy()
+  const toggleCustomProxy = useToggleCustomProxy()
+
+  const localProxies = $derived(customProxies.data ?? [])
+
+  let proxyEnabledOverrides = $state<Record<string, boolean>>({})
+
+  function getProxyEnabled(proxy: CustomProxy): boolean {
+    const override = proxyEnabledOverrides[proxy.id]
+    return override !== undefined ? override : proxy.enabled
+  }
+
+  function handleProxyToggle(proxy: CustomProxy) {
+    const newEnabled = !getProxyEnabled(proxy)
+    proxyEnabledOverrides[proxy.id] = newEnabled
+    toggleCustomProxy.mutate(
+      { id: proxy.id, enabled: newEnabled },
+      { onError() { delete proxyEnabledOverrides[proxy.id] } }
+    )
+  }
+
+  let customProxySheetOpen = $state(false)
+  let editingProxy = $state<CustomProxy | undefined>(undefined)
+  let confirmDeleteProxyId = $state<string | undefined>(undefined)
+
+  function openAddProxy() {
+    editingProxy = undefined
+    confirmDeleteProxyId = undefined
+    customProxySheetOpen = true
+  }
+
+  function openEditProxy(proxy: CustomProxy) {
+    editingProxy = proxy
+    confirmDeleteProxyId = undefined
+    customProxySheetOpen = true
+  }
+
+  function closeCustomProxySheet() {
+    customProxySheetOpen = false
+    editingProxy = undefined
+  }
+
+  const proxyTypeBadge: Record<CustomProxy['proxyType'], string> = {
+    ss: 'SS',
+    trojan: 'Trojan',
+    vmess: 'VMess',
+    vless: 'VLESS'
   }
 
   // ---------------------------------------------------------------------------
@@ -309,7 +368,105 @@
   </div>
 
   <!-- ============================================================
-       Section 2: Custom Rules
+       Section 2: Custom Proxies
+  ============================================================ -->
+  <div class="space-y-3">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Custom Proxies
+        </h2>
+        <p class="mt-0.5 text-xs text-muted-foreground">
+          Your own proxy servers (VPS, Trojan, etc.) injected alongside subscription proxies at
+          startup. Assign them to any proxy group in your config.
+        </p>
+      </div>
+      <Button variant="outline" size="sm" onclick={openAddProxy}>Add proxy</Button>
+    </div>
+
+    {#if customProxies.isPending}
+      <div class="h-16 animate-pulse rounded-lg bg-muted"></div>
+    {:else if localProxies.length === 0}
+      <div
+        class="rounded-lg border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground"
+      >
+        No custom proxies yet. Add a proxy server you own or control.
+      </div>
+    {:else}
+      <div class="divide-y divide-border rounded-lg border border-border bg-card">
+        {#each localProxies as proxy (proxy.id)}
+          {@const enabled = getProxyEnabled(proxy)}
+          <div class="flex items-center gap-3 px-4 py-3">
+            <!-- Enable/disable toggle -->
+            <button
+              role="switch"
+              aria-checked={enabled}
+              aria-label="{enabled ? 'Disable' : 'Enable'} {proxy.name}"
+              onclick={() => handleProxyToggle(proxy)}
+              class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {enabled ? 'bg-primary' : 'bg-muted-foreground/30'}"
+            >
+              <span
+                class="inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform {enabled ? 'translate-x-4' : 'translate-x-0.5'}"
+              ></span>
+            </button>
+
+            <div class="min-w-0 flex-1 space-y-0.5 {enabled ? '' : 'opacity-50'}">
+              <div class="flex items-center gap-2">
+                <p class="truncate text-sm font-medium text-foreground">{proxy.name}</p>
+                <span
+                  class="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground"
+                >
+                  {proxyTypeBadge[proxy.proxyType]}
+                </span>
+              </div>
+              <p class="truncate text-xs text-muted-foreground">{proxy.server}:{proxy.port}</p>
+            </div>
+
+            <div class="ml-2 flex shrink-0 gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onclick={() => openEditProxy(proxy)}
+                aria-label="Edit {proxy.name}"
+              >
+                Edit
+              </Button>
+              {#if confirmDeleteProxyId === proxy.id}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onclick={() => { deleteCustomProxy.mutate(proxy.id); confirmDeleteProxyId = undefined }}
+                  disabled={deleteCustomProxy.isPending}
+                >
+                  Confirm
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onclick={() => (confirmDeleteProxyId = undefined)}
+                >
+                  Cancel
+                </Button>
+              {:else}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onclick={() => (confirmDeleteProxyId = proxy.id)}
+                  aria-label="Delete {proxy.name}"
+                  class="text-destructive hover:text-destructive"
+                >
+                  Delete
+                </Button>
+              {/if}
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </div>
+
+  <!-- ============================================================
+       Section 3: Custom Rules
   ============================================================ -->
   <div class="space-y-3">
     <div class="flex items-center justify-between">
@@ -618,6 +775,12 @@
   open={proxyGroupSheetOpen}
   onClose={closeProxyGroupSheet}
   group={editingGroup}
+/>
+
+<CustomProxySheet
+  open={customProxySheetOpen}
+  onClose={closeCustomProxySheet}
+  proxy={editingProxy}
 />
 
 <ConfigOverwriteSheet

@@ -2229,6 +2229,11 @@ ${uci_set}Others="Others"
 fi
 
 if [ "$create_config" != "0" ] && [ "$servers_if_update" != "1" ] && [ -z "$if_game_proxy" ]; then
+   # Append custom proxies (from UCI custom_proxy sections) before closing the proxies block
+   /usr/share/openclash/yml_custom_proxies_get.sh >/dev/null 2>&1
+   if [ -s "/tmp/yaml_custom_proxies.yaml" ]; then
+      cat "/tmp/yaml_custom_proxies.yaml" >> $SERVER_FILE
+   fi
    echo "rules:" >>$SERVER_FILE
    LOG_OUT "Config File【$CONFIG_NAME】Created Successful, Updating Proxies, Proxy-providers, Groups..."
    cat "$PROXY_PROVIDER_FILE" > "$CONFIG_FILE" 2>/dev/null
@@ -2236,6 +2241,11 @@ if [ "$create_config" != "0" ] && [ "$servers_if_update" != "1" ] && [ -z "$if_g
    /usr/share/openclash/yml_groups_get.sh >/dev/null 2>&1
 elif [ -z "$if_game_proxy" ]; then
    LOG_OUT "Proxies, Proxy-providers, Groups Edited Successful, Updating Config File【$CONFIG_NAME】..."
+   # Append custom proxies to the subscription proxies before merging
+   /usr/share/openclash/yml_custom_proxies_get.sh >/dev/null 2>&1
+   if [ -s "/tmp/yaml_custom_proxies.yaml" ]; then
+      cat "/tmp/yaml_custom_proxies.yaml" >> $SERVER_FILE
+   fi
    config_hash=$(ruby -ryaml -rYAML -I "/usr/share/openclash" -E UTF-8 -e "Value = YAML.load_file('$CONFIG_FILE'); puts Value" 2>/dev/null)
    if [ "$config_hash" != "false" ] && [ -n "$config_hash" ]; then
       ruby_cover "$CONFIG_FILE" "['proxies']" "$SERVER_FILE" "proxies"
@@ -2250,6 +2260,7 @@ if [ -z "$if_game_proxy" ]; then
    rm -rf $SERVER_FILE 2>/dev/null
    rm -rf $PROXY_PROVIDER_FILE 2>/dev/null
    rm -rf /tmp/yaml_groups.yaml 2>/dev/null
+   rm -rf /tmp/yaml_custom_proxies.yaml 2>/dev/null
    LOG_OUT "Config File【$CONFIG_NAME】Write Successful!"
    SLOG_CLEAN
 fi

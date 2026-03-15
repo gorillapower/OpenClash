@@ -36,9 +36,12 @@ export const luciKeys = {
   customRules: [...['luci'], 'custom-rules'] as const,
   configOverwrite: [...['luci'], 'config-overwrite'] as const,
   ruleProviders: [...['luci'], 'rule-providers'] as const,
+  customProxies: [...['luci'], 'custom-proxies'] as const,
   advancedYaml: [...['luci'], 'advanced-yaml'] as const,
   coreLatestVersion: [...['luci'], 'core-latest-version'] as const,
-  coreUpdateStatus: [...['luci'], 'core-update-status'] as const
+  coreUpdateStatus: [...['luci'], 'core-update-status'] as const,
+  logService: (lines: number) => [...['luci'], 'log-service', lines] as const,
+  logCore: (lines: number) => [...['luci'], 'log-core', lines] as const
 }
 
 // ---------------------------------------------------------------------------
@@ -838,6 +841,258 @@ export function useCoreUpdate(
       queryClient.invalidateQueries({ queryKey: luciKeys.coreUpdateStatus })
     },
     onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useLogService(
+  lines: number,
+  opts?: Partial<CreateQueryOptions<string>>
+) {
+  return createQuery<string>(() => ({
+    queryKey: luciKeys.logService(lines),
+    queryFn: () => luciRpc.logService(lines),
+    retry: false,
+    ...opts
+  } as CreateQueryOptions<string>))
+}
+
+export function useLogCore(
+  lines: number,
+  opts?: Partial<CreateQueryOptions<string>>
+) {
+  return createQuery<string>(() => ({
+    queryKey: luciKeys.logCore(lines),
+    queryFn: () => luciRpc.logCore(lines),
+    retry: false,
+    ...opts
+  } as CreateQueryOptions<string>))
+}
+
+// ---------------------------------------------------------------------------
+// Custom proxies
+// ---------------------------------------------------------------------------
+
+export interface CustomProxy {
+  /** UCI section ID (auto-generated) */
+  id: string
+  name: string
+  /** Whether this proxy is injected at startup (default: true) */
+  enabled: boolean
+  /** Clash proxy protocol */
+  proxyType: 'ss' | 'trojan' | 'vmess' | 'vless'
+  server: string
+  port: string
+  // SS fields
+  cipher?: string
+  password?: string
+  udp?: boolean
+  // Trojan fields
+  // password shared with SS
+  sni?: string
+  skipCertVerify?: boolean
+  // VMess fields
+  uuid?: string
+  alterId?: string
+  // VMess cipher (defaults to auto)
+  vmessCipher?: string
+  tls?: boolean
+  // VLESS fields
+  // uuid shared with VMess
+  // tls shared with VMess
+  // sni shared with Trojan
+  flow?: string
+}
+
+export interface CustomProxyInput {
+  name: string
+  proxyType: CustomProxy['proxyType']
+  server: string
+  port: string
+  enabled?: boolean
+  cipher?: string
+  password?: string
+  udp?: boolean
+  sni?: string
+  skipCertVerify?: boolean
+  uuid?: string
+  alterId?: string
+  vmessCipher?: string
+  tls?: boolean
+  flow?: string
+}
+
+function sectionsToCustomProxies(pkg: UciPackage): CustomProxy[] {
+  return Object.entries(pkg)
+    .filter(([, section]) => (section as UciSection & { '.type'?: string })['.type'] === 'custom_proxy')
+    .filter(([, section]) => {
+      const s = section as Record<string, unknown>
+      return typeof s['name'] === 'string' && typeof s['proxy_type'] === 'string'
+    })
+    .map(([id, section]) => {
+      const s = section as Record<string, string>
+      return {
+        id,
+        name: s['name'] ?? '',
+        enabled: s['enabled'] !== '0',
+        proxyType: (s['proxy_type'] as CustomProxy['proxyType']) ?? 'ss',
+        server: s['server'] ?? '',
+        port: s['port'] ?? '',
+        cipher: s['cipher'] || undefined,
+        password: s['password'] || undefined,
+        udp: s['udp'] === '1',
+        sni: s['sni'] || undefined,
+        skipCertVerify: s['skip_cert_verify'] === '1',
+        uuid: s['uuid'] || undefined,
+        alterId: s['alter_id'] || undefined,
+        vmessCipher: s['vmess_cipher'] || undefined,
+        tls: s['tls'] === '1',
+        flow: s['flow'] || undefined
+      }
+    })
+}
+
+export function useCustomProxies(opts?: Partial<CreateQueryOptions<CustomProxy[]>>) {
+  return createQuery<CustomProxy[]>(() => ({
+    queryKey: luciKeys.customProxies,
+    queryFn: async () => {
+      const pkg = (await luciRpc.uciGet('openclash')) as UciPackage
+      return sectionsToCustomProxies(pkg)
+    },
+    ...opts
+  } as CreateQueryOptions<CustomProxy[]>))
+}
+
+export function useAddCustomProxy(
+  opts?: Partial<CreateMutationOptions<void, unknown, CustomProxyInput>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, CustomProxyInput>(() => ({
+    mutationFn: async (input) => {
+      const id = await luciRpc.uciAddSection('openclash', 'custom_proxy')
+      await luciRpc.uciSet('openclash', id, 'name', input.name)
+      await luciRpc.uciSet('openclash', id, 'proxy_type', input.proxyType)
+      await luciRpc.uciSet('openclash', id, 'server', input.server)
+      await luciRpc.uciSet('openclash', id, 'port', input.port)
+      await luciRpc.uciSet('openclash', id, 'enabled', (input.enabled ?? true) ? '1' : '0')
+      if (input.cipher) await luciRpc.uciSet('openclash', id, 'cipher', input.cipher)
+      if (input.password) await luciRpc.uciSet('openclash', id, 'password', input.password)
+      if (input.udp) await luciRpc.uciSet('openclash', id, 'udp', '1')
+      if (input.sni) await luciRpc.uciSet('openclash', id, 'sni', input.sni)
+      if (input.skipCertVerify) await luciRpc.uciSet('openclash', id, 'skip_cert_verify', '1')
+      if (input.uuid) await luciRpc.uciSet('openclash', id, 'uuid', input.uuid)
+      if (input.alterId) await luciRpc.uciSet('openclash', id, 'alter_id', input.alterId)
+      if (input.vmessCipher) await luciRpc.uciSet('openclash', id, 'vmess_cipher', input.vmessCipher)
+      if (input.tls) await luciRpc.uciSet('openclash', id, 'tls', '1')
+      if (input.flow) await luciRpc.uciSet('openclash', id, 'flow', input.flow)
+      await luciRpc.uciCommit('openclash')
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.customProxies })
+      toasts.success('Custom proxy added')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useUpdateCustomProxy(
+  opts?: Partial<CreateMutationOptions<void, unknown, { id: string } & CustomProxyInput>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, { id: string } & CustomProxyInput>(() => ({
+    mutationFn: async ({ id, ...input }) => {
+      await luciRpc.uciSet('openclash', id, 'name', input.name)
+      await luciRpc.uciSet('openclash', id, 'proxy_type', input.proxyType)
+      await luciRpc.uciSet('openclash', id, 'server', input.server)
+      await luciRpc.uciSet('openclash', id, 'port', input.port)
+
+      // Write optional fields or delete if cleared
+      const optFields: Array<[string, string | undefined]> = [
+        ['cipher', input.cipher],
+        ['password', input.password],
+        ['sni', input.sni],
+        ['uuid', input.uuid],
+        ['alter_id', input.alterId],
+        ['vmess_cipher', input.vmessCipher],
+        ['flow', input.flow]
+      ]
+      for (const [key, val] of optFields) {
+        if (val) {
+          await luciRpc.uciSet('openclash', id, key, val)
+        } else {
+          await luciRpc.uciDelete('openclash', id, key)
+        }
+      }
+
+      const boolFields: Array<[string, boolean | undefined]> = [
+        ['udp', input.udp],
+        ['skip_cert_verify', input.skipCertVerify],
+        ['tls', input.tls]
+      ]
+      for (const [key, val] of boolFields) {
+        if (val) {
+          await luciRpc.uciSet('openclash', id, key, '1')
+        } else {
+          await luciRpc.uciDelete('openclash', id, key)
+        }
+      }
+
+      await luciRpc.uciCommit('openclash')
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.customProxies })
+      toasts.success('Custom proxy updated')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useDeleteCustomProxy(
+  opts?: Partial<CreateMutationOptions<void, unknown, string>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, string>(() => ({
+    mutationFn: async (id: string) => {
+      await luciRpc.uciDelete('openclash', id)
+      await luciRpc.uciCommit('openclash')
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.customProxies })
+      toasts.success('Custom proxy deleted')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useToggleCustomProxy(
+  opts?: Partial<CreateMutationOptions<void, unknown, { id: string; enabled: boolean }>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, { id: string; enabled: boolean }, { previous?: CustomProxy[] }>(() => ({
+    async onMutate({ id, enabled }) {
+      await queryClient.cancelQueries({ queryKey: luciKeys.customProxies })
+      const previous = queryClient.getQueryData<CustomProxy[]>(luciKeys.customProxies)
+      queryClient.setQueryData<CustomProxy[]>(luciKeys.customProxies, (old) =>
+        old?.map((p) => (p.id === id ? { ...p, enabled } : p)) ?? []
+      )
+      return { previous }
+    },
+    mutationFn: async ({ id, enabled }) => {
+      await luciRpc.uciSet('openclash', id, 'enabled', enabled ? '1' : '0')
+      await luciRpc.uciCommit('openclash')
+    },
+    onError(err, _vars, context) {
+      if (context?.previous) {
+        queryClient.setQueryData(luciKeys.customProxies, context.previous)
+      }
+      onMutationError(err)
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.customProxies })
+    },
     ...opts
   }))
 }
