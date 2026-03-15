@@ -1,5 +1,6 @@
 <script lang="ts">
   import { router, type Route } from '$lib/router.svelte'
+  import { theme } from '$lib/theme.svelte'
 
   const dashboardUrl = `http://${window.location.hostname}:9090/ui`
 
@@ -31,6 +32,25 @@
     </div>
 
     <div class="flex-1"></div>
+
+    <button
+      onclick={() => theme.toggle()}
+      aria-label={theme.isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      data-testid="theme-toggle"
+      class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+    >
+      {#if theme.isDark}
+        <!-- Sun icon — shown in dark mode to switch to light -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-testid="sun-icon">
+          <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+        </svg>
+      {:else}
+        <!-- Moon icon — shown in light mode to switch to dark -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-testid="moon-icon">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+        </svg>
+      {/if}
+    </button>
 
     <a
       href={dashboardUrl}

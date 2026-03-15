@@ -2,7 +2,8 @@
   import { onMount, onDestroy } from 'svelte'
   import { EditorView, basicSetup } from 'codemirror'
   import { yaml } from '@codemirror/lang-yaml'
-  import { EditorState } from '@codemirror/state'
+  import { EditorState, Compartment } from '@codemirror/state'
+  import { theme } from '$lib/theme.svelte'
 
   type Props = {
     content?: string
@@ -15,8 +16,10 @@
   let container: HTMLDivElement
   let view: EditorView | undefined
 
-  // Theme that respects CSS custom properties from the design system
-  const editorTheme = EditorView.theme({
+  const darkModeCompartment = new Compartment()
+
+  // Base theme using CSS custom properties from the design system
+  const editorBaseTheme = EditorView.theme({
     '&': {
       fontSize: '0.8125rem',
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
@@ -26,18 +29,18 @@
     '.cm-scroller': { overflow: 'auto' },
     '.cm-content': { padding: '0.75rem 0' },
     '.cm-focused': { outline: 'none' },
-    '&.cm-focused .cm-cursor': { borderLeftColor: 'hsl(var(--foreground))' },
+    '&.cm-focused .cm-cursor': { borderLeftColor: 'var(--foreground)' },
     '.cm-gutters': {
-      backgroundColor: 'hsl(var(--muted))',
-      color: 'hsl(var(--muted-foreground))',
+      backgroundColor: 'var(--muted)',
+      color: 'var(--muted-foreground)',
       border: 'none',
-      borderRight: '1px solid hsl(var(--border))'
+      borderRight: '1px solid var(--border)'
     },
-    '.cm-activeLineGutter': { backgroundColor: 'hsl(var(--muted) / 0.7)' },
-    '.cm-activeLine': { backgroundColor: 'hsl(var(--muted) / 0.3)' },
-    '.cm-selectionBackground': { backgroundColor: 'hsl(var(--primary) / 0.2) !important' },
+    '.cm-activeLineGutter': { backgroundColor: 'var(--muted)' },
+    '.cm-activeLine': { backgroundColor: 'color-mix(in oklch, var(--muted) 50%, transparent)' },
+    '.cm-selectionBackground': { backgroundColor: 'color-mix(in oklch, var(--primary) 20%, transparent) !important' },
     '.cm-line': { padding: '0 0.75rem' }
-  }, { dark: false })
+  })
 
   onMount(() => {
     const updateListener = EditorView.updateListener.of((update) => {
@@ -53,7 +56,8 @@
         extensions: [
           basicSetup,
           yaml(),
-          editorTheme,
+          editorBaseTheme,
+          darkModeCompartment.of(EditorView.darkTheme.of(theme.isDark)),
           EditorState.readOnly.of(readonly),
           updateListener
         ]
@@ -63,6 +67,14 @@
 
   onDestroy(() => {
     view?.destroy()
+  })
+
+  // Keep dark flag in sync with theme changes
+  $effect(() => {
+    if (!view) return
+    view.dispatch({
+      effects: darkModeCompartment.reconfigure(EditorView.darkTheme.of(theme.isDark))
+    })
   })
 
   // Sync external content changes (e.g. when slide-over opens with new file)
