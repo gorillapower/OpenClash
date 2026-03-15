@@ -27,6 +27,13 @@ const MOCK_STATE: MockState = (process.env.MOCK_STATE as MockState) ?? 'running'
 
 type RpcHandler = (params: unknown[]) => unknown
 
+// Simple in-memory store so add/edit/delete survive the session
+let mockGroups: Record<string, { '.type': string; name: string; type: string; test_url?: string; test_interval?: string; policy_filter?: string }> = {
+  cfg1: { '.type': 'groups', name: 'HK Select', type: 'select', policy_filter: '.*HK.*' },
+  cfg2: { '.type': 'groups', name: 'Auto Fastest', type: 'url-test', test_url: 'https://cp.cloudflare.com/generate_204', test_interval: '300', policy_filter: '.*' }
+}
+let mockGroupCounter = 10
+
 const RPC_HANDLERS: Record<string, RpcHandler> = {
   'uci.get': () => {
     if (MOCK_STATE === 'empty') {
@@ -37,10 +44,31 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
         config_path: '/etc/openclash/config/my-subscription.yaml',
         operation_mode: 'fake-ip',
         core_path: '/etc/openclash/core/clash_meta'
-      }
+      },
+      ...mockGroups
     }
   },
-  'uci.set':    () => true,
+  'uci.set': (params) => {
+    const [, section, option, value] = params as string[]
+    if (mockGroups[section]) {
+      (mockGroups[section] as Record<string, string>)[option] = value
+    }
+    return true
+  },
+  'uci.add': (params) => {
+    const id = `cfg${++mockGroupCounter}`
+    mockGroups[id] = { '.type': (params as string[])[1] ?? 'groups', name: '', type: 'select' }
+    return id
+  },
+  'uci.delete': (params) => {
+    const [, section, option] = params as string[]
+    if (option) {
+      if (mockGroups[section]) delete (mockGroups[section] as Record<string, string>)[option]
+    } else {
+      delete mockGroups[section]
+    }
+    return true
+  },
   'uci.commit': () => true,
   'service.status': () => ({
     running: MOCK_STATE === 'running',
@@ -161,8 +189,24 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
     console.log('[mock] config.write called with name:', (params as unknown[])[0])
     return true
   },
-  'file.read':   () => ({ content: '' }),
-  'file.write':  () => true,
+  'file.read': (params) => {
+    const path = (params as string[])[0] ?? ''
+    if (path.includes('openclash_custom_rules.list')) {
+      return {
+        content: [
+          'rules:',
+          '  - DOMAIN-SUFFIX,example.com,DIRECT',
+          '  - DOMAIN-KEYWORD,google,HK Select'
+        ].join('\n') + '\n'
+      }
+    }
+    // firewall rules, config overwrite, etc. — return the file stub with comments
+    return { content: '#!/bin/sh\n# Add custom overwrite commands here\n' }
+  },
+  'file.write': (params) => {
+    console.log('[mock] file.write path:', (params as string[])[0])
+    return true
+  },
   'log.service': () => '[mock] OpenClash started\n[mock] Rules loaded\n',
   'log.core':    () => '[mock] Clash core started\n[mock] Listening on :7890\n',
   'system.info': () => ({

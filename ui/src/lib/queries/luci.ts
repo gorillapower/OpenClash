@@ -342,11 +342,7 @@ export interface ProxyGroup {
 
 function sectionsToProxyGroups(pkg: UciPackage): ProxyGroup[] {
   return Object.entries(pkg)
-    .filter(([, section]) => (section as UciSection & { '.type'?: string })['.type'] === 'groups' || true)
-    .filter(([id, section]) => {
-      const s = section as Record<string, unknown>
-      return s['name'] !== undefined || id !== 'config'
-    })
+    .filter(([, section]) => (section as UciSection & { '.type'?: string })['.type'] === 'groups')
     .filter(([, section]) => {
       const s = section as Record<string, unknown>
       return typeof s['name'] === 'string' && typeof s['type'] === 'string'
