@@ -163,6 +163,10 @@ export const luciRpc = {
     return rpcCall('uci.delete', params)
   },
 
+  uciAddSection(pkg: string, sectionType: string): Promise<string> {
+    return rpcCall('uci.add', [pkg, sectionType])
+  },
+
   uciCommit(pkg: string): Promise<void> {
     return rpcCall('uci.commit', [pkg])
   },

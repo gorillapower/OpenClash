@@ -1,7 +1,8 @@
 <script lang="ts">
   import NetworkTab from './settings/NetworkTab.svelte'
+  import ClashConfigTab from './settings/ClashConfigTab.svelte'
 
-  type Tab = 'network'
+  type Tab = 'network' | 'clash-config'
   let activeTab = $state<Tab>('network')
 </script>
 
@@ -26,10 +27,24 @@
       >
         Network
       </button>
+      <button
+        class="border-b-2 pb-3 text-sm font-medium transition-colors"
+        class:border-primary={activeTab === 'clash-config'}
+        class:text-foreground={activeTab === 'clash-config'}
+        class:border-transparent={activeTab !== 'clash-config'}
+        class:text-muted-foreground={activeTab !== 'clash-config'}
+        onclick={() => (activeTab = 'clash-config')}
+        type="button"
+        aria-current={activeTab === 'clash-config' ? 'page' : undefined}
+      >
+        Clash Config
+      </button>
     </nav>
   </div>
 
   {#if activeTab === 'network'}
     <NetworkTab />
+  {:else if activeTab === 'clash-config'}
+    <ClashConfigTab />
   {/if}
 </div>

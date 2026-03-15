@@ -8,6 +8,7 @@ import {
 import {
   luciRpc,
   type UciPackage,
+  type UciSection,
   type ServiceStatusResult,
   type Subscription,
   type SubscriptionEditData,
@@ -28,7 +29,10 @@ export const luciKeys = {
   serviceStatus: (name: string) => [...luciKeys.all, 'service', name, 'status'] as const,
   subscriptions: [...['luci'], 'subscriptions'] as const,
   configs: [...['luci'], 'configs'] as const,
-  firewallRules: [...['luci'], 'firewall-rules'] as const
+  firewallRules: [...['luci'], 'firewall-rules'] as const,
+  proxyGroups: [...['luci'], 'proxy-groups'] as const,
+  customRules: [...['luci'], 'custom-rules'] as const,
+  configOverwrite: [...['luci'], 'config-overwrite'] as const
 }
 
 // ---------------------------------------------------------------------------
@@ -315,6 +319,234 @@ export function useSetFirewallRules(
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.firewallRules })
       toasts.success('Firewall rules saved')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// Custom proxy groups (UCI sections of type "groups")
+// ---------------------------------------------------------------------------
+
+export interface ProxyGroup {
+  /** UCI section ID (auto-generated) */
+  id: string
+  name: string
+  type: 'select' | 'url-test' | 'fallback' | 'load-balance'
+  testUrl?: string
+  testInterval?: string
+  /** Regex to filter proxy names from active subscription */
+  policyFilter?: string
+}
+
+function sectionsToProxyGroups(pkg: UciPackage): ProxyGroup[] {
+  return Object.entries(pkg)
+    .filter(([, section]) => (section as UciSection & { '.type'?: string })['.type'] === 'groups' || true)
+    .filter(([id, section]) => {
+      const s = section as Record<string, unknown>
+      return s['name'] !== undefined || id !== 'config'
+    })
+    .filter(([, section]) => {
+      const s = section as Record<string, unknown>
+      return typeof s['name'] === 'string' && typeof s['type'] === 'string'
+    })
+    .map(([id, section]) => {
+      const s = section as Record<string, string>
+      return {
+        id,
+        name: s['name'] ?? '',
+        type: (s['type'] as ProxyGroup['type']) ?? 'select',
+        testUrl: s['test_url'] || undefined,
+        testInterval: s['test_interval'] || undefined,
+        policyFilter: s['policy_filter'] || undefined
+      }
+    })
+}
+
+export function useProxyGroups(opts?: Partial<CreateQueryOptions<ProxyGroup[]>>) {
+  return createQuery<ProxyGroup[]>(() => ({
+    queryKey: luciKeys.proxyGroups,
+    queryFn: async () => {
+      const pkg = (await luciRpc.uciGet('openclash')) as UciPackage
+      return sectionsToProxyGroups(pkg)
+    },
+    ...opts
+  } as CreateQueryOptions<ProxyGroup[]>))
+}
+
+export interface ProxyGroupInput {
+  name: string
+  type: ProxyGroup['type']
+  testUrl?: string
+  testInterval?: string
+  policyFilter?: string
+}
+
+export function useAddProxyGroup(
+  opts?: Partial<CreateMutationOptions<void, unknown, ProxyGroupInput>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, ProxyGroupInput>(() => ({
+    mutationFn: async (input) => {
+      const id = await luciRpc.uciAddSection('openclash', 'groups')
+      await luciRpc.uciSet('openclash', id, 'name', input.name)
+      await luciRpc.uciSet('openclash', id, 'type', input.type)
+      if (input.testUrl) await luciRpc.uciSet('openclash', id, 'test_url', input.testUrl)
+      if (input.testInterval) await luciRpc.uciSet('openclash', id, 'test_interval', input.testInterval)
+      if (input.policyFilter) await luciRpc.uciSet('openclash', id, 'policy_filter', input.policyFilter)
+      await luciRpc.uciCommit('openclash')
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.proxyGroups })
+      toasts.success('Proxy group added')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useUpdateProxyGroup(
+  opts?: Partial<CreateMutationOptions<void, unknown, { id: string } & ProxyGroupInput>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, { id: string } & ProxyGroupInput>(() => ({
+    mutationFn: async ({ id, ...input }) => {
+      await luciRpc.uciSet('openclash', id, 'name', input.name)
+      await luciRpc.uciSet('openclash', id, 'type', input.type)
+      if (input.testUrl) {
+        await luciRpc.uciSet('openclash', id, 'test_url', input.testUrl)
+      } else {
+        await luciRpc.uciDelete('openclash', id, 'test_url')
+      }
+      if (input.testInterval) {
+        await luciRpc.uciSet('openclash', id, 'test_interval', input.testInterval)
+      } else {
+        await luciRpc.uciDelete('openclash', id, 'test_interval')
+      }
+      if (input.policyFilter) {
+        await luciRpc.uciSet('openclash', id, 'policy_filter', input.policyFilter)
+      } else {
+        await luciRpc.uciDelete('openclash', id, 'policy_filter')
+      }
+      await luciRpc.uciCommit('openclash')
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.proxyGroups })
+      toasts.success('Proxy group updated')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useDeleteProxyGroup(
+  opts?: Partial<CreateMutationOptions<void, unknown, string>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, string>(() => ({
+    mutationFn: async (id: string) => {
+      await luciRpc.uciDelete('openclash', id)
+      await luciRpc.uciCommit('openclash')
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.proxyGroups })
+      toasts.success('Proxy group deleted')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// Custom rules file hooks
+// ---------------------------------------------------------------------------
+
+const CUSTOM_RULES_PATH = '/etc/openclash/custom/openclash_custom_rules.list'
+
+export interface CustomRule {
+  type: string
+  value: string
+  target: string
+}
+
+function parseCustomRules(content: string): CustomRule[] {
+  const lines = content.split('\n')
+  const rules: CustomRule[] = []
+  let inRules = false
+  for (const raw of lines) {
+    const line = raw.trim()
+    if (line === 'rules:') { inRules = true; continue }
+    if (!inRules) continue
+    if (!line.startsWith('-')) continue
+    const entry = line.replace(/^-\s*/, '').replace(/^['"]|['"]$/g, '')
+    const parts = entry.split(',')
+    if (parts.length >= 3) {
+      rules.push({ type: parts[0].trim(), value: parts[1].trim(), target: parts[2].trim() })
+    }
+  }
+  return rules
+}
+
+function serializeCustomRules(rules: CustomRule[]): string {
+  if (rules.length === 0) return 'rules:\n'
+  const lines = ['rules:']
+  for (const r of rules) {
+    lines.push(`  - ${r.type},${r.value},${r.target}`)
+  }
+  return lines.join('\n') + '\n'
+}
+
+export function useCustomRules(opts?: Partial<CreateQueryOptions<CustomRule[]>>) {
+  return createQuery<CustomRule[]>(() => ({
+    queryKey: luciKeys.customRules,
+    queryFn: async () => {
+      const result = await luciRpc.fileRead(CUSTOM_RULES_PATH)
+      return parseCustomRules(result.content)
+    },
+    ...opts
+  } as CreateQueryOptions<CustomRule[]>))
+}
+
+export function useSetCustomRules(
+  opts?: Partial<CreateMutationOptions<void, unknown, CustomRule[]>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, CustomRule[]>(() => ({
+    mutationFn: (rules: CustomRule[]) =>
+      luciRpc.fileWrite(CUSTOM_RULES_PATH, serializeCustomRules(rules)),
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.customRules })
+      toasts.success('Custom rules saved')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// Config overwrite file hooks
+// ---------------------------------------------------------------------------
+
+const CONFIG_OVERWRITE_PATH = '/etc/openclash/custom/openclash_custom_overwrite.sh'
+
+export function useConfigOverwrite(opts?: Partial<CreateQueryOptions<FileReadResult>>) {
+  return createQuery<FileReadResult>(() => ({
+    queryKey: luciKeys.configOverwrite,
+    queryFn: () => luciRpc.fileRead(CONFIG_OVERWRITE_PATH),
+    ...opts
+  } as CreateQueryOptions<FileReadResult>))
+}
+
+export function useSetConfigOverwrite(
+  opts?: Partial<CreateMutationOptions<void, unknown, string>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, string>(() => ({
+    mutationFn: (content: string) => luciRpc.fileWrite(CONFIG_OVERWRITE_PATH, content),
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.configOverwrite })
+      toasts.success('Config overwrite saved')
     },
     onError: onMutationError,
     ...opts
