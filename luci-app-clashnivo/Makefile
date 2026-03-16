@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-clashnivo
-PKG_VERSION:=0.1.1
+PKG_VERSION:=0.1.2
 PKG_MAINTAINER:=gorillapower <https://github.com/gorillapower/OpenClash>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
@@ -54,6 +54,7 @@ endef
 define Build/Prepare
 	$(CP) $(CURDIR)/root $(PKG_BUILD_DIR)
 	$(CP) $(CURDIR)/luasrc $(PKG_BUILD_DIR)
+	mkdir -p $(PKG_BUILD_DIR)/root/www/luci-static/clash-nivo
 	$(CP) $(CURDIR)/ui/dist $(PKG_BUILD_DIR)/root/www/luci-static/clash-nivo
 	$(foreach po,$(wildcard ${CURDIR}/po/zh-cn/*.po), \
 		po2lmo $(po) $(PKG_BUILD_DIR)/$(patsubst %.po,%.lmo,$(notdir $(po)));)
@@ -64,7 +65,7 @@ define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)/root/etc/clashnivo/proxy_provider
 	mkdir -p $(PKG_BUILD_DIR)/root/etc/clashnivo/core
 	mkdir -p $(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/overwrite
-	cp -f "$(PKG_BUILD_DIR)/root/etc/config/openclash" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/config/clashnivo" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo" >/dev/null 2>&1
 	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_rules.list" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_rules.list" >/dev/null 2>&1
 	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_rules_2.list" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_rules_2.list" >/dev/null 2>&1
 	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_hosts.list" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_hosts.list" >/dev/null 2>&1
