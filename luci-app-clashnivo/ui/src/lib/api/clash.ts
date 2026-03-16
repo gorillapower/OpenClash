@@ -83,8 +83,10 @@ export interface ClashClientOptions {
 
 function resolveBaseUrl(): string {
   const env = (import.meta as unknown as { env: Record<string, string> | undefined }).env
-  // VITE_CLASH_URL overrides everything (set to /clash-api in dev to use Vite proxy)
-  if (env?.VITE_CLASH_URL) return env.VITE_CLASH_URL
+  // VITE_CLASH_URL is dev-only: routes through Vite's /clash-api proxy to avoid CORS.
+  // Never use it in production builds — the app is served from the router itself,
+  // so it can talk directly to Clash on port 9090.
+  if (import.meta.env.DEV && env?.VITE_CLASH_URL) return env.VITE_CLASH_URL
   // Production: derive from current hostname (app is served from the router)
   return typeof window !== 'undefined'
     ? `http://${window.location.hostname}:9090`

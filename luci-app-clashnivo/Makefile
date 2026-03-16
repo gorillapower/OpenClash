@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-clashnivo
-PKG_VERSION:=0.1.5
+PKG_VERSION:=0.1.6
 PKG_MAINTAINER:=gorillapower <https://github.com/gorillapower/OpenClash>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)

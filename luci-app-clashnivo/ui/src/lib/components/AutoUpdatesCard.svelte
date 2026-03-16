@@ -3,7 +3,7 @@
   import { Card, CardHeader, CardContent } from '$lib/components/ui/card/index'
   import SettingRow from '$lib/components/setting-row.svelte'
 
-  const config = useUciConfig('openclash')
+  const config = useUciConfig('clashnivo')
   const cfg = $derived(config.data?.['config'] ?? {})
 
   // ---------------------------------------------------------------------------
@@ -14,9 +14,9 @@
   const subHour = $derived((cfg['auto_update_time'] as string | undefined) ?? '0')
   const subDay = $derived((cfg['config_update_week_time'] as string | undefined) ?? '0')
 
-  const setSubEnabled = useSetUciConfigBatch('openclash', 'config')
-  const setSubHour = useSetUciConfig('openclash', 'config', 'auto_update_time')
-  const setSubDay = useSetUciConfig('openclash', 'config', 'config_update_week_time')
+  const setSubEnabled = useSetUciConfigBatch('clashnivo', 'config')
+  const setSubHour = useSetUciConfig('clashnivo', 'config', 'auto_update_time')
+  const setSubDay = useSetUciConfig('clashnivo', 'config', 'config_update_week_time')
 
   // ---------------------------------------------------------------------------
   // GEO databases schedule
@@ -27,9 +27,9 @@
   const geoHour = $derived((cfg['geo_update_day_time'] as string | undefined) ?? '0')
   const geoDay = $derived((cfg['geo_update_week_time'] as string | undefined) ?? '0')
 
-  const setGeoEnabled = useSetUciConfigBatch('openclash', 'config')
-  const setGeoHour = useSetUciConfigBatch('openclash', 'config')
-  const setGeoDay = useSetUciConfigBatch('openclash', 'config')
+  const setGeoEnabled = useSetUciConfigBatch('clashnivo', 'config')
+  const setGeoHour = useSetUciConfigBatch('clashnivo', 'config')
+  const setGeoDay = useSetUciConfigBatch('clashnivo', 'config')
 
   // ---------------------------------------------------------------------------
   // Chnroute schedule
@@ -39,9 +39,9 @@
   const chnrHour = $derived((cfg['chnr_update_day_time'] as string | undefined) ?? '0')
   const chnrDay = $derived((cfg['chnr_update_week_time'] as string | undefined) ?? '0')
 
-  const setChnrEnabled = useSetUciConfig('openclash', 'config', 'chnr_auto_update')
-  const setChnrHour = useSetUciConfig('openclash', 'config', 'chnr_update_day_time')
-  const setChnrDay = useSetUciConfig('openclash', 'config', 'chnr_update_week_time')
+  const setChnrEnabled = useSetUciConfig('clashnivo', 'config', 'chnr_auto_update')
+  const setChnrHour = useSetUciConfig('clashnivo', 'config', 'chnr_update_day_time')
+  const setChnrDay = useSetUciConfig('clashnivo', 'config', 'chnr_update_week_time')
 
   // ---------------------------------------------------------------------------
   // Helpers

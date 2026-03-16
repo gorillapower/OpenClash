@@ -9,14 +9,14 @@
 
   const queryClient = useQueryClient()
 
-  const serviceStatus = useServiceStatus('openclash', { refetchInterval: 5000 })
+  const serviceStatus = useServiceStatus('clashnivo', { refetchInterval: 5000 })
   const clashConfig = useClashConfig()
-  const uciConfig = useUciConfig('openclash')   // no polling — only re-fetched on demand
+  const uciConfig = useUciConfig('clashnivo')   // no polling — only re-fetched on demand
   const clashVersion = useClashVersion()
 
-  const startMutation = useServiceStart('openclash')
-  const stopMutation = useServiceStop('openclash')
-  const restartMutation = useServiceRestart('openclash')
+  const startMutation = useServiceStart('clashnivo')
+  const stopMutation = useServiceStop('clashnivo')
+  const restartMutation = useServiceRestart('clashnivo')
   const subscriptionAdd = useSubscriptionAdd()
 
   // Optimistic state: set immediately on button click, cleared once mutation settles
@@ -82,7 +82,7 @@
 
       // Poll uciConfig every 2s until the config_path appears (download complete)
       const interval = setInterval(async () => {
-        await queryClient.invalidateQueries({ queryKey: luciKeys.uci('openclash') })
+        await queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
         if (configPath) clearInterval(interval)
       }, 2000)
 

@@ -9,27 +9,27 @@
   // Queries & mutations
   // ---------------------------------------------------------------------------
 
-  const config = useUciConfig('openclash')
+  const config = useUciConfig('clashnivo')
 
-  const setOperationMode = useSetUciConfig('openclash', 'config', 'en_mode')
-  const setUdpProxy = useSetUciConfig('openclash', 'config', 'enable_udp_proxy')
-  const setStackType = useSetUciConfig('openclash', 'config', 'stack_type')
-  const setDnsRedirect = useSetUciConfig('openclash', 'config', 'enable_redirect_dns')
-  const setDeviceMode = useSetUciConfig('openclash', 'config', 'lan_ac_mode')
-  const setBlackIps = useSetUciConfig('openclash', 'config', 'lan_ac_black_ips')
-  const setBlackMacs = useSetUciConfig('openclash', 'config', 'lan_ac_black_macs')
-  const setWhiteIps = useSetUciConfig('openclash', 'config', 'lan_ac_white_ips')
-  const setWhiteMacs = useSetUciConfig('openclash', 'config', 'lan_ac_white_macs')
+  const setOperationMode = useSetUciConfig('clashnivo', 'config', 'en_mode')
+  const setUdpProxy = useSetUciConfig('clashnivo', 'config', 'enable_udp_proxy')
+  const setStackType = useSetUciConfig('clashnivo', 'config', 'stack_type')
+  const setDnsRedirect = useSetUciConfig('clashnivo', 'config', 'enable_redirect_dns')
+  const setDeviceMode = useSetUciConfig('clashnivo', 'config', 'lan_ac_mode')
+  const setBlackIps = useSetUciConfig('clashnivo', 'config', 'lan_ac_black_ips')
+  const setBlackMacs = useSetUciConfig('clashnivo', 'config', 'lan_ac_black_macs')
+  const setWhiteIps = useSetUciConfig('clashnivo', 'config', 'lan_ac_white_ips')
+  const setWhiteMacs = useSetUciConfig('clashnivo', 'config', 'lan_ac_white_macs')
   const flushDns = useFlushDnsCache()
 
   // Advanced
-  const setChinaBypass = useSetUciConfig('openclash', 'config', 'china_ip_route')
-  const setCommonPorts = useSetUciConfig('openclash', 'config', 'common_ports')
-  const setRouterSelfProxy = useSetUciConfig('openclash', 'config', 'router_self_proxy')
-  const setDisableQuic = useSetUciConfig('openclash', 'config', 'disable_udp_quic')
-  const setIpv6Enable = useSetUciConfig('openclash', 'config', 'ipv6_enable')
-  const setIpv6Mode = useSetUciConfig('openclash', 'config', 'ipv6_mode')
-  const setGatewayCompat = useSetUciConfig('openclash', 'config', 'bypass_gateway_compatible')
+  const setChinaBypass = useSetUciConfig('clashnivo', 'config', 'china_ip_route')
+  const setCommonPorts = useSetUciConfig('clashnivo', 'config', 'common_ports')
+  const setRouterSelfProxy = useSetUciConfig('clashnivo', 'config', 'router_self_proxy')
+  const setDisableQuic = useSetUciConfig('clashnivo', 'config', 'disable_udp_quic')
+  const setIpv6Enable = useSetUciConfig('clashnivo', 'config', 'ipv6_enable')
+  const setIpv6Mode = useSetUciConfig('clashnivo', 'config', 'ipv6_mode')
+  const setGatewayCompat = useSetUciConfig('clashnivo', 'config', 'bypass_gateway_compatible')
 
   // ---------------------------------------------------------------------------
   // Derived values from UCI

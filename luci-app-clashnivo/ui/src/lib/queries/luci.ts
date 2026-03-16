@@ -159,7 +159,7 @@ export function useSubscriptionAdd(
   return createMutation<{ name: string }, unknown, { url: string; name?: string }>(() => ({
     mutationFn: ({ url, name }) => luciRpc.subscriptionAdd(url, name),
     onSuccess() {
-      queryClient.invalidateQueries({ queryKey: luciKeys.uci('openclash') })
+      queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
     },
     onError: onMutationError,
@@ -309,7 +309,7 @@ export function useFlushDnsCache(
 // Firewall rules file hooks
 // ---------------------------------------------------------------------------
 
-const FIREWALL_RULES_PATH = '/etc/openclash/custom/openclash_custom_firewall_rules.sh'
+const FIREWALL_RULES_PATH = '/etc/clashnivo/custom/openclash_custom_firewall_rules.sh'
 
 export function useFirewallRules(opts?: Partial<CreateQueryOptions<FileReadResult>>) {
   return createQuery<FileReadResult>(() => ({
@@ -377,7 +377,7 @@ export function useProxyGroups(opts?: Partial<CreateQueryOptions<ProxyGroup[]>>)
   return createQuery<ProxyGroup[]>(() => ({
     queryKey: luciKeys.proxyGroups,
     queryFn: async () => {
-      const pkg = (await luciRpc.uciGet('openclash')) as UciPackage
+      const pkg = (await luciRpc.uciGet('clashnivo')) as UciPackage
       return sectionsToProxyGroups(pkg)
     },
     ...opts
@@ -399,14 +399,14 @@ export function useAddProxyGroup(
   const queryClient = useQueryClient()
   return createMutation<void, unknown, ProxyGroupInput>(() => ({
     mutationFn: async (input) => {
-      const id = await luciRpc.uciAddSection('openclash', 'groups')
-      await luciRpc.uciSet('openclash', id, 'name', input.name)
-      await luciRpc.uciSet('openclash', id, 'type', input.type)
-      await luciRpc.uciSet('openclash', id, 'enabled', (input.enabled ?? true) ? '1' : '0')
-      if (input.testUrl) await luciRpc.uciSet('openclash', id, 'test_url', input.testUrl)
-      if (input.testInterval) await luciRpc.uciSet('openclash', id, 'test_interval', input.testInterval)
-      if (input.policyFilter) await luciRpc.uciSet('openclash', id, 'policy_filter', input.policyFilter)
-      await luciRpc.uciCommit('openclash')
+      const id = await luciRpc.uciAddSection('clashnivo', 'groups')
+      await luciRpc.uciSet('clashnivo', id, 'name', input.name)
+      await luciRpc.uciSet('clashnivo', id, 'type', input.type)
+      await luciRpc.uciSet('clashnivo', id, 'enabled', (input.enabled ?? true) ? '1' : '0')
+      if (input.testUrl) await luciRpc.uciSet('clashnivo', id, 'test_url', input.testUrl)
+      if (input.testInterval) await luciRpc.uciSet('clashnivo', id, 'test_interval', input.testInterval)
+      if (input.policyFilter) await luciRpc.uciSet('clashnivo', id, 'policy_filter', input.policyFilter)
+      await luciRpc.uciCommit('clashnivo')
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.proxyGroups })
@@ -423,24 +423,24 @@ export function useUpdateProxyGroup(
   const queryClient = useQueryClient()
   return createMutation<void, unknown, { id: string } & ProxyGroupInput>(() => ({
     mutationFn: async ({ id, ...input }) => {
-      await luciRpc.uciSet('openclash', id, 'name', input.name)
-      await luciRpc.uciSet('openclash', id, 'type', input.type)
+      await luciRpc.uciSet('clashnivo', id, 'name', input.name)
+      await luciRpc.uciSet('clashnivo', id, 'type', input.type)
       if (input.testUrl) {
-        await luciRpc.uciSet('openclash', id, 'test_url', input.testUrl)
+        await luciRpc.uciSet('clashnivo', id, 'test_url', input.testUrl)
       } else {
-        await luciRpc.uciDelete('openclash', id, 'test_url')
+        await luciRpc.uciDelete('clashnivo', id, 'test_url')
       }
       if (input.testInterval) {
-        await luciRpc.uciSet('openclash', id, 'test_interval', input.testInterval)
+        await luciRpc.uciSet('clashnivo', id, 'test_interval', input.testInterval)
       } else {
-        await luciRpc.uciDelete('openclash', id, 'test_interval')
+        await luciRpc.uciDelete('clashnivo', id, 'test_interval')
       }
       if (input.policyFilter) {
-        await luciRpc.uciSet('openclash', id, 'policy_filter', input.policyFilter)
+        await luciRpc.uciSet('clashnivo', id, 'policy_filter', input.policyFilter)
       } else {
-        await luciRpc.uciDelete('openclash', id, 'policy_filter')
+        await luciRpc.uciDelete('clashnivo', id, 'policy_filter')
       }
-      await luciRpc.uciCommit('openclash')
+      await luciRpc.uciCommit('clashnivo')
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.proxyGroups })
@@ -457,8 +457,8 @@ export function useDeleteProxyGroup(
   const queryClient = useQueryClient()
   return createMutation<void, unknown, string>(() => ({
     mutationFn: async (id: string) => {
-      await luciRpc.uciDelete('openclash', id)
-      await luciRpc.uciCommit('openclash')
+      await luciRpc.uciDelete('clashnivo', id)
+      await luciRpc.uciCommit('clashnivo')
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.proxyGroups })
@@ -484,8 +484,8 @@ export function useToggleProxyGroup(
       return { previous }
     },
     mutationFn: async ({ id, enabled }) => {
-      await luciRpc.uciSet('openclash', id, 'enabled', enabled ? '1' : '0')
-      await luciRpc.uciCommit('openclash')
+      await luciRpc.uciSet('clashnivo', id, 'enabled', enabled ? '1' : '0')
+      await luciRpc.uciCommit('clashnivo')
     },
     onError(err, _vars, context) {
       // Roll back the optimistic update
@@ -505,7 +505,7 @@ export function useToggleProxyGroup(
 // Custom rules file hooks
 // ---------------------------------------------------------------------------
 
-const CUSTOM_RULES_PATH = '/etc/openclash/custom/openclash_custom_rules.list'
+const CUSTOM_RULES_PATH = '/etc/clashnivo/custom/openclash_custom_rules.list'
 
 export interface CustomRule {
   type: string
@@ -571,7 +571,7 @@ export function useSetCustomRules(
 // Config overwrite file hooks
 // ---------------------------------------------------------------------------
 
-const CONFIG_OVERWRITE_PATH = '/etc/openclash/custom/openclash_custom_overwrite.sh'
+const CONFIG_OVERWRITE_PATH = '/etc/clashnivo/custom/openclash_custom_overwrite.sh'
 
 export function useConfigOverwrite(opts?: Partial<CreateQueryOptions<FileReadResult>>) {
   return createQuery<FileReadResult>(() => ({
@@ -658,7 +658,7 @@ export function useRuleProviders(opts?: Partial<CreateQueryOptions<RuleProvider[
   return createQuery<RuleProvider[]>(() => ({
     queryKey: luciKeys.ruleProviders,
     queryFn: async () => {
-      const pkg = (await luciRpc.uciGet('openclash')) as UciPackage
+      const pkg = (await luciRpc.uciGet('clashnivo')) as UciPackage
       return sectionsToRuleProviders(pkg)
     },
     ...opts
@@ -671,17 +671,17 @@ export function useAddRuleProvider(
   const queryClient = useQueryClient()
   return createMutation<void, unknown, RuleProviderInput>(() => ({
     mutationFn: async (input) => {
-      const id = await luciRpc.uciAddSection('openclash', 'rule_providers')
-      await luciRpc.uciSet('openclash', id, 'name', input.name)
-      await luciRpc.uciSet('openclash', id, 'type', input.type)
-      await luciRpc.uciSet('openclash', id, 'behavior', input.behavior)
-      await luciRpc.uciSet('openclash', id, 'enabled', (input.enabled ?? true) ? '1' : '0')
-      await luciRpc.uciSet('openclash', id, 'format', input.format ?? 'yaml')
-      await luciRpc.uciSet('openclash', id, 'position', input.position ?? '0')
-      if (input.url) await luciRpc.uciSet('openclash', id, 'url', input.url)
-      if (input.interval) await luciRpc.uciSet('openclash', id, 'interval', input.interval)
-      if (input.group) await luciRpc.uciSet('openclash', id, 'group', input.group)
-      await luciRpc.uciCommit('openclash')
+      const id = await luciRpc.uciAddSection('clashnivo', 'rule_providers')
+      await luciRpc.uciSet('clashnivo', id, 'name', input.name)
+      await luciRpc.uciSet('clashnivo', id, 'type', input.type)
+      await luciRpc.uciSet('clashnivo', id, 'behavior', input.behavior)
+      await luciRpc.uciSet('clashnivo', id, 'enabled', (input.enabled ?? true) ? '1' : '0')
+      await luciRpc.uciSet('clashnivo', id, 'format', input.format ?? 'yaml')
+      await luciRpc.uciSet('clashnivo', id, 'position', input.position ?? '0')
+      if (input.url) await luciRpc.uciSet('clashnivo', id, 'url', input.url)
+      if (input.interval) await luciRpc.uciSet('clashnivo', id, 'interval', input.interval)
+      if (input.group) await luciRpc.uciSet('clashnivo', id, 'group', input.group)
+      await luciRpc.uciCommit('clashnivo')
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.ruleProviders })
@@ -698,24 +698,24 @@ export function useUpdateRuleProvider(
   const queryClient = useQueryClient()
   return createMutation<void, unknown, { id: string } & RuleProviderInput>(() => ({
     mutationFn: async ({ id, ...input }) => {
-      await luciRpc.uciSet('openclash', id, 'name', input.name)
-      await luciRpc.uciSet('openclash', id, 'type', input.type)
-      await luciRpc.uciSet('openclash', id, 'behavior', input.behavior)
-      await luciRpc.uciSet('openclash', id, 'format', input.format ?? 'yaml')
-      await luciRpc.uciSet('openclash', id, 'position', input.position ?? '0')
+      await luciRpc.uciSet('clashnivo', id, 'name', input.name)
+      await luciRpc.uciSet('clashnivo', id, 'type', input.type)
+      await luciRpc.uciSet('clashnivo', id, 'behavior', input.behavior)
+      await luciRpc.uciSet('clashnivo', id, 'format', input.format ?? 'yaml')
+      await luciRpc.uciSet('clashnivo', id, 'position', input.position ?? '0')
       if (input.url) {
-        await luciRpc.uciSet('openclash', id, 'url', input.url)
-        await luciRpc.uciSet('openclash', id, 'interval', input.interval ?? '86400')
+        await luciRpc.uciSet('clashnivo', id, 'url', input.url)
+        await luciRpc.uciSet('clashnivo', id, 'interval', input.interval ?? '86400')
       } else {
-        await luciRpc.uciDelete('openclash', id, 'url')
-        await luciRpc.uciDelete('openclash', id, 'interval')
+        await luciRpc.uciDelete('clashnivo', id, 'url')
+        await luciRpc.uciDelete('clashnivo', id, 'interval')
       }
       if (input.group) {
-        await luciRpc.uciSet('openclash', id, 'group', input.group)
+        await luciRpc.uciSet('clashnivo', id, 'group', input.group)
       } else {
-        await luciRpc.uciDelete('openclash', id, 'group')
+        await luciRpc.uciDelete('clashnivo', id, 'group')
       }
-      await luciRpc.uciCommit('openclash')
+      await luciRpc.uciCommit('clashnivo')
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.ruleProviders })
@@ -732,8 +732,8 @@ export function useDeleteRuleProvider(
   const queryClient = useQueryClient()
   return createMutation<void, unknown, string>(() => ({
     mutationFn: async (id: string) => {
-      await luciRpc.uciDelete('openclash', id)
-      await luciRpc.uciCommit('openclash')
+      await luciRpc.uciDelete('clashnivo', id)
+      await luciRpc.uciCommit('clashnivo')
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.ruleProviders })
@@ -758,8 +758,8 @@ export function useToggleRuleProvider(
       return { previous }
     },
     mutationFn: async ({ id, enabled }) => {
-      await luciRpc.uciSet('openclash', id, 'enabled', enabled ? '1' : '0')
-      await luciRpc.uciCommit('openclash')
+      await luciRpc.uciSet('clashnivo', id, 'enabled', enabled ? '1' : '0')
+      await luciRpc.uciCommit('clashnivo')
     },
     onError(err, _vars, context) {
       if (context?.previous) {
@@ -778,7 +778,7 @@ export function useToggleRuleProvider(
 // Advanced YAML editor
 // ---------------------------------------------------------------------------
 
-const ADVANCED_YAML_PATH = '/etc/openclash/custom/openclash_advanced_yaml.yaml'
+const ADVANCED_YAML_PATH = '/etc/clashnivo/custom/openclash_advanced_yaml.yaml'
 
 export function useAdvancedYaml(opts?: Partial<CreateQueryOptions<FileReadResult>>) {
   return createQuery<FileReadResult>(() => ({
@@ -956,7 +956,7 @@ export function useCustomProxies(opts?: Partial<CreateQueryOptions<CustomProxy[]
   return createQuery<CustomProxy[]>(() => ({
     queryKey: luciKeys.customProxies,
     queryFn: async () => {
-      const pkg = (await luciRpc.uciGet('openclash')) as UciPackage
+      const pkg = (await luciRpc.uciGet('clashnivo')) as UciPackage
       return sectionsToCustomProxies(pkg)
     },
     ...opts
@@ -969,23 +969,23 @@ export function useAddCustomProxy(
   const queryClient = useQueryClient()
   return createMutation<void, unknown, CustomProxyInput>(() => ({
     mutationFn: async (input) => {
-      const id = await luciRpc.uciAddSection('openclash', 'custom_proxy')
-      await luciRpc.uciSet('openclash', id, 'name', input.name)
-      await luciRpc.uciSet('openclash', id, 'proxy_type', input.proxyType)
-      await luciRpc.uciSet('openclash', id, 'server', input.server)
-      await luciRpc.uciSet('openclash', id, 'port', input.port)
-      await luciRpc.uciSet('openclash', id, 'enabled', (input.enabled ?? true) ? '1' : '0')
-      if (input.cipher) await luciRpc.uciSet('openclash', id, 'cipher', input.cipher)
-      if (input.password) await luciRpc.uciSet('openclash', id, 'password', input.password)
-      if (input.udp) await luciRpc.uciSet('openclash', id, 'udp', '1')
-      if (input.sni) await luciRpc.uciSet('openclash', id, 'sni', input.sni)
-      if (input.skipCertVerify) await luciRpc.uciSet('openclash', id, 'skip_cert_verify', '1')
-      if (input.uuid) await luciRpc.uciSet('openclash', id, 'uuid', input.uuid)
-      if (input.alterId) await luciRpc.uciSet('openclash', id, 'alter_id', input.alterId)
-      if (input.vmessCipher) await luciRpc.uciSet('openclash', id, 'vmess_cipher', input.vmessCipher)
-      if (input.tls) await luciRpc.uciSet('openclash', id, 'tls', '1')
-      if (input.flow) await luciRpc.uciSet('openclash', id, 'flow', input.flow)
-      await luciRpc.uciCommit('openclash')
+      const id = await luciRpc.uciAddSection('clashnivo', 'custom_proxy')
+      await luciRpc.uciSet('clashnivo', id, 'name', input.name)
+      await luciRpc.uciSet('clashnivo', id, 'proxy_type', input.proxyType)
+      await luciRpc.uciSet('clashnivo', id, 'server', input.server)
+      await luciRpc.uciSet('clashnivo', id, 'port', input.port)
+      await luciRpc.uciSet('clashnivo', id, 'enabled', (input.enabled ?? true) ? '1' : '0')
+      if (input.cipher) await luciRpc.uciSet('clashnivo', id, 'cipher', input.cipher)
+      if (input.password) await luciRpc.uciSet('clashnivo', id, 'password', input.password)
+      if (input.udp) await luciRpc.uciSet('clashnivo', id, 'udp', '1')
+      if (input.sni) await luciRpc.uciSet('clashnivo', id, 'sni', input.sni)
+      if (input.skipCertVerify) await luciRpc.uciSet('clashnivo', id, 'skip_cert_verify', '1')
+      if (input.uuid) await luciRpc.uciSet('clashnivo', id, 'uuid', input.uuid)
+      if (input.alterId) await luciRpc.uciSet('clashnivo', id, 'alter_id', input.alterId)
+      if (input.vmessCipher) await luciRpc.uciSet('clashnivo', id, 'vmess_cipher', input.vmessCipher)
+      if (input.tls) await luciRpc.uciSet('clashnivo', id, 'tls', '1')
+      if (input.flow) await luciRpc.uciSet('clashnivo', id, 'flow', input.flow)
+      await luciRpc.uciCommit('clashnivo')
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.customProxies })
@@ -1002,10 +1002,10 @@ export function useUpdateCustomProxy(
   const queryClient = useQueryClient()
   return createMutation<void, unknown, { id: string } & CustomProxyInput>(() => ({
     mutationFn: async ({ id, ...input }) => {
-      await luciRpc.uciSet('openclash', id, 'name', input.name)
-      await luciRpc.uciSet('openclash', id, 'proxy_type', input.proxyType)
-      await luciRpc.uciSet('openclash', id, 'server', input.server)
-      await luciRpc.uciSet('openclash', id, 'port', input.port)
+      await luciRpc.uciSet('clashnivo', id, 'name', input.name)
+      await luciRpc.uciSet('clashnivo', id, 'proxy_type', input.proxyType)
+      await luciRpc.uciSet('clashnivo', id, 'server', input.server)
+      await luciRpc.uciSet('clashnivo', id, 'port', input.port)
 
       // Write optional fields or delete if cleared
       const optFields: Array<[string, string | undefined]> = [
@@ -1019,9 +1019,9 @@ export function useUpdateCustomProxy(
       ]
       for (const [key, val] of optFields) {
         if (val) {
-          await luciRpc.uciSet('openclash', id, key, val)
+          await luciRpc.uciSet('clashnivo', id, key, val)
         } else {
-          await luciRpc.uciDelete('openclash', id, key)
+          await luciRpc.uciDelete('clashnivo', id, key)
         }
       }
 
@@ -1032,13 +1032,13 @@ export function useUpdateCustomProxy(
       ]
       for (const [key, val] of boolFields) {
         if (val) {
-          await luciRpc.uciSet('openclash', id, key, '1')
+          await luciRpc.uciSet('clashnivo', id, key, '1')
         } else {
-          await luciRpc.uciDelete('openclash', id, key)
+          await luciRpc.uciDelete('clashnivo', id, key)
         }
       }
 
-      await luciRpc.uciCommit('openclash')
+      await luciRpc.uciCommit('clashnivo')
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.customProxies })
@@ -1055,8 +1055,8 @@ export function useDeleteCustomProxy(
   const queryClient = useQueryClient()
   return createMutation<void, unknown, string>(() => ({
     mutationFn: async (id: string) => {
-      await luciRpc.uciDelete('openclash', id)
-      await luciRpc.uciCommit('openclash')
+      await luciRpc.uciDelete('clashnivo', id)
+      await luciRpc.uciCommit('clashnivo')
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.customProxies })
@@ -1081,8 +1081,8 @@ export function useToggleCustomProxy(
       return { previous }
     },
     mutationFn: async ({ id, enabled }) => {
-      await luciRpc.uciSet('openclash', id, 'enabled', enabled ? '1' : '0')
-      await luciRpc.uciCommit('openclash')
+      await luciRpc.uciSet('clashnivo', id, 'enabled', enabled ? '1' : '0')
+      await luciRpc.uciCommit('clashnivo')
     },
     onError(err, _vars, context) {
       if (context?.previous) {

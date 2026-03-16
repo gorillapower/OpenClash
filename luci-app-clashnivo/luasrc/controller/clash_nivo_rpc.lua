@@ -180,9 +180,8 @@ function handlers.uci_delete(p)
 end
 
 function handlers.service_status(p)
-    local name = p[1] or "clashnivo"
-    -- Use pidof to check if the process is running and get its PID
-    local pid_str = sys.exec(string.format("pidof %s 2>/dev/null | tr -d '\\n'", name))
+    -- The Clash binary runs as 'clash' or 'mihomo' — check both, not the service name
+    local pid_str = sys.exec("pidof clash mihomo 2>/dev/null | tr -d '\\n'")
     if pid_str and pid_str ~= "" then
         return { running = true, pid = tonumber(pid_str:match("%d+")) }
     end
