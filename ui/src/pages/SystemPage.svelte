@@ -5,6 +5,7 @@
   import { luciKeys } from '$lib/queries/luci'
   import Button from '$lib/components/ui/button/button.svelte'
   import { Card, CardHeader, CardContent } from '$lib/components/ui/card/index'
+  import LogsViewer from '$lib/components/LogsViewer.svelte'
 
   const queryClient = useQueryClient()
 
@@ -121,4 +122,7 @@
       </div>
     </CardContent>
   </Card>
+
+  <!-- Logs section -->
+  <LogsViewer />
 </div>

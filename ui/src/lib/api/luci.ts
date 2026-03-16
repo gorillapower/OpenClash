@@ -270,5 +270,14 @@ export const luciRpc = {
 
   coreUpdateStatus(): Promise<CoreUpdateStatus> {
     return rpcCall('core.updateStatus', [])
+  },
+
+  // Logs
+  logService(lines?: number): Promise<string> {
+    return rpcCall<string>('log.service', lines !== undefined ? [lines] : [])
+  },
+
+  logCore(lines?: number): Promise<string> {
+    return rpcCall<string>('log.core', lines !== undefined ? [lines] : [])
   }
 }

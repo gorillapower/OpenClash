@@ -45,7 +45,13 @@ vi.mock('$lib/queries/luci', () => ({
 
 vi.mock('@tanstack/svelte-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/svelte-query')>()
-  return { ...actual, useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })) }
+  const pendingQuery = { data: undefined, isPending: true, isError: false, isSuccess: false }
+  return {
+    ...actual,
+    useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
+    // LogsViewer uses createQuery directly — return a pending stub so the component renders
+    createQuery: vi.fn(() => pendingQuery),
+  }
 })
 
 import { useClashVersion } from '$lib/queries/clash'
