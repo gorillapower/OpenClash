@@ -1,0 +1,25 @@
+<%#
+  Clash Nivo — embed the Svelte SPA full-screen inside LuCI.
+  The SPA is installed at /luci-static/clash-nivo/ and handles its own routing.
+-%>
+<%+header%>
+
+<style>
+#clash-nivo-frame {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  border: none;
+  z-index: 9999;
+}
+</style>
+
+<iframe
+  id="clash-nivo-frame"
+  src="/luci-static/clash-nivo/"
+  allowfullscreen
+></iframe>
+
+<%+footer%>
