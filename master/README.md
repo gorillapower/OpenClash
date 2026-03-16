@@ -14,4 +14,4 @@ apk add luci-app-clashnivo-*.apk
 
 ## Latest release
 
-![New Release](https://img.shields.io/badge/New Release-v0.1.6-orange.svg)
+![New Release](https://img.shields.io/badge/New Release-v0.1.7-orange.svg)
