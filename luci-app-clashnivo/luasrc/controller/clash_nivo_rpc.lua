@@ -284,11 +284,11 @@ function handlers.subscription_update(p)
     if name then
         -- Single subscription by name
         sys.call(string.format(
-            "bash /usr/share/clashnivo/openclash_config.sh '%s' >/dev/null 2>&1 &",
+            "bash /usr/share/clashnivo/openclash.sh '%s' >/dev/null 2>&1 &",
             name:gsub("'", "'\\''")))
     else
         -- Update all subscriptions
-        sys.call("bash /usr/share/clashnivo/openclash_config.sh >/dev/null 2>&1 &")
+        sys.call("bash /usr/share/clashnivo/openclash.sh >/dev/null 2>&1 &")
     end
     return true
 end
@@ -323,7 +323,7 @@ function handlers.subscription_add(p)
 
     -- Trigger async subscription download
     sys.call(string.format(
-        "bash /usr/share/clashnivo/openclash_config.sh '%s' >/dev/null 2>&1 &",
+        "bash /usr/share/clashnivo/openclash.sh '%s' >/dev/null 2>&1 &",
         safe_name))
 
     return { name = name }
@@ -404,7 +404,7 @@ function handlers.subscription_edit(p)
 end
 
 function handlers.subscription_update_all()
-    sys.call("bash /usr/share/clashnivo/openclash_config.sh >/dev/null 2>&1 &")
+    sys.call("bash /usr/share/clashnivo/openclash.sh >/dev/null 2>&1 &")
     return true
 end
 

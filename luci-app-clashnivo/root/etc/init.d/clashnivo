@@ -414,7 +414,7 @@ config_check()
 #rm -rf "/etc/clashnivo/*.y*" 2>/dev/null
 cp "$RAW_CONFIG_FILE" "$TMP_CONFIG_FILE"
 
-ruby -ryaml -rYAML -I "/usr/share/openclash" -E UTF-8 -e "
+ruby -ryaml -rYAML -I "/usr/share/clashnivo" -E UTF-8 -e "
 begin
    YAML.load_file('$RAW_CONFIG_FILE');
 rescue Exception => e
@@ -457,7 +457,7 @@ write_run_quick()
 {
    : > "/tmp/clashnivo.change"
    {
-      echo "/etc/config/openclash"
+      echo "/etc/config/clashnivo"
       echo "$RAW_CONFIG_FILE"
       echo "$CONFIG_FILE"
       ls -d /etc/clashnivo/custom/* 2>/dev/null
@@ -498,7 +498,7 @@ do_run_file()
 
    #Some MIPS devices file system cound not use db
    source "/etc/openwrt_release"
-   [ "$small_flash_memory" == "1" ] || [ -n "$(echo $core_version |grep mips)" ] || [ -n "$(echo $DISTRIB_ARCH |grep mips)" ] || [ -n "$(opkg status libc 2>/dev/null |grep 'Architecture' |awk -F ': ' '{print $2}' |grep mips)" ] || [ -n "$(apk list libc 2>/dev/null |grep mips)" ] && mkdir -p /tmp/etc/openclash && CACHE_PATH="/tmp/etc/clashnivo/cache.db"
+   [ "$small_flash_memory" == "1" ] || [ -n "$(echo $core_version |grep mips)" ] || [ -n "$(echo $DISTRIB_ARCH |grep mips)" ] || [ -n "$(opkg status libc 2>/dev/null |grep 'Architecture' |awk -F ': ' '{print $2}' |grep mips)" ] || [ -n "$(apk list libc 2>/dev/null |grep mips)" ] && mkdir -p /tmp/etc/clashnivo && CACHE_PATH="/tmp/etc/clashnivo/cache.db"
 
    [ -f "/etc/clashnivo/geosite.dat" ] && {
       mv "/etc/clashnivo/geosite.dat" "/etc/clashnivo/GeoSite.dat"
@@ -522,9 +522,9 @@ do_run_file()
       mv "/tmp/etc/clashnivo/GeoSite.dat" "$geosite_path"
       mv "/tmp/etc/clashnivo/GeoIP.dat" "$geoip_path"
       mv "/tmp/etc/clashnivo/Model.bin" "$lgbm_path"
-      mv "/tmp/etc/clashnivo/core/" "/etc/openclash"
+      mv "/tmp/etc/clashnivo/core/" "/etc/clashnivo/core/"
       if [ "$CACHE_PATH" != "/tmp/etc/clashnivo/cache.db" ]; then
-         rm -rf "/tmp/etc/openclash"
+         rm -rf "/tmp/etc/clashnivo"
       fi
    else
       meta_core_path="/tmp/etc/clashnivo/core/clash_meta"
@@ -540,7 +540,7 @@ do_run_file()
       [ ! -h "/etc/clashnivo/GeoSite.dat" ] && mv "/etc/clashnivo/GeoSite.dat" "$geosite_path"
       [ ! -h "/etc/clashnivo/GeoIP.dat" ] && mv "/etc/clashnivo/GeoIP.dat" "$geoip_path"
       [ ! -h "/etc/clashnivo/Model.bin" ] && mv "/etc/clashnivo/Model.bin" "$lgbm_path"
-      mv "/etc/clashnivo/core/" "/tmp/etc/openclash"
+      mv "/etc/clashnivo/core/" "/tmp/etc/clashnivo/core/"
    fi
 
    rm -rf "/etc/clashnivo/cache.db"
@@ -787,7 +787,7 @@ start_run_core()
    fi
    chown root:root "$CLASH"
    procd_open_instance "openclash"
-   procd_set_param env SAFE_PATHS=/usr/share/openclash:/etc/ssl
+   procd_set_param env SAFE_PATHS=/usr/share/clashnivo:/etc/ssl
    procd_set_param command /bin/sh -c "$CLASH -d $CLASH_CONFIG -f \"$CONFIG_FILE\" >> $LOG_FILE 2>&1"
    procd_set_param user "root"
    procd_set_param group "nogroup"
@@ -1415,21 +1415,21 @@ firewall_redirect_exclude()
 set_firewall()
 {
 
-if [ -z "$(uci -q get firewall.openclash)" ] || [ -z "$(uci -q get ucitrack.@openclash[-1].init)" ]; then
-   uci -q delete ucitrack.@openclash[-1]
-   uci -q add ucitrack openclash
-   uci -q set ucitrack.@openclash[-1].init=openclash
+if [ -z "$(uci -q get firewall.clashnivo)" ] || [ -z "$(uci -q get ucitrack.@clashnivo[-1].init)" ]; then
+   uci -q delete ucitrack.@clashnivo[-1]
+   uci -q add ucitrack clashnivo
+   uci -q set ucitrack.@clashnivo[-1].init=clashnivo
    uci -q commit ucitrack
-   uci -q delete firewall.openclash
-   uci -q set firewall.openclash=include
-   uci -q set firewall.openclash.type=script
-   uci -q set firewall.openclash.path=/var/etc/openclash.include
-   [ -n "$FW4" ] || uci -q set firewall.openclash.reload=1
+   uci -q delete firewall.clashnivo
+   uci -q set firewall.clashnivo=include
+   uci -q set firewall.clashnivo.type=script
+   uci -q set firewall.clashnivo.path=/var/etc/clashnivo.include
+   [ -n "$FW4" ] || uci -q set firewall.clashnivo.reload=1
    uci -q commit firewall
 fi
 
 mkdir -p /var/etc
-cat > "/var/etc/openclash.include" <<-EOF
+cat > "/var/etc/clashnivo.include" <<-EOF
 /etc/init.d/clashnivo reload "firewall"
 EOF
 
@@ -3154,7 +3154,7 @@ fi
 
 revert_firewall()
 {
-   rm -rf /var/etc/openclash.include
+   rm -rf /var/etc/clashnivo.include
 
    ip rule del fwmark "$PROXY_FWMARK" table "$PROXY_ROUTE_TABLE"
    ip route del local 0.0.0.0/0 dev lo table "$PROXY_ROUTE_TABLE"
@@ -3593,7 +3593,7 @@ ${trimmed}"
       cat >> "$overwrite_script" <<'EOF'
 if [ -f "/tmp/yaml_openclash_ruby_parts/$OPENCLASH_OVERWRITE_SID" ]; then
    ruby_code=$(cat "/tmp/yaml_openclash_ruby_parts/$OPENCLASH_OVERWRITE_SID")
-   ruby -ryaml -rYAML -I "/usr/share/openclash" -E UTF-8 -e "
+   ruby -ryaml -rYAML -I "/usr/share/clashnivo" -E UTF-8 -e "
       Value = YAML.load_file('$CONFIG_FILE');
       threads = []
       $ruby_code
@@ -3788,7 +3788,7 @@ start_service()
                   [ -z "$ruby_code" ] && continue
                   if [ -f "$yaml_file" ]; then
                      (
-                        ruby -ryaml -rYAML -I "/usr/share/openclash" -E UTF-8 -e "
+                        ruby -ryaml -rYAML -I "/usr/share/clashnivo" -E UTF-8 -e "
                         Value = YAML.load_file('$yaml_file');
                         threads = []
                         $ruby_code
