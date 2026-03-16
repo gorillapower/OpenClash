@@ -57,30 +57,30 @@ define Build/Prepare
 	$(CP) $(CURDIR)/ui/dist $(PKG_BUILD_DIR)/root/www/luci-static/clash-nivo
 	$(foreach po,$(wildcard ${CURDIR}/po/zh-cn/*.po), \
 		po2lmo $(po) $(PKG_BUILD_DIR)/$(patsubst %.po,%.lmo,$(notdir $(po)));)
-	chmod 0755 $(PKG_BUILD_DIR)/root/etc/init.d/openclash
-	chmod -R 0755 $(PKG_BUILD_DIR)/root/usr/share/openclash/
-	mkdir -p $(PKG_BUILD_DIR)/root/etc/openclash/config
-	mkdir -p $(PKG_BUILD_DIR)/root/etc/openclash/rule_provider
-	mkdir -p $(PKG_BUILD_DIR)/root/etc/openclash/proxy_provider
-	mkdir -p $(PKG_BUILD_DIR)/root/etc/openclash/core
-	mkdir -p $(PKG_BUILD_DIR)/root/usr/share/openclash/backup/overwrite
-	cp -f "$(PKG_BUILD_DIR)/root/etc/config/openclash" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/custom/openclash_custom_rules.list" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash_custom_rules.list" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/custom/openclash_custom_rules_2.list" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash_custom_rules_2.list" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/custom/openclash_custom_hosts.list" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash_custom_hosts.list" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/custom/openclash_custom_fake_filter.list" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash_custom_fake_filter.list" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/custom/openclash_custom_domain_dns.list" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash_custom_domain_dns.list" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/custom/openclash_custom_domain_dns_policy.list" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash_custom_domain_dns_policy.list" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/custom/openclash_custom_proxy_server_dns_policy.list" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash_custom_proxy_server_dns_policy.list" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/custom/openclash_custom_fallback_filter.yaml" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash_custom_fallback_filter.yaml" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/custom/openclash_custom_sniffer.yaml" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash_custom_sniffer.yaml" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/custom/openclash_custom_localnetwork_ipv4.list" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash_custom_localnetwork_ipv4.list" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/custom/openclash_custom_localnetwork_ipv6.list" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash_custom_localnetwork_ipv6.list" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/custom/openclash_custom_chnroute_pass.list" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash_custom_chnroute_pass.list" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/custom/openclash_custom_chnroute6_pass.list" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash_custom_chnroute6_pass.list" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/custom/openclash_custom_firewall_rules.sh" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash_custom_firewall_rules.sh" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/custom/openclash_custom_overwrite.sh" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/openclash_custom_overwrite.sh" >/dev/null 2>&1
-	cp -f "$(PKG_BUILD_DIR)/root/etc/openclash/overwrite/default" "$(PKG_BUILD_DIR)/root/usr/share/openclash/backup/overwrite/default" >/dev/null 2>&1
+	chmod 0755 $(PKG_BUILD_DIR)/root/etc/init.d/clashnivo
+	chmod -R 0755 $(PKG_BUILD_DIR)/root/usr/share/clashnivo/
+	mkdir -p $(PKG_BUILD_DIR)/root/etc/clashnivo/config
+	mkdir -p $(PKG_BUILD_DIR)/root/etc/clashnivo/rule_provider
+	mkdir -p $(PKG_BUILD_DIR)/root/etc/clashnivo/proxy_provider
+	mkdir -p $(PKG_BUILD_DIR)/root/etc/clashnivo/core
+	mkdir -p $(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/overwrite
+	cp -f "$(PKG_BUILD_DIR)/root/etc/config/openclash" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_rules.list" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_rules.list" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_rules_2.list" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_rules_2.list" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_hosts.list" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_hosts.list" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_fake_filter.list" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_fake_filter.list" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_domain_dns.list" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_domain_dns.list" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_domain_dns_policy.list" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_domain_dns_policy.list" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_proxy_server_dns_policy.list" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_proxy_server_dns_policy.list" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_fallback_filter.yaml" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_fallback_filter.yaml" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_sniffer.yaml" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_sniffer.yaml" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_localnetwork_ipv4.list" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_localnetwork_ipv4.list" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_localnetwork_ipv6.list" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_localnetwork_ipv6.list" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_chnroute_pass.list" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_chnroute_pass.list" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_chnroute6_pass.list" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_chnroute6_pass.list" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_firewall_rules.sh" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_firewall_rules.sh" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/custom/clashnivo_custom_overwrite.sh" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/clashnivo_custom_overwrite.sh" >/dev/null 2>&1
+	cp -f "$(PKG_BUILD_DIR)/root/etc/clashnivo/overwrite/default" "$(PKG_BUILD_DIR)/root/usr/share/clashnivo/backup/overwrite/default" >/dev/null 2>&1
 	exit 0
 endef
 
@@ -97,8 +97,8 @@ define Package/$(PKG_NAME)/preinst
 #!/bin/sh
 	if [ -f "/etc/config/openclash" ] && [ ! -f "/tmp/openclash.bak" ]; then
 		cp -f "/etc/config/openclash" "/tmp/openclash.bak" >/dev/null 2>&1
-		cp -rf "/etc/openclash" "/tmp/openclash" >/dev/null 2>&1
-		cp -rf "/usr/share/openclash/ui" "/tmp/openclash_ui" >/dev/null 2>&1
+		cp -rf "/etc/clashnivo" "/tmp/openclash" >/dev/null 2>&1
+		cp -rf "/usr/share/clashnivo/ui" "/tmp/openclash_ui" >/dev/null 2>&1
 		cp -rf "/www/luci-static/resources/openclash/pac" "/tmp/pac" >/dev/null 2>&1
 	fi
 	exit 0
@@ -111,11 +111,11 @@ endef
 
 define Package/$(PKG_NAME)/prerm
 #!/bin/sh
-	[ -n "$(pidof clash)" ] && /etc/init.d/openclash stop 2>/dev/null
+	[ -n "$(pidof clash)" ] && /etc/init.d/clashnivo stop 2>/dev/null
 	if [ -f "/etc/config/openclash" ] && [ ! -f "/tmp/openclash.bak" ]; then
 		cp -f "/etc/config/openclash" "/tmp/openclash.bak" >/dev/null 2>&1
-		cp -rf "/etc/openclash" "/tmp/openclash" >/dev/null 2>&1
-		cp -rf "/usr/share/openclash/ui" "/tmp/openclash_ui" >/dev/null 2>&1
+		cp -rf "/etc/clashnivo" "/tmp/openclash" >/dev/null 2>&1
+		cp -rf "/usr/share/clashnivo/ui" "/tmp/openclash_ui" >/dev/null 2>&1
 		cp -rf "/www/luci-static/resources/openclash/pac" "/tmp/pac" >/dev/null 2>&1
 	fi
 	exit 0
@@ -130,18 +130,18 @@ define Package/$(PKG_NAME)/postrm
 	   DNSMASQ_CONF_DIR="/tmp/dnsmasq.d"
 	fi
 	DNSMASQ_CONF_DIR=$${DNSMASQ_CONF_DIR%*/}
-	rm -rf /etc/openclash >/dev/null 2>&1
+	rm -rf /etc/clashnivo >/dev/null 2>&1
 	rm -rf /etc/config/openclash >/dev/null 2>&1
 	rm -rf /tmp/openclash.log >/dev/null 2>&1
 	rm -rf /tmp/openclash_start.log >/dev/null 2>&1
 	rm -rf /tmp/openclash_last_version >/dev/null 2>&1
 	rm -rf /tmp/openclash.change >/dev/null 2>&1
 	rm -rf /tmp/clash_last_version >/dev/null 2>&1
-	rm -rf /usr/share/openclash >/dev/null 2>&1
-	rm -rf ${DNSMASQ_CONF_DIR}/dnsmasq_openclash_custom_domain.conf >/dev/null 2>&1
+	rm -rf /usr/share/clashnivo >/dev/null 2>&1
+	rm -rf ${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_custom_domain.conf >/dev/null 2>&1
 	rm -rf ${DNSMASQ_CONF_DIR}/dnsmasq_openclash_chnroute_pass.conf >/dev/null 2>&1
 	rm -rf ${DNSMASQ_CONF_DIR}/dnsmasq_openclash_chnroute6_pass.conf >/dev/null 2>&1
-	rm -rf /tmp/etc/openclash >/dev/null 2>&1
+	rm -rf /tmp/etc/clashnivo >/dev/null 2>&1
 	rm -rf /tmp/openclash_announcement >/dev/null 2>&1
 	rm -rf /www/luci-static/resources/openclash >/dev/null 2>&1
 	sed -i '/OpenClash Append/,/OpenClash Append End/d' "/usr/lib/lua/luci/model/network.lua" >/dev/null 2>&1

@@ -13,16 +13,16 @@ local nixio   = require "nixio"
 
 -- Restrict file operations to OpenClash-owned paths only
 local ALLOWED_PATH_PATTERNS = {
-    "^/etc/openclash/",
-    "^/tmp/openclash",
+    "^/etc/clashnivo/",
+    "^/tmp/clashnivo",
     "^/tmp/clash",
 }
 
-local LOG_SERVICE    = "/tmp/openclash.log"
+local LOG_SERVICE    = "/tmp/clashnivo.log"
 local LOG_CORE       = "/tmp/clash.log"
 local LOG_MAX_LINES  = 500
-local CONFIG_DIR     = "/etc/openclash/config"
-local CORE_UPDATE_STATUS_FILE = "/tmp/openclash_core_update_status"
+local CONFIG_DIR     = "/etc/clashnivo/config"
+local CORE_UPDATE_STATUS_FILE = "/tmp/clashnivo_core_update_status"
 
 function index()
     local e = entry({"rpc", "clash-nivo"}, call("handle_rpc"))
@@ -58,7 +58,7 @@ end
 -- or nil if not found.
 local function find_subscription_section(cursor, name)
     local found_sid = nil
-    cursor:foreach("openclash", "config_subscribe", function(s)
+    cursor:foreach("clashnivo", "config_subscribe", function(s)
         if s.name == name then
             found_sid = s[".name"]
         end
@@ -86,12 +86,12 @@ end
 local handlers = {}
 
 function handlers.uci_get(p)
-    local config  = p[1] or "openclash"
+    local config  = p[1] or "clashnivo"
     local section = p[2]
     local option  = p[3]
 
-    if config ~= "openclash" then
-        error("access denied: only openclash config is accessible")
+    if config ~= "clashnivo" then
+        error("access denied: only clashnivo config is accessible")
     end
 
     local cursor = uci_mod.cursor()
@@ -110,13 +110,13 @@ function handlers.uci_get(p)
 end
 
 function handlers.uci_set(p)
-    local config  = p[1] or "openclash"
+    local config  = p[1] or "clashnivo"
     local section = p[2]
     local option  = p[3]
     local value   = p[4]
 
-    if config ~= "openclash" then
-        error("access denied: only openclash config is writable")
+    if config ~= "clashnivo" then
+        error("access denied: only clashnivo config is writable")
     end
     if not section or not option or value == nil then
         error("section, option, and value are required")
@@ -129,10 +129,10 @@ function handlers.uci_set(p)
 end
 
 function handlers.uci_commit(p)
-    local config = p[1] or "openclash"
+    local config = p[1] or "clashnivo"
 
-    if config ~= "openclash" then
-        error("access denied: only openclash config is committable")
+    if config ~= "clashnivo" then
+        error("access denied: only clashnivo config is committable")
     end
 
     local cursor = uci_mod.cursor()
@@ -141,11 +141,11 @@ function handlers.uci_commit(p)
 end
 
 function handlers.uci_add(p)
-    local config       = p[1] or "openclash"
+    local config       = p[1] or "clashnivo"
     local section_type = p[2]
 
-    if config ~= "openclash" then
-        error("access denied: only openclash config is writable")
+    if config ~= "clashnivo" then
+        error("access denied: only clashnivo config is writable")
     end
     if not section_type or section_type == "" then
         error("section_type is required")
@@ -158,12 +158,12 @@ function handlers.uci_add(p)
 end
 
 function handlers.uci_delete(p)
-    local config  = p[1] or "openclash"
+    local config  = p[1] or "clashnivo"
     local section = p[2]
     local option  = p[3]
 
-    if config ~= "openclash" then
-        error("access denied: only openclash config is writable")
+    if config ~= "clashnivo" then
+        error("access denied: only clashnivo config is writable")
     end
     if not section then
         error("section is required")
@@ -180,7 +180,7 @@ function handlers.uci_delete(p)
 end
 
 function handlers.service_status(p)
-    local name = p[1] or "openclash"
+    local name = p[1] or "clashnivo"
     -- Use pidof to check if the process is running and get its PID
     local pid_str = sys.exec(string.format("pidof %s 2>/dev/null | tr -d '\\n'", name))
     if pid_str and pid_str ~= "" then
@@ -190,18 +190,18 @@ function handlers.service_status(p)
 end
 
 function handlers.service_start()
-    sys.call("/etc/init.d/openclash start >/dev/null 2>&1")
+    sys.call("/etc/init.d/clashnivo start >/dev/null 2>&1")
     return true
 end
 
 function handlers.service_stop()
-    sys.call("/etc/init.d/openclash stop >/dev/null 2>&1")
+    sys.call("/etc/init.d/clashnivo stop >/dev/null 2>&1")
     return true
 end
 
 function handlers.service_restart()
     -- Run async so the HTTP response returns before the restart tears down Clash
-    sys.call("/etc/init.d/openclash restart >/dev/null 2>&1 &")
+    sys.call("/etc/init.d/clashnivo restart >/dev/null 2>&1 &")
     return true
 end
 
@@ -252,8 +252,8 @@ function handlers.system_info()
     local cursor = uci_mod.cursor()
 
     -- Locate the active Clash binary (meta or standard)
-    local core_path = cursor:get("openclash", "config", "core_path")
-        or "/etc/openclash/core/clash_meta"
+    local core_path = cursor:get("clashnivo", "config", "core_path")
+        or "/etc/clashnivo/core/clash_meta"
 
     local core_version = ""
     if nixio.fs.access(core_path) then
@@ -275,11 +275,11 @@ function handlers.subscription_update(p)
     if name then
         -- Single subscription by name
         sys.call(string.format(
-            "bash /usr/share/openclash/openclash_config.sh '%s' >/dev/null 2>&1 &",
+            "bash /usr/share/clashnivo/openclash_config.sh '%s' >/dev/null 2>&1 &",
             name:gsub("'", "'\\''")))
     else
         -- Update all subscriptions
-        sys.call("bash /usr/share/openclash/openclash_config.sh >/dev/null 2>&1 &")
+        sys.call("bash /usr/share/clashnivo/openclash_config.sh >/dev/null 2>&1 &")
     end
     return true
 end
@@ -305,16 +305,16 @@ function handlers.subscription_add(p)
 
     -- Create a new anonymous UCI config_subscribe section
     local cursor = uci_mod.cursor()
-    local sid = cursor:add("openclash", "config_subscribe")
-    cursor:set("openclash", sid, "address", url)
-    cursor:set("openclash", sid, "name",    name)
-    cursor:set("openclash", sid, "enabled", "1")
-    cursor:save("openclash")
-    cursor:commit("openclash")
+    local sid = cursor:add("clashnivo", "config_subscribe")
+    cursor:set("clashnivo", sid, "address", url)
+    cursor:set("clashnivo", sid, "name",    name)
+    cursor:set("clashnivo", sid, "enabled", "1")
+    cursor:save("clashnivo")
+    cursor:commit("clashnivo")
 
     -- Trigger async subscription download
     sys.call(string.format(
-        "bash /usr/share/openclash/openclash_config.sh '%s' >/dev/null 2>&1 &",
+        "bash /usr/share/clashnivo/openclash_config.sh '%s' >/dev/null 2>&1 &",
         safe_name))
 
     return { name = name }
@@ -323,7 +323,7 @@ end
 function handlers.subscription_list()
     local cursor = uci_mod.cursor()
     local result = {}
-    cursor:foreach("openclash", "config_subscribe", function(s)
+    cursor:foreach("clashnivo", "config_subscribe", function(s)
         local entry = {
             name = s.name or s[".name"],
             url  = s.address or "",
@@ -360,9 +360,9 @@ function handlers.subscription_delete(p)
         error("subscription not found: " .. name)
     end
 
-    cursor:delete("openclash", sid)
-    cursor:save("openclash")
-    cursor:commit("openclash")
+    cursor:delete("clashnivo", sid)
+    cursor:save("clashnivo")
+    cursor:commit("clashnivo")
     return true
 end
 
@@ -380,22 +380,22 @@ function handlers.subscription_edit(p)
     end
 
     if data.url and data.url ~= "" then
-        cursor:set("openclash", sid, "address", data.url)
+        cursor:set("clashnivo", sid, "address", data.url)
     end
     if data.newName and data.newName ~= "" then
-        cursor:set("openclash", sid, "name", data.newName)
+        cursor:set("clashnivo", sid, "name", data.newName)
     end
     if data.autoUpdateInterval ~= nil then
-        cursor:set("openclash", sid, "auto_update_interval", tostring(data.autoUpdateInterval))
+        cursor:set("clashnivo", sid, "auto_update_interval", tostring(data.autoUpdateInterval))
     end
 
-    cursor:save("openclash")
-    cursor:commit("openclash")
+    cursor:save("clashnivo")
+    cursor:commit("clashnivo")
     return true
 end
 
 function handlers.subscription_update_all()
-    sys.call("bash /usr/share/openclash/openclash_config.sh >/dev/null 2>&1 &")
+    sys.call("bash /usr/share/clashnivo/openclash_config.sh >/dev/null 2>&1 &")
     return true
 end
 
@@ -403,7 +403,7 @@ end
 
 function handlers.config_list()
     local cursor = uci_mod.cursor()
-    local active_path = cursor:get("openclash", "config", "config_path") or ""
+    local active_path = cursor:get("clashnivo", "config", "config_path") or ""
 
     local result = {}
     -- Use ls to enumerate yaml files (nixio.fs.dir may not be available everywhere)
@@ -433,9 +433,9 @@ function handlers.config_set_active(p)
     end
 
     local cursor = uci_mod.cursor()
-    cursor:set("openclash", "config", "config_path", path)
-    cursor:save("openclash")
-    cursor:commit("openclash")
+    cursor:set("clashnivo", "config", "config_path", path)
+    cursor:save("clashnivo")
+    cursor:commit("clashnivo")
     return true
 end
 
@@ -447,7 +447,7 @@ function handlers.config_delete(p)
 
     -- Refuse to delete the currently active config
     local cursor = uci_mod.cursor()
-    local active = cursor:get("openclash", "config", "config_path") or ""
+    local active = cursor:get("clashnivo", "config", "config_path") or ""
     if active == path then
         error("cannot delete the active config file")
     end
@@ -464,7 +464,7 @@ function handlers.config_read(p)
     local name = p[1]
     if not name or name == "" then error("name is required") end
     local path, _ = config_file_path(name)
-    -- Delegate to file_read (path is inside /etc/openclash/ so it passes the allow-list)
+    -- Delegate to file_read (path is inside /etc/clashnivo/ so it passes the allow-list)
     return handlers.file_read({ path })
 end
 
@@ -479,7 +479,7 @@ end
 
 -- ── core management handlers ───────────────────────────────────────────────
 
-local CORE_LATEST_CACHE = "/tmp/openclash_core_latest_version"
+local CORE_LATEST_CACHE = "/tmp/clashnivo_core_latest_version"
 
 function handlers.core_latest_version()
     -- Try cached value first (refreshed by the update check script)
@@ -504,7 +504,7 @@ function handlers.core_update()
     sys.call(string.format(
         "echo 'downloading' > '%s'", CORE_UPDATE_STATUS_FILE))
     sys.call(string.format(
-        "bash /usr/share/openclash/openclash_core_update.sh >'%s.log' 2>&1" ..
+        "bash /usr/share/clashnivo/openclash_core_update.sh >'%s.log' 2>&1" ..
         " && echo 'done' > '%s' || echo 'error' > '%s' &",
         CORE_UPDATE_STATUS_FILE, CORE_UPDATE_STATUS_FILE, CORE_UPDATE_STATUS_FILE))
     return true
