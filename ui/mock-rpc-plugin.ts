@@ -252,7 +252,13 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
   'system.info': () => ({
     core_version: 'mihomo v1.18.3',
     running: MOCK_STATE === 'running'
-  })
+  }),
+  'core.latestVersion': () => ({ version: 'v1.18.5' }),
+  'core.update': () => {
+    console.log('[mock] core.update triggered')
+    return true
+  },
+  'core.updateStatus': () => ({ status: 'idle' }),
 }
 
 // ---------------------------------------------------------------------------

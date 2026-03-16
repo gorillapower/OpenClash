@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:ci": "vitest run --reporter=verbose",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:integration": "playwright test --config playwright.integration.config.ts"
   },
   "dependencies": {
     "@codemirror/lang-yaml": "^6.1.2",

@@ -18,9 +18,11 @@ local ALLOWED_PATH_PATTERNS = {
     "^/tmp/clash",
 }
 
-local LOG_SERVICE = "/tmp/openclash.log"
-local LOG_CORE    = "/tmp/clash.log"
-local LOG_MAX_LINES = 500
+local LOG_SERVICE    = "/tmp/openclash.log"
+local LOG_CORE       = "/tmp/clash.log"
+local LOG_MAX_LINES  = 500
+local CONFIG_DIR     = "/etc/openclash/config"
+local CORE_UPDATE_STATUS_FILE = "/tmp/openclash_core_update_status"
 
 function index()
     local e = entry({"rpc", "clash-nivo"}, call("handle_rpc"))
@@ -50,6 +52,32 @@ end
 local function tail_file(path, lines)
     lines = math.min(tonumber(lines) or 100, LOG_MAX_LINES)
     return sys.exec(string.format("tail -n %d '%s' 2>/dev/null", lines, path)) or ""
+end
+
+-- Returns the UCI section id of the config_subscribe entry with the given name,
+-- or nil if not found.
+local function find_subscription_section(cursor, name)
+    local found_sid = nil
+    cursor:foreach("openclash", "config_subscribe", function(s)
+        if s.name == name then
+            found_sid = s[".name"]
+        end
+    end)
+    return found_sid
+end
+
+-- Returns the safe filesystem path for a named config file.
+-- Errors if the name contains path separators or traversal sequences.
+local function config_file_path(name)
+    if not name or name == "" then
+        error("config name is required")
+    end
+    if name:match("[/\\]") or name:match("%.%.") then
+        error("invalid config name")
+    end
+    -- Append .yaml extension if not already present
+    local fname = name:match("%.ya?ml$") and name or (name .. ".yaml")
+    return CONFIG_DIR .. "/" .. fname, fname
 end
 
 -- ── method handlers ────────────────────────────────────────────────────────
@@ -109,6 +137,45 @@ function handlers.uci_commit(p)
 
     local cursor = uci_mod.cursor()
     cursor:commit(config)
+    return true
+end
+
+function handlers.uci_add(p)
+    local config       = p[1] or "openclash"
+    local section_type = p[2]
+
+    if config ~= "openclash" then
+        error("access denied: only openclash config is writable")
+    end
+    if not section_type or section_type == "" then
+        error("section_type is required")
+    end
+
+    local cursor = uci_mod.cursor()
+    local sid = cursor:add(config, section_type)
+    cursor:save(config)
+    return sid
+end
+
+function handlers.uci_delete(p)
+    local config  = p[1] or "openclash"
+    local section = p[2]
+    local option  = p[3]
+
+    if config ~= "openclash" then
+        error("access denied: only openclash config is writable")
+    end
+    if not section then
+        error("section is required")
+    end
+
+    local cursor = uci_mod.cursor()
+    if option then
+        cursor:delete(config, section, option)
+    else
+        cursor:delete(config, section)
+    end
+    cursor:save(config)
     return true
 end
 
@@ -253,23 +320,246 @@ function handlers.subscription_add(p)
     return { name = name }
 end
 
+function handlers.subscription_list()
+    local cursor = uci_mod.cursor()
+    local result = {}
+    cursor:foreach("openclash", "config_subscribe", function(s)
+        local entry = {
+            name = s.name or s[".name"],
+            url  = s.address or "",
+        }
+        if s.auto_update_interval then
+            entry.autoUpdateInterval = tonumber(s.auto_update_interval)
+        end
+        if s.last_updated and s.last_updated ~= "" then
+            entry.lastUpdated = s.last_updated
+        end
+        if s.expiry and s.expiry ~= "" then
+            entry.expiry = s.expiry
+        end
+        if s.data_used and s.data_used ~= "" then
+            entry.dataUsed = tonumber(s.data_used)
+        end
+        if s.data_total and s.data_total ~= "" then
+            entry.dataTotal = tonumber(s.data_total)
+        end
+        result[#result + 1] = entry
+    end)
+    return result
+end
+
+function handlers.subscription_delete(p)
+    local name = p[1]
+    if not name or name == "" then
+        error("name is required")
+    end
+
+    local cursor = uci_mod.cursor()
+    local sid = find_subscription_section(cursor, name)
+    if not sid then
+        error("subscription not found: " .. name)
+    end
+
+    cursor:delete("openclash", sid)
+    cursor:save("openclash")
+    cursor:commit("openclash")
+    return true
+end
+
+function handlers.subscription_edit(p)
+    local name = p[1]
+    local data = p[2]
+
+    if not name or name == "" then error("name is required") end
+    if type(data) ~= "table" then error("data must be an object") end
+
+    local cursor = uci_mod.cursor()
+    local sid = find_subscription_section(cursor, name)
+    if not sid then
+        error("subscription not found: " .. name)
+    end
+
+    if data.url and data.url ~= "" then
+        cursor:set("openclash", sid, "address", data.url)
+    end
+    if data.newName and data.newName ~= "" then
+        cursor:set("openclash", sid, "name", data.newName)
+    end
+    if data.autoUpdateInterval ~= nil then
+        cursor:set("openclash", sid, "auto_update_interval", tostring(data.autoUpdateInterval))
+    end
+
+    cursor:save("openclash")
+    cursor:commit("openclash")
+    return true
+end
+
+function handlers.subscription_update_all()
+    sys.call("bash /usr/share/openclash/openclash_config.sh >/dev/null 2>&1 &")
+    return true
+end
+
+-- ── config file handlers ───────────────────────────────────────────────────
+
+function handlers.config_list()
+    local cursor = uci_mod.cursor()
+    local active_path = cursor:get("openclash", "config", "config_path") or ""
+
+    local result = {}
+    -- Use ls to enumerate yaml files (nixio.fs.dir may not be available everywhere)
+    local files = sys.exec(string.format("ls '%s'/*.yaml 2>/dev/null", CONFIG_DIR)) or ""
+    for full_path in files:gmatch("[^\n]+") do
+        local fname = full_path:match("([^/]+)$")
+        if fname then
+            local stat = nixio.fs.stat(full_path)
+            result[#result + 1] = {
+                name         = fname,
+                active       = (full_path == active_path),
+                size         = stat and stat.size or nil,
+                lastModified = stat and os.date("!%Y-%m-%dT%H:%M:%SZ", stat.mtime) or nil,
+            }
+        end
+    end
+    return result
+end
+
+function handlers.config_set_active(p)
+    local name = p[1]
+    if not name or name == "" then error("name is required") end
+
+    local path, _ = config_file_path(name)
+    if not nixio.fs.access(path) then
+        error("config file not found: " .. name)
+    end
+
+    local cursor = uci_mod.cursor()
+    cursor:set("openclash", "config", "config_path", path)
+    cursor:save("openclash")
+    cursor:commit("openclash")
+    return true
+end
+
+function handlers.config_delete(p)
+    local name = p[1]
+    if not name or name == "" then error("name is required") end
+
+    local path, _ = config_file_path(name)
+
+    -- Refuse to delete the currently active config
+    local cursor = uci_mod.cursor()
+    local active = cursor:get("openclash", "config", "config_path") or ""
+    if active == path then
+        error("cannot delete the active config file")
+    end
+
+    if not nixio.fs.access(path) then
+        error("config file not found: " .. name)
+    end
+
+    nixio.fs.remove(path)
+    return true
+end
+
+function handlers.config_read(p)
+    local name = p[1]
+    if not name or name == "" then error("name is required") end
+    local path, _ = config_file_path(name)
+    -- Delegate to file_read (path is inside /etc/openclash/ so it passes the allow-list)
+    return handlers.file_read({ path })
+end
+
+function handlers.config_write(p)
+    local name    = p[1]
+    local content = p[2]
+    if not name or name == "" then error("name is required") end
+    if content == nil then error("content is required") end
+    local path, _ = config_file_path(name)
+    return handlers.file_write({ path, content })
+end
+
+-- ── core management handlers ───────────────────────────────────────────────
+
+local CORE_LATEST_CACHE = "/tmp/openclash_core_latest_version"
+
+function handlers.core_latest_version()
+    -- Try cached value first (refreshed by the update check script)
+    local cached = sys.exec(string.format("cat '%s' 2>/dev/null | tr -d '\\n'", CORE_LATEST_CACHE))
+    if cached and cached ~= "" then
+        return { version = cached }
+    end
+    -- Fall back to querying GitHub releases
+    local ver = sys.exec(
+        "curl -sf --max-time 5 https://api.github.com/repos/MetaCubeX/mihomo/releases/latest" ..
+        " | grep '\"tag_name\"' | head -1 | sed 's/.*\"tag_name\": *\"\\([^\"]*\\)\".*/\\1/' | tr -d '\\n'"
+    ) or ""
+    if ver ~= "" then
+        -- Cache it
+        sys.call(string.format("echo '%s' > '%s'", ver:gsub("'", "'\\''"), CORE_LATEST_CACHE))
+    end
+    return { version = ver }
+end
+
+function handlers.core_update()
+    -- Write initial status then run the update script async
+    sys.call(string.format(
+        "echo 'downloading' > '%s'", CORE_UPDATE_STATUS_FILE))
+    sys.call(string.format(
+        "bash /usr/share/openclash/openclash_core_update.sh >'%s.log' 2>&1" ..
+        " && echo 'done' > '%s' || echo 'error' > '%s' &",
+        CORE_UPDATE_STATUS_FILE, CORE_UPDATE_STATUS_FILE, CORE_UPDATE_STATUS_FILE))
+    return true
+end
+
+function handlers.core_update_status()
+    local status = sys.exec(string.format(
+        "cat '%s' 2>/dev/null | tr -d '\\n'", CORE_UPDATE_STATUS_FILE)) or ""
+    if status == "" then
+        return { status = "idle" }
+    end
+    -- The status file contains one of: downloading | installing | done | error
+    -- Optionally a message on the second line
+    local first_line = status:match("^([^\n]+)") or status
+    local second_line = status:match("\n(.+)$")
+    local valid = { downloading=true, installing=true, done=true, error=true }
+    local s = valid[first_line] and first_line or "idle"
+    local result = { status = s }
+    if second_line and second_line ~= "" then
+        result.message = second_line
+    end
+    return result
+end
+
 -- ── method dispatch table (dot-notation → handler) ─────────────────────────
 
 local METHOD_MAP = {
-    ["uci.get"]             = handlers.uci_get,
-    ["uci.set"]             = handlers.uci_set,
-    ["uci.commit"]          = handlers.uci_commit,
-    ["service.status"]      = handlers.service_status,
-    ["service.start"]       = handlers.service_start,
-    ["service.stop"]        = handlers.service_stop,
-    ["service.restart"]     = handlers.service_restart,
-    ["file.read"]           = handlers.file_read,
-    ["file.write"]          = handlers.file_write,
-    ["log.service"]         = handlers.log_service,
-    ["log.core"]            = handlers.log_core,
-    ["system.info"]         = handlers.system_info,
-    ["subscription.update"] = handlers.subscription_update,
-    ["subscription.add"]    = handlers.subscription_add,
+    ["uci.get"]                  = handlers.uci_get,
+    ["uci.set"]                  = handlers.uci_set,
+    ["uci.add"]                  = handlers.uci_add,
+    ["uci.delete"]               = handlers.uci_delete,
+    ["uci.commit"]               = handlers.uci_commit,
+    ["service.status"]           = handlers.service_status,
+    ["service.start"]            = handlers.service_start,
+    ["service.stop"]             = handlers.service_stop,
+    ["service.restart"]          = handlers.service_restart,
+    ["file.read"]                = handlers.file_read,
+    ["file.write"]               = handlers.file_write,
+    ["log.service"]              = handlers.log_service,
+    ["log.core"]                 = handlers.log_core,
+    ["system.info"]              = handlers.system_info,
+    ["subscription.add"]         = handlers.subscription_add,
+    ["subscription.list"]        = handlers.subscription_list,
+    ["subscription.delete"]      = handlers.subscription_delete,
+    ["subscription.edit"]        = handlers.subscription_edit,
+    ["subscription.update"]      = handlers.subscription_update,
+    ["subscription.updateAll"]   = handlers.subscription_update_all,
+    ["config.list"]              = handlers.config_list,
+    ["config.setActive"]         = handlers.config_set_active,
+    ["config.delete"]            = handlers.config_delete,
+    ["config.read"]              = handlers.config_read,
+    ["config.write"]             = handlers.config_write,
+    ["core.latestVersion"]       = handlers.core_latest_version,
+    ["core.update"]              = handlers.core_update,
+    ["core.updateStatus"]        = handlers.core_update_status,
 }
 
 -- ── main RPC handler ────────────────────────────────────────────────────────
