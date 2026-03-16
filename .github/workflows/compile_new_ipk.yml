@@ -98,12 +98,12 @@ jobs:
 
       - name: Update Third-Party Resources
         run: |
-          CHNR_PATH=tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo/root/etc/openclash/china_ip_route.ipset
-          CHNR6_PATH=tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo/root/etc/openclash/china_ip6_route.ipset
-          ZASHBOARD_PATH=tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo/root/usr/share/openclash/ui/zashboard
-          METACUBEXD_PATH=tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo/root/usr/share/openclash/ui/metacubexd
-          GEOSITE_PATH=tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo/root/etc/openclash/GeoSite.dat
-          COUNTRY_MMDB_PATH=tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo/root/etc/openclash/Country.mmdb
+          CHNR_PATH=tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo/root/etc/clashnivo/china_ip_route.ipset
+          CHNR6_PATH=tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo/root/etc/clashnivo/china_ip6_route.ipset
+          ZASHBOARD_PATH=tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo/root/usr/share/clashnivo/ui/zashboard
+          METACUBEXD_PATH=tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo/root/usr/share/clashnivo/ui/metacubexd
+          GEOSITE_PATH=tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo/root/etc/clashnivo/GeoSite.dat
+          COUNTRY_MMDB_PATH=tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo/root/etc/clashnivo/Country.mmdb
 
           # 更新 China IP Route
           mkdir -p tmp
