@@ -23,12 +23,12 @@ fi
 
 if [ "$github_address_mod" != "0" ]; then
    if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
-      DOWNLOAD_URL="${github_address_mod}gh/gorillapower/OpenClash@core/${RELEASE_BRANCH}/core_version"
+      DOWNLOAD_URL="${github_address_mod}gh/vernesong/OpenClash@core/${RELEASE_BRANCH}/core_version"
    else
-      DOWNLOAD_URL="${github_address_mod}https://raw.githubusercontent.com/gorillapower/OpenClash/core/${RELEASE_BRANCH}/core_version"
+      DOWNLOAD_URL="${github_address_mod}https://raw.githubusercontent.com/vernesong/OpenClash/core/${RELEASE_BRANCH}/core_version"
    fi
 else
-   DOWNLOAD_URL="https://raw.githubusercontent.com/gorillapower/OpenClash/core/${RELEASE_BRANCH}/core_version"
+   DOWNLOAD_URL="https://raw.githubusercontent.com/vernesong/OpenClash/core/${RELEASE_BRANCH}/core_version"
 fi
 
 DOWNLOAD_FILE_CURL "$DOWNLOAD_URL" "$DOWNLOAD_FILE" "$DOWNLOAD_FILE"

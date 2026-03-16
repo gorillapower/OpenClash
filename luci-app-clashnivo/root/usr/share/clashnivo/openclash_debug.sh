@@ -455,7 +455,7 @@ cat >> "$DEBUG_LOG" <<-EOF
 #===================== 测试本机网络下载(raw.githubusercontent.com) =====================#
 
 EOF
-VERSION_URL="https://raw.githubusercontent.com/gorillapower/OpenClash/refs/heads/master/LICENSE"
+VERSION_URL="https://raw.githubusercontent.com/vernesong/OpenClash/refs/heads/master/LICENSE"
 if pidof clash >/dev/null; then
    curl -SsIL -m 3 --retry 2 "$VERSION_URL" >> "$DEBUG_LOG" 2>/dev/null
 else

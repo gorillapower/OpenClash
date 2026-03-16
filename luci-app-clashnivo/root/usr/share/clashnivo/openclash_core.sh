@@ -81,12 +81,12 @@ if [ "$CORE_CV" != "$CORE_LV" ] || [ -z "$CORE_CV" ]; then
       LOG_TIP "【$CORE_TYPE】Core Downloading, Please Try to Download and Upload Manually If Fails"
       if [ "$github_address_mod" != "0" ]; then
          if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
-            DOWNLOAD_URL="${github_address_mod}gh/gorillapower/OpenClash@core/${CORE_URL_PATH}/clash-${CPU_MODEL}.tar.gz"
+            DOWNLOAD_URL="${github_address_mod}gh/vernesong/OpenClash@core/${CORE_URL_PATH}/clash-${CPU_MODEL}.tar.gz"
          else
-            DOWNLOAD_URL="${github_address_mod}https://raw.githubusercontent.com/gorillapower/OpenClash/core/${CORE_URL_PATH}/clash-${CPU_MODEL}.tar.gz"
+            DOWNLOAD_URL="${github_address_mod}https://raw.githubusercontent.com/vernesong/OpenClash/core/${CORE_URL_PATH}/clash-${CPU_MODEL}.tar.gz"
          fi
       else
-         DOWNLOAD_URL="https://raw.githubusercontent.com/gorillapower/OpenClash/core/${CORE_URL_PATH}/clash-${CPU_MODEL}.tar.gz"
+         DOWNLOAD_URL="https://raw.githubusercontent.com/vernesong/OpenClash/core/${CORE_URL_PATH}/clash-${CPU_MODEL}.tar.gz"
       fi
 
       retry_count=0
