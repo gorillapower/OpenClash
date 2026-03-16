@@ -81,7 +81,7 @@ save_dnsmasq_server() {
      return
    fi
 
-   uci -q add_list openclash.config.dnsmasq_server="$1"
+   uci -q add_list clashnivo.config.dnsmasq_server="$1"
 }
 
 set_dnsmasq_server() {
@@ -187,36 +187,36 @@ change_dns() {
    /usr/share/clashnivo/openclash_custom_domain_dns.sh
 
    if [ "$1" -eq 1 ]; then
-      uci -q del openclash.config.dnsmasq_server
+      uci -q del clashnivo.config.dnsmasq_server
       config_load "dhcp"
       config_list_foreach "$(uci -q show dhcp.@dnsmasq[0].server |awk -F '.' '{print $2}')" "server" save_dnsmasq_server
       uci -q del dhcp.@dnsmasq[-1].server
       uci -q add_list dhcp.@dnsmasq[0].server=127.0.0.1#"$dns_port"
-      uci -q set openclash.config.dnsmasq_noresolv="$(uci -q get dhcp.@dnsmasq[0].noresolv)"
-      uci -q set openclash.config.dnsmasq_resolvfile="$(uci -q get dhcp.@dnsmasq[0].resolvfile)"
+      uci -q set clashnivo.config.dnsmasq_noresolv="$(uci -q get dhcp.@dnsmasq[0].noresolv)"
+      uci -q set clashnivo.config.dnsmasq_resolvfile="$(uci -q get dhcp.@dnsmasq[0].resolvfile)"
       uci -q delete dhcp.@dnsmasq[0].resolvfile
       uci -q set dhcp.@dnsmasq[0].noresolv=1
       uci -q set dhcp.@dnsmasq[0].localuse=1
-      uci -q set openclash.config.redirect_dns=1
-      uci -q set openclash.config.dnsmasq_cachesize="$(uci -q get dhcp.@dnsmasq[0].cachesize)"
+      uci -q set clashnivo.config.redirect_dns=1
+      uci -q set clashnivo.config.dnsmasq_cachesize="$(uci -q get dhcp.@dnsmasq[0].cachesize)"
       uci -q set dhcp.@dnsmasq[0].cachesize=0
-      uci -q set openclash.config.cachesize_dns=1
+      uci -q set clashnivo.config.cachesize_dns=1
    else
-      uci -q set openclash.config.redirect_dns=0
-      uci -q set openclash.config.cachesize_dns=0
+      uci -q set clashnivo.config.redirect_dns=0
+      uci -q set clashnivo.config.cachesize_dns=0
    fi
 
    if [ "$1" -eq 1 ] && [ "$ipv6_dns" -eq 1 ] && [ -n "$(ip6tables -t mangle -L 2>&1 | grep -o 'Chain')" ]; then
       #dnsmasq answer ipv6
-      uci -q set openclash.config.dnsmasq_filter_aaaa="$(uci -q get dhcp.@dnsmasq[0].filter_aaaa)"
+      uci -q set clashnivo.config.dnsmasq_filter_aaaa="$(uci -q get dhcp.@dnsmasq[0].filter_aaaa)"
 	   uci -q set dhcp.@dnsmasq[0].filter_aaaa=0
-	   uci -q set openclash.config.filter_aaaa_dns=1
+	   uci -q set clashnivo.config.filter_aaaa_dns=1
 	else
-	   uci -q set openclash.config.filter_aaaa_dns=0
+	   uci -q set clashnivo.config.filter_aaaa_dns=0
 	fi
 
    uci -q commit dhcp
-   uci -q commit openclash
+   uci -q commit clashnivo
    /etc/init.d/dnsmasq restart
 } >/dev/null 2>&1
 
@@ -244,13 +244,13 @@ revert_dns() {
             uci -q set dhcp.@dnsmasq[0].resolvfile="$3"
          elif [ -s "/tmp/resolv.conf.d/resolv.conf.auto" ] && [ -n "$(grep "nameserver" /tmp/resolv.conf.d/resolv.conf.auto)" ]; then
             uci -q set dhcp.@dnsmasq[0].resolvfile=/tmp/resolv.conf.d/resolv.conf.auto
-            uci -q set openclash.config.default_resolvfile=/tmp/resolv.conf.d/resolv.conf.auto
+            uci -q set clashnivo.config.default_resolvfile=/tmp/resolv.conf.d/resolv.conf.auto
          elif [ -s "/tmp/resolv.conf.auto" ] && [ -n "$(grep "nameserver" /tmp/resolv.conf.auto)" ]; then
             uci -q set dhcp.@dnsmasq[0].resolvfile=/tmp/resolv.conf.auto
-            uci -q set openclash.config.default_resolvfile=/tmp/resolv.conf.auto
+            uci -q set clashnivo.config.default_resolvfile=/tmp/resolv.conf.auto
          else
             uci -q set dhcp.@dnsmasq[0].resolvfile=/tmp/resolv.conf.d/resolv.conf.auto
-            uci -q set openclash.config.default_resolvfile=/tmp/resolv.conf.d/resolv.conf.auto
+            uci -q set clashnivo.config.default_resolvfile=/tmp/resolv.conf.d/resolv.conf.auto
          fi
          uci -q set dhcp.@dnsmasq[0].localuse=1
       fi
@@ -258,23 +258,23 @@ revert_dns() {
 
    [ "$6" -eq 1 ] && {
       uci -q set dhcp.@dnsmasq[0].cachesize="$7"
-      uci -q set openclash.config.cachesize_dns=0
-      uci -q delete openclash.config.dnsmasq_cachesize
+      uci -q set clashnivo.config.cachesize_dns=0
+      uci -q delete clashnivo.config.dnsmasq_cachesize
    }
 
    [ "$8" -eq 1 ] && {
       uci -q set dhcp.@dnsmasq[0].filter_aaaa="$9"
-      uci -q set openclash.config.filter_aaaa_dns=0
-      uci -q delete openclash.config.dnsmasq_filter_aaaa
+      uci -q set clashnivo.config.filter_aaaa_dns=0
+      uci -q delete clashnivo.config.dnsmasq_filter_aaaa
    }
 
    [ "$1" -eq 1 ] && {
-      uci -q set openclash.config.redirect_dns=0
-      uci -q del openclash.config.dnsmasq_server
+      uci -q set clashnivo.config.redirect_dns=0
+      uci -q del clashnivo.config.dnsmasq_server
    }
 
    uci -q commit dhcp
-   uci -q commit openclash
+   uci -q commit clashnivo
 
    /etc/init.d/dnsmasq restart
 
@@ -312,8 +312,8 @@ EOF
 
 start_fail()
 {
-   uci -q set openclash.config.enable=0
-   uci -q commit openclash
+   uci -q set clashnivo.config.enable=0
+   uci -q commit clashnivo
    stop
    exit 0
 }
@@ -329,10 +329,10 @@ sub_info_set()
 
    if [ "$name" == "$2" ] && [ -n "$3" ]; then
       if [ "$sub_info_setted" != "1" ]; then
-         uci -q delete openclash.$section.url
+         uci -q delete clashnivo.$section.url
       fi
-      uci -q add_list openclash.$section.url="$3"
-      uci -q commit openclash
+      uci -q add_list clashnivo.$section.url="$3"
+      uci -q commit clashnivo
       sub_info_setted=1
    fi
 }
@@ -388,8 +388,8 @@ if [ -z "$RAW_CONFIG_FILE" ] || [ ! -f "$RAW_CONFIG_FILE" ]; then
    do
       if [ -f "$file_name" ]; then
          CONFIG_NAME=$(echo "$file_name" |awk -F '/' '{print $5}' 2>/dev/null)
-         uci -q set openclash.config.config_path="/etc/clashnivo/config/$CONFIG_NAME"
-         uci -q commit openclash
+         uci -q set clashnivo.config.config_path="/etc/clashnivo/config/$CONFIG_NAME"
+         uci -q commit clashnivo
          RAW_CONFIG_FILE="/etc/clashnivo/config/$CONFIG_NAME"
          CONFIG_FILE="/etc/clashnivo/$CONFIG_NAME"
          TMP_CONFIG_FILE="/tmp/yaml_config_tmp_$CONFIG_NAME"
@@ -642,8 +642,8 @@ do_run_file()
    fi
 
    #保存启动内核类型
-   uci -q set openclash.config.core_type="$core_type"
-   uci -q commit openclash
+   uci -q set clashnivo.config.core_type="$core_type"
+   uci -q commit clashnivo
 
 } >/dev/null 2>&1
 
@@ -3393,10 +3393,10 @@ EOF
    uci -q add openclash overwrite >/dev/null 2>&1
 
    overwrite_list=$(uci -q show openclash 2>/dev/null | grep "=config_overwrite" | awk -F'[.=]' '{print $2}' | while read -r sid; do
-      order=$(uci -q get openclash."$sid".order 2>/dev/null)
+      order=$(uci -q get clashnivo."$sid".order 2>/dev/null)
       [ -z "$order" ] && order=0
-      name=$(uci -q get openclash."$sid".name 2>/dev/null)
-      enable_flag=$(uci -q get openclash."$sid".enable 2>/dev/null || echo 0)
+      name=$(uci -q get clashnivo."$sid".name 2>/dev/null)
+      enable_flag=$(uci -q get clashnivo."$sid".enable 2>/dev/null || echo 0)
       printf "%s|%s|%s|%s\n" "$order" "$name" "$sid" "$enable_flag"
    done | sort -nr -t'|' -k1,1)
 
@@ -3416,7 +3416,7 @@ EOF
       echo "# --- overwrite source: ${name} (sid=${sid}) ---" >> "$overwrite_script"
       echo "export OPENCLASH_OVERWRITE_SID='${sid}'" >> "$overwrite_script"
 
-      param=$(uci -q get openclash."$sid".param 2>/dev/null || echo '')
+      param=$(uci -q get clashnivo."$sid".param 2>/dev/null || echo '')
       if [ -n "$param" ]; then
          OLD_IFS="$IFS"
          IFS=';'
@@ -3543,7 +3543,7 @@ ${trimmed}"
             if printf "%s" "$key_u" | grep -q "^CONFIG_FILE$"; then
                val_clean=$(printf "%s" "$val" | sed "s/^[[:space:]]*['\"]//;s/['\"][[:space:]]*$//")
                RAW_CONFIG_FILE=$(eval "echo \"$val_clean\"")
-               uci -q set openclash.@overwrite[0].config_path="$RAW_CONFIG_FILE"
+               uci -q set clashnivo.@overwrite[0].config_path="$RAW_CONFIG_FILE"
                cfg_name=$(basename "$RAW_CONFIG_FILE" 2>/dev/null)
                if [ -n "$cfg_name" ]; then
                   CONFIG_FILE="/etc/clashnivo/${cfg_name}"
@@ -3557,8 +3557,8 @@ ${trimmed}"
                config_foreach sub_info_set "subscribe_info" "${cfg_name%.*}" "$url_key"
                if [ "$sub_info_setted" != "1" ]; then
                   uci -q add openclash subscribe_info
-                  uci -q set openclash.@subscribe_info[-1].name="${cfg_name%.*}"
-                  uci -q add_list openclash.@subscribe_info[-1].url="$url_key"
+                  uci -q set clashnivo.@subscribe_info[-1].name="${cfg_name%.*}"
+                  uci -q add_list clashnivo.@subscribe_info[-1].url="$url_key"
                fi
             elif printf "%s" "$key_u" | grep -q "^RESTART$"; then
                val_clean=$(printf "%s" "$val" | sed "s/^[[:space:]]*['\"]//;s/['\"][[:space:]]*$//")
@@ -3572,7 +3572,7 @@ ${trimmed}"
                   val_clean=$(printf "%s" "$val" | sed "s/^[[:space:]]*['\"]//;s/['\"][[:space:]]*$//")
                   val_key=$(eval "echo \"$val_clean\"")
                   if check_type "$key_u" "$val_clean"; then
-                     uci -q set openclash.@overwrite[0]."$key_l"="$val_key"
+                     uci -q set clashnivo.@overwrite[0]."$key_l"="$val_key"
                   else
                      LOG_WARN "skip General key type error【General Key => $name: $key_u, value: $val_key】"
                   fi
@@ -3626,8 +3626,8 @@ EOF
 
 clear_overwrite_set()
 {
-   uci -q delete openclash.@overwrite[0]
-   uci -q commit openclash
+   uci -q delete clashnivo.@overwrite[0]
+   uci -q commit clashnivo
 }
 
 get_config()
@@ -3725,8 +3725,8 @@ get_config()
    smart_enable_lgbm=$(uci_get_config "smart_enable_lgbm" || echo 0)
    smart_prefer_asn=$(uci_get_config "smart_prefer_asn" || echo 0)
 
-   [ -z "$dns_port" ] && dns_port=7874 && uci -q set openclash.config.dns_port=7874
-   uci -q commit openclash
+   [ -z "$dns_port" ] && dns_port=7874 && uci -q set clashnivo.config.dns_port=7874
+   uci -q commit clashnivo
 }
 
 start_service()

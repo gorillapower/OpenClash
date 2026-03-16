@@ -189,17 +189,27 @@ function handlers.service_status(p)
 end
 
 function handlers.service_start()
+    -- The init script checks clashnivo.config.enable=1 before starting
+    local cursor = uci_mod.cursor()
+    cursor:set("clashnivo", "config", "enable", "1")
+    cursor:commit("clashnivo")
     sys.call("/etc/init.d/clashnivo start >/dev/null 2>&1")
     return true
 end
 
 function handlers.service_stop()
+    local cursor = uci_mod.cursor()
+    cursor:set("clashnivo", "config", "enable", "0")
+    cursor:commit("clashnivo")
     sys.call("/etc/init.d/clashnivo stop >/dev/null 2>&1")
     return true
 end
 
 function handlers.service_restart()
-    -- Run async so the HTTP response returns before the restart tears down Clash
+    -- Ensure enabled, then run async so the HTTP response returns before restart tears down Clash
+    local cursor = uci_mod.cursor()
+    cursor:set("clashnivo", "config", "enable", "1")
+    cursor:commit("clashnivo")
     sys.call("/etc/init.d/clashnivo restart >/dev/null 2>&1 &")
     return true
 end
@@ -503,7 +513,7 @@ function handlers.core_update()
     sys.call(string.format(
         "echo 'downloading' > '%s'", CORE_UPDATE_STATUS_FILE))
     sys.call(string.format(
-        "bash /usr/share/clashnivo/openclash_core_update.sh >'%s.log' 2>&1" ..
+        "bash /usr/share/clashnivo/openclash_core.sh Meta >'%s.log' 2>&1" ..
         " && echo 'done' > '%s' || echo 'error' > '%s' &",
         CORE_UPDATE_STATUS_FILE, CORE_UPDATE_STATUS_FILE, CORE_UPDATE_STATUS_FILE))
     return true
