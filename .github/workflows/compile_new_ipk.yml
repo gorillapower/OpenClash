@@ -1,9 +1,9 @@
 name: Compile The New Version OpenClash
 
-on: 
+on:
   push:
     branches:
-      - dev
+      - master
     paths:
       - 'luci-app-clashnivo/Makefile'
   workflow_dispatch:
