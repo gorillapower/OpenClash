@@ -25,7 +25,7 @@
         type="button"
         aria-current={activeTab === 'clash-config' ? 'page' : undefined}
       >
-        Clash Config
+        Clash
       </button>
       <button
         class="border-b-2 pb-3 text-sm font-medium transition-colors"
@@ -37,7 +37,7 @@
         type="button"
         aria-current={activeTab === 'network' ? 'page' : undefined}
       >
-        Network
+        Router
       </button>
     </nav>
   </div>
