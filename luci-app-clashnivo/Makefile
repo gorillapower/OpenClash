@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=luci-app-openclash
+PKG_NAME:=luci-app-clashnivo
 PKG_VERSION:=0.47.071
-PKG_MAINTAINER:=vernesong <https://github.com/vernesong/OpenClash>
+PKG_MAINTAINER:=gorillapower <https://github.com/gorillapower/OpenClash>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 
@@ -54,6 +54,7 @@ endef
 define Build/Prepare
 	$(CP) $(CURDIR)/root $(PKG_BUILD_DIR)
 	$(CP) $(CURDIR)/luasrc $(PKG_BUILD_DIR)
+	$(CP) $(CURDIR)/ui/dist $(PKG_BUILD_DIR)/root/www/luci-static/clash-nivo
 	$(foreach po,$(wildcard ${CURDIR}/po/zh-cn/*.po), \
 		po2lmo $(po) $(PKG_BUILD_DIR)/$(patsubst %.po,%.lmo,$(notdir $(po)));)
 	chmod 0755 $(PKG_BUILD_DIR)/root/etc/init.d/openclash

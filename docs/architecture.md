@@ -460,7 +460,7 @@ auto-restarts if it crashes or becomes unresponsive.
 ## 10. Current Codebase Structure
 
 ```
-luci-app-openclash/
+luci-app-clashnivo/
 ├── luasrc/                     # LuCI frontend
 │   ├── controller/
 │   │   └── openclash.lua       # ~3,000 lines — HTTP routes + AJAX endpoints

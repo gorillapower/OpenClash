@@ -10,7 +10,7 @@ Integration tests run the Clash Nivo UI against a real OpenWrt router. They comp
 
 ## Environment Variables
 
-Set these in your shell or in `ui/.env` before running:
+Set these in your shell or in `luci-app-clashnivo/ui/.env` before running:
 
 | Variable | Default | Description |
 |---|---|---|
@@ -32,7 +32,7 @@ Set these in your shell or in `ui/.env` before running:
 ## Running the tests
 
 ```sh
-cd ui
+cd luci-app-clashnivo/ui
 
 # Run all integration tests
 npm run test:integration
@@ -71,7 +71,7 @@ npx playwright show-report
 
 ## Adding a new spec
 
-1. Create `ui/src/test/integration/your-feature.spec.ts`
+1. Create `luci-app-clashnivo/ui/src/test/integration/your-feature.spec.ts`
 2. Import the auth fixture: `import { test, expect, gotoApp } from './helpers/auth'`
 3. Use `appPage` fixture for tests that need a pre-authenticated SPA page, or call `loginToRouter(page)` manually for raw RPC tests
 4. Always clean up any mutations in `test.afterEach`

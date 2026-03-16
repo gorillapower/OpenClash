@@ -13,12 +13,12 @@ OpenClash is a Clash/Mihomo proxy client for OpenWrt routers. This fork is an En
 
 **Two-layer model** (the key mental model):
 
-1. **Layer 1 — Router Integration** (`luci-app-openclash/root/`): Shell scripts that set up nftables/iptables, DNS hijacking via dnsmasq, and routing tables so LAN traffic flows through Clash. Clash itself does zero firewall work — the shell scripts do all interception.
+1. **Layer 1 — Router Integration** (`luci-app-clashnivo/root/`): Shell scripts that set up nftables/iptables, DNS hijacking via dnsmasq, and routing tables so LAN traffic flows through Clash. Clash itself does zero firewall work — the shell scripts do all interception.
 2. **Layer 2 — Clash Configuration**: Pure YAML config (`/etc/openclash/*.yaml`) defining proxies, proxy-groups, rules, and DNS. Identical to any Clash GUI. Controlled at runtime via the Clash REST API on port 9090.
 
 **New frontend** (`ui/`): A Svelte 5 + Vite + Tailwind CSS v4 SPA replacing the legacy LuCI Lua interface. Uses shadcn-svelte for components. Talks to the router via proxied requests to `/cgi-bin`, `/rpc`, and `/api`.
 
-**Legacy frontend** (`luci-app-openclash/luasrc/`): The original LuCI Lua views. Being replaced by `ui/`.
+**Legacy frontend** (`luci-app-clashnivo/luasrc/`): The original LuCI Lua views. Being replaced by `ui/`.
 
 Read `docs/architecture.md` first when orienting. Drop into `docs/milestones/ui.md` for frontend/UX decisions or `docs/milestones/network-layer.md` for backend/networking work.
 
@@ -27,7 +27,7 @@ Read `docs/architecture.md` first when orienting. Drop into `docs/milestones/ui.
 All frontend commands run from the `ui/` directory:
 
 ```sh
-cd ui
+cd luci-app-clashnivo/ui
 npm run dev          # Dev server on :5173, proxies to router
 npm run build        # Production build → ui/dist/ (committed)
 npm run test         # Unit tests (Vitest + jsdom + Testing Library)
@@ -36,30 +36,30 @@ npm run test:e2e     # E2E tests (Playwright, Chromium)
 
 Run a single unit test:
 ```sh
-cd ui && npx vitest run src/test/some-file.test.ts
+cd luci-app-clashnivo/ui && npx vitest run src/test/some-file.test.ts
 ```
 
 Run a single e2e test:
 ```sh
-cd ui && npx playwright test src/test/e2e/some-file.spec.ts
+cd luci-app-clashnivo/ui && npx playwright test src/test/e2e/some-file.spec.ts
 ```
 
-Set `VITE_ROUTER_URL` in `ui/.env` to proxy dev requests to your router (default: `http://192.168.1.1`).
+Set `VITE_ROUTER_URL` in `luci-app-clashnivo/ui/.env` to proxy dev requests to your router (default: `http://192.168.1.1`).
 
-The legacy OpenWrt package (`luci-app-openclash/`) is compiled via the OpenWrt SDK — see `README.md` for SDK build instructions.
+The legacy OpenWrt package (`luci-app-clashnivo/`) is compiled via the OpenWrt SDK — see `README.md` for SDK build instructions.
 
 ## Key Conventions
 
-- **Path alias**: `$lib` → `ui/src/lib` (use in imports)
+- **Path alias**: `$lib` → `luci-app-clashnivo/ui/src/lib` (use in imports)
 - **Base path**: The SPA is served at `/luci-static/clash-nivo/`
-- **Build output committed**: `ui/dist/` is checked into git so the router can serve it directly without a build step
-- **Component library**: shadcn-svelte components live in `ui/src/lib/components/ui/`
-- **Test setup**: Vitest uses `ui/src/test/setup.ts`; e2e tests live in `ui/src/test/e2e/`
+- **Build output committed**: `luci-app-clashnivo/ui/dist/` is checked into git so the router can serve it directly without a build step
+- **Component library**: shadcn-svelte components live in `luci-app-clashnivo/ui/src/lib/components/ui/`
+- **Test setup**: Vitest uses `luci-app-clashnivo/ui/src/test/setup.ts`; e2e tests live in `luci-app-clashnivo/ui/src/test/e2e/`
 - **Custom Clash rules**: `docs/dev-settings.md` is a Ruby script (run by OpenClash's shell layer) that injects custom proxy-groups, rule-providers, and rules into the Clash YAML at startup
 
 ## Styling Conventions
 
-The design system is Tailwind CSS v4 + shadcn-svelte. All colours and radii are defined as CSS custom properties in `ui/src/app.css` and exposed to Tailwind via `@theme inline`.
+The design system is Tailwind CSS v4 + shadcn-svelte. All colours and radii are defined as CSS custom properties in `luci-app-clashnivo/ui/src/app.css` and exposed to Tailwind via `@theme inline`.
 
 **Colours — always use theme tokens, never hardcode:**
 ```
@@ -83,6 +83,6 @@ These map to `--radius-sm/md/lg/xl` in the theme, so they stay consistent if the
 - In any raw CSS (e.g. `@layer base` or `<style>` blocks), use `rem` for sizes/spacing, `em` for component-relative values. `px` is acceptable only for 1px borders and fixed pixel offsets in `calc()` expressions.
 
 **Adding a new token:**
-Add it to `:root` and `@theme inline` in `ui/src/app.css`. Never hardcode a one-off value inline.
+Add it to `:root` and `@theme inline` in `luci-app-clashnivo/ui/src/app.css`. Never hardcode a one-off value inline.
 
 **When raw CSS is unavoidable:** keep it minimal — one or two lines in a `<style>` block with a comment explaining why Tailwind couldn't handle it.
