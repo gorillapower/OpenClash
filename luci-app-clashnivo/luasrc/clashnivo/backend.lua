@@ -3,6 +3,7 @@ module("luci.clashnivo.backend", package.seeall)
 local io = require "io"
 local nixio = require "nixio"
 local fs = require "nixio.fs"
+local json = require "luci.jsonc"
 local sys = require "luci.sys"
 local util = require "luci.util"
 
@@ -52,12 +53,27 @@ function core_process_pid()
 end
 
 function service_status()
-	local pid = core_process_pid()
-	if pid then
-		return { running = true, pid = pid }
+	local output = sys.exec(string.format("%s status 2>/dev/null", shellquote(CLASHNIVO_INIT))) or ""
+	local parsed = json.parse(output)
+
+	if parsed and type(parsed) == "table" then
+		parsed.running = parsed.service_running == true
+
+		if parsed.core_pid and parsed.core_pid ~= "" then
+			parsed.pid = tonumber(parsed.core_pid) or parsed.core_pid
+		else
+			parsed.pid = nil
+		end
+
+		return parsed
 	end
 
-	return { running = false }
+	local pid = core_process_pid()
+	if pid then
+		return { running = true, service_running = true, core_running = true, pid = pid }
+	end
+
+	return { running = false, service_running = false, core_running = false }
 end
 
 function service_action(action, async)

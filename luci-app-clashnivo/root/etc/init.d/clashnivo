@@ -8,6 +8,12 @@ USE_PROCD=1
 . $IPKG_INSTROOT/usr/share/clashnivo/service/env.sh
 clashnivo_service_init_env "$IPKG_INSTROOT"
 
+status()
+{
+   clashnivo_service_status_json
+   clashnivo_service_status_exit_code
+}
+
 add_cron()
 {
    [ "$(tail -n1 /etc/crontabs/root | wc -l)" -eq 0 ] && [ -n "$(cat /etc/crontabs/root 2>/dev/null)" ] && echo >> /etc/crontabs/root

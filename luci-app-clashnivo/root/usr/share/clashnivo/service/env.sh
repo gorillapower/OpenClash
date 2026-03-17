@@ -4,6 +4,7 @@ clashnivo_service_init_env() {
    local ipkg_instroot="${1:-}"
 
    . "${ipkg_instroot}/usr/share/clashnivo/service/state.sh"
+   . "${ipkg_instroot}/usr/share/clashnivo/service/status.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/openclash_ps.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/ruby.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/log.sh"
