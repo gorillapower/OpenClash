@@ -47,6 +47,9 @@ Summarize the relevant context in 3-8 lines.
 - Do not broaden scope without a strong reason.
 - If this task names a file under `docs/decision/`, that file is a primary output of the task and must be updated before the issue is considered complete.
 - When a decision doc is updated, keep any related execution-plan or reference docs aligned if the task scope includes them.
+- After implementation, summarize the work and ask the user to confirm the issue is complete.
+- After the user confirms completion, create a scoped git commit for the issue before closing it.
+- If the worktree contains unrelated or mixed changes, stop and separate or revert them before committing rather than sweeping them into the issue commit.
 - Report back with:
   - changed files
   - what was verified
