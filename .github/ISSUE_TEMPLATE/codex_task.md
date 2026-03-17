@@ -49,6 +49,8 @@ Summarize the relevant context in 3-8 lines.
 - When a decision doc is updated, keep any related execution-plan or reference docs aligned if the task scope includes them.
 - After implementation, summarize the work and ask the user to confirm the issue is complete.
 - After the user confirms completion, create a scoped git commit for the issue before closing it.
+- After creating the commit, push it if the branch is in a publishable state and remote push is available.
+- If commit or push cannot be completed cleanly, report the blocker and do not close the issue as if the workflow were finished.
 - If the worktree contains unrelated or mixed changes, stop and separate or revert them before committing rather than sweeping them into the issue commit.
 - Report back with:
   - changed files
