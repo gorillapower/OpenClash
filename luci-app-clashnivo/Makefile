@@ -5,6 +5,9 @@ PKG_VERSION:=0.1.10
 PKG_MAINTAINER:=gorillapower <https://github.com/gorillapower/OpenClash>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
+CLASHNIVO_UI_DIR:=$(CURDIR)/ui
+CLASHNIVO_UI_BUILD_DIR:=$(CLASHNIVO_UI_DIR)/dist
+CLASHNIVO_SPA_INSTALL_DIR:=$(PKG_BUILD_DIR)/root/www/luci-static/clash-nivo
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -54,8 +57,8 @@ endef
 define Build/Prepare
 	$(CP) $(CURDIR)/root $(PKG_BUILD_DIR)
 	$(CP) $(CURDIR)/luasrc $(PKG_BUILD_DIR)
-	mkdir -p $(PKG_BUILD_DIR)/root/www/luci-static/clash-nivo
-	$(CP) $(CURDIR)/ui/dist/. $(PKG_BUILD_DIR)/root/www/luci-static/clash-nivo/
+	mkdir -p $(CLASHNIVO_SPA_INSTALL_DIR)
+	$(CP) $(CLASHNIVO_UI_BUILD_DIR)/. $(CLASHNIVO_SPA_INSTALL_DIR)/
 	$(foreach po,$(wildcard ${CURDIR}/po/zh-cn/*.po), \
 		po2lmo $(po) $(PKG_BUILD_DIR)/$(patsubst %.po,%.lmo,$(notdir $(po)));)
 	chmod 0755 $(PKG_BUILD_DIR)/root/etc/init.d/clashnivo

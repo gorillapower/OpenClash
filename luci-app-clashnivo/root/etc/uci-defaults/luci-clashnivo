@@ -196,9 +196,9 @@ uci -q set clashnivo.config.enable=0
 uci -q commit clashnivo
 
 if [ -f "/usr/lib/lua/luci/model/network.lua" ]; then
-   sed -i '/OpenClash Append/,/OpenClash Append End/d' "/usr/lib/lua/luci/model/network.lua" >/dev/null 2>&1
+   sed -i '/ClashNivo Append/,/ClashNivo Append End/d' "/usr/lib/lua/luci/model/network.lua" >/dev/null 2>&1
    cat >> "/usr/lib/lua/luci/model/network.lua" << EOF
--------------- OpenClash Append --------------
+-------------- ClashNivo Append --------------
 
 function get_all_wan_networks(self)
 	local k, v
@@ -245,7 +245,7 @@ function get_all_status_by_route(self, addr, mask)
 	return route_statuses
 end
 
--------------- OpenClash Append End --------------
+-------------- ClashNivo Append End --------------
 EOF
 fi
 
