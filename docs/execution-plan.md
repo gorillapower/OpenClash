@@ -58,6 +58,13 @@ Outputs:
 - clear module boundaries
 - reduced coupling between LuCI/UI and backend shell logic
 
+First ticket batch:
+- `#41` Repo Layout And Module Map
+- `#42` UI Workspace And Packaging Boundary
+- `#43` LuCI Boundary And Backend Adapter
+- `#44` Backend Helper Tree Reorganization
+- `#45` Validation For Coupling And Namespace Leakage
+
 ### Epic 2: Service Skeleton And Runtime Guard
 
 Goal:
