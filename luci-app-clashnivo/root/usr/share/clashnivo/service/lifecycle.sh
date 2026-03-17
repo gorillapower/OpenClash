@@ -128,12 +128,8 @@ stop_service()
       LOG_TIP "OpenClash Already Stop!"
 
       if [ "$enable" != "1" ]; then
-         rm -rf /tmp/clash_last_version \
-                /tmp/clashnivo_last_version \
-                /tmp/clashnivo.change \
-                /tmp/clashnivo_debug.log \
-                /tmp/clashnivo_announcement \
-                ${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_chnroute_pass.conf \
+         clashnivo_service_clear_disabled_runtime_state
+         rm -rf ${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_chnroute_pass.conf \
                 ${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_chnroute6_pass.conf \
                 ${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_custom_domain.conf
          SLOG_CLEAN

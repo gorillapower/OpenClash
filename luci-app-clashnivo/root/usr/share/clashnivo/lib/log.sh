@@ -1,7 +1,12 @@
 #!/bin/sh
 
-START_LOG="/tmp/clashnivo_start.log"
-LOG_FILE="/tmp/clashnivo.log"
+if [ -f /usr/share/clashnivo/service/state.sh ]; then
+	. /usr/share/clashnivo/service/state.sh
+	clashnivo_service_init_state
+fi
+
+: "${START_LOG:=/tmp/clashnivo_start.log}"
+: "${LOG_FILE:=/tmp/clashnivo.log}"
 		
 LOG_OUT()
 {

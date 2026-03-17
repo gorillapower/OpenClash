@@ -416,23 +416,23 @@ check_run_quick()
 
    QUICK_START_CHECK=true
 
-   cat "/tmp/clashnivo.change" | while read -r i; do
+   cat "$CHANGE_TRACK_FILE" | while read -r i; do
       file_path=$(echo "$i" |awk -F ' #edited time# ' '{print $1}')
-      if [ -z "$(grep "$file_path #edited time# $(date -r "$file_path")$" "/tmp/clashnivo.change")" ]; then
+      if [ -z "$(grep "$file_path #edited time# $(date -r "$file_path")$" "$CHANGE_TRACK_FILE")" ]; then
          LOG_TIP "Because of the file【 $file_path 】modificated, Pause quick start..."
-         rm -rf /tmp/clashnivo.change
+         rm -rf "$CHANGE_TRACK_FILE"
          break
       fi
    done
 
-   if [ ! -f "/tmp/clashnivo.change" ]; then
+   if [ ! -f "$CHANGE_TRACK_FILE" ]; then
       QUICK_START=false
    fi
 } >/dev/null 2>&1
 
 write_run_quick()
 {
-   : > "/tmp/clashnivo.change"
+   : > "$CHANGE_TRACK_FILE"
    {
       echo "/etc/config/clashnivo"
       echo "$RAW_CONFIG_FILE"
@@ -440,7 +440,7 @@ write_run_quick()
       ls -d /etc/clashnivo/custom/* 2>/dev/null
       ls -d /etc/clashnivo/overwrite/* 2>/dev/null
    } | while read -r file; do
-      echo "$file #edited time# $(date -r "$file")" >> "/tmp/clashnivo.change"
+      echo "$file #edited time# $(date -r "$file")" >> "$CHANGE_TRACK_FILE"
    done
 } >/dev/null 2>&1
 
@@ -475,7 +475,7 @@ do_run_file()
 
    #Some MIPS devices file system cound not use db
    source "/etc/openwrt_release"
-   [ "$small_flash_memory" == "1" ] || [ -n "$(echo $core_version |grep mips)" ] || [ -n "$(echo $DISTRIB_ARCH |grep mips)" ] || [ -n "$(opkg status libc 2>/dev/null |grep 'Architecture' |awk -F ': ' '{print $2}' |grep mips)" ] || [ -n "$(apk list libc 2>/dev/null |grep mips)" ] && mkdir -p /tmp/etc/clashnivo && CACHE_PATH="/tmp/etc/clashnivo/cache.db"
+   [ "$small_flash_memory" == "1" ] || [ -n "$(echo $core_version |grep mips)" ] || [ -n "$(echo $DISTRIB_ARCH |grep mips)" ] || [ -n "$(opkg status libc 2>/dev/null |grep 'Architecture' |awk -F ': ' '{print $2}' |grep mips)" ] || [ -n "$(apk list libc 2>/dev/null |grep mips)" ] && mkdir -p "$CLASHNIVO_TMP_ETC_DIR" && CACHE_PATH="${CLASHNIVO_TMP_ETC_DIR}/cache.db"
 
    [ -f "/etc/clashnivo/geosite.dat" ] && {
       mv "/etc/clashnivo/geosite.dat" "/etc/clashnivo/GeoSite.dat"
