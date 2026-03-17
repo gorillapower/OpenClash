@@ -65,6 +65,8 @@ Rules:
   - LuCI bootstrap views only
 - `luci-app-clashnivo/luasrc/clashnivo.lua`
   - LuCI-side shared Lua helpers where still needed
+- `luci-app-clashnivo/luasrc/clashnivo/backend.lua`
+  - LuCI-side backend adapter for service and helper dispatch
 
 Rules:
 - LuCI entrypoint code is the boundary between the SPA and the backend

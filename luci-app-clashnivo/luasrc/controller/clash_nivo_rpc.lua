@@ -1,17 +1,18 @@
--- JSON-RPC backend for OpenClash Nivo UI
+-- JSON-RPC backend for Clash Nivo UI
 -- Endpoint: /cgi-bin/luci/rpc/clash-nivo
 -- Protocol: JSON-RPC 2.0 via HTTP POST
 -- Auth: LuCI session (sysauth cookie or ?auth=TOKEN query param)
 
 module("luci.controller.clash_nivo_rpc", package.seeall)
 
+local io      = require "io"
 local json    = require "luci.jsonc"
 local http    = require "luci.http"
-local sys     = require "luci.sys"
 local uci_mod = require "luci.model.uci"
 local nixio   = require "nixio"
+local backend = require "luci.clashnivo.backend"
 
--- Restrict file operations to OpenClash-owned paths only
+-- Restrict file operations to Clash Nivo-owned paths only
 local ALLOWED_PATH_PATTERNS = {
     "^/etc/clashnivo/",
     "^/tmp/clashnivo",
@@ -50,8 +51,7 @@ local function is_allowed_path(path)
 end
 
 local function tail_file(path, lines)
-    lines = math.min(tonumber(lines) or 100, LOG_MAX_LINES)
-    return sys.exec(string.format("tail -n %d '%s' 2>/dev/null", lines, path)) or ""
+    return backend.tail_file(path, lines, LOG_MAX_LINES)
 end
 
 -- Returns the UCI section id of the config_subscribe entry with the given name,
@@ -179,13 +179,8 @@ function handlers.uci_delete(p)
     return true
 end
 
-function handlers.service_status(p)
-    -- The Clash binary runs as 'clash' or 'mihomo' — check both, not the service name
-    local pid_str = sys.exec("pidof clash mihomo 2>/dev/null | tr -d '\\n'")
-    if pid_str and pid_str ~= "" then
-        return { running = true, pid = tonumber(pid_str:match("%d+")) }
-    end
-    return { running = false }
+function handlers.service_status()
+    return backend.service_status()
 end
 
 function handlers.service_start()
@@ -193,7 +188,7 @@ function handlers.service_start()
     local cursor = uci_mod.cursor()
     cursor:set("clashnivo", "config", "enable", "1")
     cursor:commit("clashnivo")
-    sys.call("/etc/init.d/clashnivo start >/dev/null 2>&1")
+    backend.service_action("start")
     return true
 end
 
@@ -201,7 +196,7 @@ function handlers.service_stop()
     local cursor = uci_mod.cursor()
     cursor:set("clashnivo", "config", "enable", "0")
     cursor:commit("clashnivo")
-    sys.call("/etc/init.d/clashnivo stop >/dev/null 2>&1")
+    backend.service_action("stop")
     return true
 end
 
@@ -210,7 +205,7 @@ function handlers.service_restart()
     local cursor = uci_mod.cursor()
     cursor:set("clashnivo", "config", "enable", "1")
     cursor:commit("clashnivo")
-    sys.call("/etc/init.d/clashnivo restart >/dev/null 2>&1 &")
+    backend.service_action("restart", true)
     return true
 end
 
@@ -266,12 +261,10 @@ function handlers.system_info()
 
     local core_version = ""
     if nixio.fs.access(core_path) then
-        core_version = sys.exec(
-            string.format("%s -v 2>/dev/null | head -1 | tr -d '\\n'", core_path)
-        ) or ""
+        core_version = backend.read_core_version(core_path)
     end
 
-    local running = sys.call("pidof clash >/dev/null 2>&1") == 0
+    local running = backend.is_core_running()
 
     return {
         core_version = core_version,
@@ -281,15 +274,7 @@ end
 
 function handlers.subscription_update(p)
     local name = p[1]
-    if name then
-        -- Single subscription by name
-        sys.call(string.format(
-            "bash /usr/share/clashnivo/openclash.sh '%s' >/dev/null 2>&1 &",
-            name:gsub("'", "'\\''")))
-    else
-        -- Update all subscriptions
-        sys.call("bash /usr/share/clashnivo/openclash.sh >/dev/null 2>&1 &")
-    end
+    backend.start_subscription_update(name)
     return true
 end
 
@@ -308,10 +293,6 @@ function handlers.subscription_add(p)
 
     name = (name and name ~= "") and name or "subscription"
 
-    -- Sanitise for shell use
-    local safe_url  = url:gsub("'", "'\\''")
-    local safe_name = name:gsub("'", "'\\''")
-
     -- Create a new anonymous UCI config_subscribe section
     local cursor = uci_mod.cursor()
     local sid = cursor:add("clashnivo", "config_subscribe")
@@ -321,10 +302,8 @@ function handlers.subscription_add(p)
     cursor:save("clashnivo")
     cursor:commit("clashnivo")
 
-    -- Trigger async subscription download
-    sys.call(string.format(
-        "bash /usr/share/clashnivo/openclash.sh '%s' >/dev/null 2>&1 &",
-        safe_name))
+    -- Trigger async subscription download through the backend adapter
+    backend.start_subscription_update(name)
 
     return { name = name }
 end
@@ -404,7 +383,7 @@ function handlers.subscription_edit(p)
 end
 
 function handlers.subscription_update_all()
-    sys.call("bash /usr/share/clashnivo/openclash.sh >/dev/null 2>&1 &")
+    backend.start_subscription_update()
     return true
 end
 
@@ -415,9 +394,8 @@ function handlers.config_list()
     local active_path = cursor:get("clashnivo", "config", "config_path") or ""
 
     local result = {}
-    -- Use ls to enumerate yaml files (nixio.fs.dir may not be available everywhere)
-    local files = sys.exec(string.format("ls '%s'/*.yaml 2>/dev/null", CONFIG_DIR)) or ""
-    for full_path in files:gmatch("[^\n]+") do
+    local files = backend.list_yaml_files(CONFIG_DIR)
+    for _, full_path in ipairs(files) do
         local fname = full_path:match("([^/]+)$")
         if fname then
             local stat = nixio.fs.stat(full_path)
@@ -491,37 +469,17 @@ end
 local CORE_LATEST_CACHE = "/tmp/clashnivo_core_latest_version"
 
 function handlers.core_latest_version()
-    -- Try cached value first (refreshed by the update check script)
-    local cached = sys.exec(string.format("cat '%s' 2>/dev/null | tr -d '\\n'", CORE_LATEST_CACHE))
-    if cached and cached ~= "" then
-        return { version = cached }
-    end
-    -- Fall back to querying GitHub releases
-    local ver = sys.exec(
-        "curl -sf --max-time 5 https://api.github.com/repos/MetaCubeX/mihomo/releases/latest" ..
-        " | grep '\"tag_name\"' | head -1 | sed 's/.*\"tag_name\": *\"\\([^\"]*\\)\".*/\\1/' | tr -d '\\n'"
-    ) or ""
-    if ver ~= "" then
-        -- Cache it
-        sys.call(string.format("echo '%s' > '%s'", ver:gsub("'", "'\\''"), CORE_LATEST_CACHE))
-    end
+    local ver = backend.fetch_latest_core_version(CORE_LATEST_CACHE)
     return { version = ver }
 end
 
 function handlers.core_update()
-    -- Write initial status then run the update script async
-    sys.call(string.format(
-        "echo 'downloading' > '%s'", CORE_UPDATE_STATUS_FILE))
-    sys.call(string.format(
-        "bash /usr/share/clashnivo/openclash_core.sh Meta >'%s.log' 2>&1" ..
-        " && echo 'done' > '%s' || echo 'error' > '%s' &",
-        CORE_UPDATE_STATUS_FILE, CORE_UPDATE_STATUS_FILE, CORE_UPDATE_STATUS_FILE))
+    backend.start_core_update(CORE_UPDATE_STATUS_FILE)
     return true
 end
 
 function handlers.core_update_status()
-    local status = sys.exec(string.format(
-        "cat '%s' 2>/dev/null | tr -d '\\n'", CORE_UPDATE_STATUS_FILE)) or ""
+    local status = backend.read_trimmed_file(CORE_UPDATE_STATUS_FILE)
     if status == "" then
         return { status = "idle" }
     end
