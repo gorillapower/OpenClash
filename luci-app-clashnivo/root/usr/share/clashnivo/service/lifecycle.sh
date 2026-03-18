@@ -123,7 +123,7 @@ clashnivo_service_run_stop() {
       /usr/share/clashnivo/openclash_history_get.sh
 
       LOG_OUT "Step 2: Delete OpenClash Firewall Rules..."
-      revert_firewall
+      clashnivo_service_firewall_cleanup
 
       LOG_OUT "Step 3: Close The OpenClash Services..."
       for process in "openclash_streaming_unlock.lua"; do
@@ -199,20 +199,20 @@ clashnivo_service_run_reload() {
          exit 0
       fi
       LOG_OUT "【${CUR_RELOAD_NUM}/$MAX_RELOAD】Reload OpenClash Firewall Rules..."
-      revert_firewall
+      clashnivo_service_firewall_cleanup
       do_run_mode
       get_config
       check_core_status &
    fi
    if pidof clash >/dev/null && [ "$enable" == "1" ] && [ "$1" == "manual" ]; then
       LOG_OUT "Manually Reload Firewall Rules..."
-      revert_firewall
+      clashnivo_service_firewall_cleanup
       do_run_mode
       get_config
       check_core_status &
    fi
    if pidof clash >/dev/null && [ "$enable" == "1" ] && [ "$1" == "revert" ]; then
-      revert_firewall
+      clashnivo_service_firewall_cleanup
       revert_dnsmasq
       SLOG_CLEAN
    fi

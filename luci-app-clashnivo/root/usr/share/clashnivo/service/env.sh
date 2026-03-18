@@ -7,12 +7,14 @@ clashnivo_service_init_env() {
    . "${ipkg_instroot}/usr/share/clashnivo/service/network.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/service/guard.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/service/status.sh"
+   . "${ipkg_instroot}/usr/share/clashnivo/service/firewall.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/openclash_ps.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/ruby.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/log.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/uci.sh"
 
    clashnivo_service_init_state
+   clashnivo_service_firewall_init
    clashnivo_service_network_reset
 
    [ -f /etc/openwrt_release ] && {
