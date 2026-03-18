@@ -746,7 +746,7 @@ check_core_status()
 
    # redirect dns setting after core started, prevent core dns lookup failure
    if [ "$1" == "start" ]; then
-      change_dns "$enable_redirect_dns"
+      clashnivo_service_dns_apply "$enable_redirect_dns"
       clashnivo_service_firewall_apply
       LOG_TIP "OpenClash Start Successful!"
    else
@@ -3713,20 +3713,5 @@ get_config()
    [ -z "$dns_port" ] && dns_port=7874 && uci -q set clashnivo.config.dns_port=7874
    uci -q commit clashnivo
 }
-
-revert_dnsmasq()
-{
-   get_config
-   redirect_dns=$(uci_get_config "redirect_dns")
-   dnsmasq_server=$(uci_get_config "dnsmasq_server")
-   dnsmasq_noresolv=$(uci_get_config "dnsmasq_noresolv")
-   dnsmasq_resolvfile=$(uci_get_config "dnsmasq_resolvfile")
-   cachesize_dns=$(uci_get_config "cachesize_dns")
-   dnsmasq_cachesize=$(uci_get_config "dnsmasq_cachesize")
-   filter_aaaa_dns=$(uci_get_config "filter_aaaa_dns")
-   dnsmasq_filter_aaaa=$(uci_get_config "dnsmasq_filter_aaaa")
-   default_resolvfile=$(uci_get_config "default_resolvfile")
-   revert_dns "$redirect_dns" "$enable" "$default_resolvfile" "$dnsmasq_noresolv" "$dnsmasq_resolvfile" "$cachesize_dns" "$dnsmasq_cachesize" "$filter_aaaa_dns" "$dnsmasq_filter_aaaa" "$dnsmasq_server"
-} >/dev/null 2>&1
 
 . $IPKG_INSTROOT/usr/share/clashnivo/service/lifecycle.sh

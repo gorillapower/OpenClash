@@ -139,16 +139,14 @@ clashnivo_service_run_stop() {
       clashnivo_service_stop_watchdog_instances
 
       LOG_OUT "Step 4: Restart Dnsmasq..."
-      revert_dnsmasq
+      clashnivo_service_dns_restore_runtime_state
 
       LOG_OUT "Step 5: Delete OpenClash Residue File..."
       LOG_TIP "OpenClash Already Stop!"
 
       if [ "$enable" != "1" ]; then
          clashnivo_service_clear_disabled_runtime_state
-         rm -rf ${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_chnroute_pass.conf \
-                ${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_chnroute6_pass.conf \
-                ${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_custom_domain.conf
+         clashnivo_service_dns_cleanup_files
          SLOG_CLEAN
       fi
 
@@ -213,7 +211,7 @@ clashnivo_service_run_reload() {
    fi
    if pidof clash >/dev/null && [ "$enable" == "1" ] && [ "$1" == "revert" ]; then
       clashnivo_service_firewall_cleanup
-      revert_dnsmasq
+      clashnivo_service_dns_restore_runtime_state
       SLOG_CLEAN
    fi
    if pidof clash >/dev/null && [ "$enable" == "1" ] && [ "$1" == "restore" ]; then

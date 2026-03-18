@@ -8,6 +8,7 @@ clashnivo_service_init_env() {
    . "${ipkg_instroot}/usr/share/clashnivo/service/guard.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/service/status.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/service/firewall.sh"
+   . "${ipkg_instroot}/usr/share/clashnivo/service/dns.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/openclash_ps.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/ruby.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/log.sh"
@@ -36,4 +37,6 @@ clashnivo_service_init_env() {
    PROXY_ROUTE_TABLE="0x162"
    QUICK_START_CHECK=false
    QUICK_START=true
+
+   clashnivo_service_dns_init
 }
