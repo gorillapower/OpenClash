@@ -24,11 +24,21 @@ validate()
    clashnivo_service_validate_command
 }
 
+refresh_source()
+{
+   clashnivo_service_subscription_refresh_command "$1"
+}
+
+refresh_sources()
+{
+   clashnivo_service_subscription_refresh_command
+}
+
 add_cron()
 {
    [ "$(tail -n1 /etc/crontabs/root | wc -l)" -eq 0 ] && [ -n "$(cat /etc/crontabs/root 2>/dev/null)" ] && echo >> /etc/crontabs/root
-   [ -z "$(grep "openclash.sh" "$CRON_FILE" 2>/dev/null)" ] && {
-      [ "$(uci_get_config "auto_update")" -eq 1 ] && [ "$(uci_get_config "config_auto_update_mode")" -ne 1 ] && echo "0 $(uci_get_config "auto_update_time" || 1) * * $(uci_get_config "config_update_week_time" || 0) /usr/share/clashnivo/openclash.sh" >> $CRON_FILE
+   [ -z "$(grep "/etc/init.d/clashnivo refresh_sources" "$CRON_FILE" 2>/dev/null)" ] && {
+      [ "$(uci_get_config "auto_update")" -eq 1 ] && [ "$(uci_get_config "config_auto_update_mode")" -ne 1 ] && echo "0 $(uci_get_config "auto_update_time" || 1) * * $(uci_get_config "config_update_week_time" || 0) /etc/init.d/clashnivo refresh_sources" >> $CRON_FILE
    }
    [ -z "$(grep "openclash_ipdb.sh" "$CRON_FILE" 2>/dev/null)" ] && {
       [ "$(uci_get_config "geo_auto_update")" -eq 1 ] && echo "0 $(uci_get_config "geo_update_day_time" || 1) * * $(uci_get_config "geo_update_week_time" || 0) /usr/share/clashnivo/openclash_ipdb.sh" >> $CRON_FILE
@@ -58,6 +68,7 @@ add_cron()
 
 del_cron()
 {
+   sed -i '/\/etc\/init.d\/clashnivo refresh_sources/d' $CRON_FILE
    sed -i '/openclash.sh/d' $CRON_FILE
    sed -i '/openclash_ipdb.sh/d' $CRON_FILE
    sed -i '/openclash_geoip.sh/d' $CRON_FILE
@@ -371,7 +382,7 @@ if [ ! -f "$RAW_CONFIG_FILE" ]; then
    config_foreach sub_info_get "config_subscribe" "$RAW_CONFIG_FILE"
    if [ "$subscribe_enable" = "1" ]; then
       LOG_OUT "【$RAW_CONFIG_FILE】Config File Does Not Exist, You Have Set Subscription Information, Ready To Download..."
-      /usr/share/clashnivo/openclash.sh "$RAW_CONFIG_FILE" &
+      clashnivo_service_subscription_refresh_async "$RAW_CONFIG_FILE"
       exit 0
    fi
 fi

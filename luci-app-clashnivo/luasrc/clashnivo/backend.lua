@@ -8,7 +8,6 @@ local sys = require "luci.sys"
 local util = require "luci.util"
 
 local CLASHNIVO_INIT = "/etc/init.d/clashnivo"
-local SUBSCRIPTION_UPDATE_SCRIPT = "/usr/share/clashnivo/openclash.sh"
 local CORE_UPDATE_SCRIPT = "/usr/share/clashnivo/openclash_core.sh"
 local CORE_LATEST_RELEASE_API = "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest"
 
@@ -81,6 +80,19 @@ function service_action(action, async)
 	return sys.call(string.format("%s %s%s", shellquote(CLASHNIVO_INIT), action, suffix))
 end
 
+local function service_arg_command(action, arg, async)
+	local cmd = string.format("%s %s", shellquote(CLASHNIVO_INIT), shellquote(action))
+	if arg and arg ~= "" then
+		cmd = cmd .. " " .. shellquote(arg)
+	end
+	if async then
+		cmd = cmd .. " >/dev/null 2>&1 &"
+	else
+		cmd = cmd .. " >/dev/null 2>&1"
+	end
+	return sys.call(cmd)
+end
+
 local function service_json_command(action)
 	local output = sys.exec(string.format("%s %s 2>/dev/null", shellquote(CLASHNIVO_INIT), shellquote(action))) or ""
 	local parsed = json.parse(output)
@@ -115,12 +127,8 @@ function is_core_running()
 end
 
 function start_subscription_update(name)
-	local cmd = string.format("bash %s", shellquote(SUBSCRIPTION_UPDATE_SCRIPT))
-	if name and name ~= "" then
-		cmd = cmd .. " " .. shellquote(name)
-	end
-
-	return sys.call(cmd .. " >/dev/null 2>&1 &")
+	local action = (name and name ~= "") and "refresh_source" or "refresh_sources"
+	return service_arg_command(action, name, true)
 end
 
 function list_yaml_files(config_dir)
