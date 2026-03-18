@@ -4,6 +4,7 @@ clashnivo_service_init_env() {
    local ipkg_instroot="${1:-}"
 
    . "${ipkg_instroot}/usr/share/clashnivo/service/state.sh"
+   . "${ipkg_instroot}/usr/share/clashnivo/service/config.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/service/network.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/service/guard.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/service/status.sh"
@@ -17,9 +18,11 @@ clashnivo_service_init_env() {
    . "${ipkg_instroot}/usr/share/clashnivo/uci.sh"
 
    clashnivo_service_init_state
+   clashnivo_service_config_init
    clashnivo_service_firewall_init
    clashnivo_service_routing_init
    clashnivo_service_network_reset
+   clashnivo_service_config_reset_outputs
 
    [ -f /etc/openwrt_release ] && {
       FW4=$(command -v fw4)

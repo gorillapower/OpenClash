@@ -341,9 +341,9 @@ sub_info_get()
    fi
 
    if [ -z "$name" ]; then
-      SUB_CONFIG_FILE="/etc/clashnivo/config/config.yaml"
+      SUB_CONFIG_FILE="$(clashnivo_service_config_source_path)"
    else
-      SUB_CONFIG_FILE="/etc/clashnivo/config/$name.yaml"
+      SUB_CONFIG_FILE="$(clashnivo_service_config_source_path "$name.yaml")"
    fi
 
    if [ "$SUB_CONFIG_FILE" != "$2" ]; then
@@ -367,28 +367,20 @@ if [ ! -f "$RAW_CONFIG_FILE" ]; then
 fi
 
 if [ -z "$RAW_CONFIG_FILE" ] || [ ! -f "$RAW_CONFIG_FILE" ]; then
-   for file_name in /etc/clashnivo/config/*
-   do
-      if [ -f "$file_name" ]; then
-         CONFIG_NAME=$(echo "$file_name" |awk -F '/' '{print $5}' 2>/dev/null)
-         uci -q set clashnivo.config.config_path="/etc/clashnivo/config/$CONFIG_NAME"
-         uci -q commit clashnivo
-         RAW_CONFIG_FILE="/etc/clashnivo/config/$CONFIG_NAME"
-         CONFIG_FILE="/etc/clashnivo/$CONFIG_NAME"
-         TMP_CONFIG_FILE="/tmp/yaml_config_tmp_$CONFIG_NAME"
-         LOG_ERROR "Config Not Found, Switch Config File to【$RAW_CONFIG_FILE】"
-         break
-      fi
-   done
+   file_name="$(clashnivo_service_config_find_first_source)"
+   if [ -f "$file_name" ]; then
+      clashnivo_service_config_assign_paths "$file_name"
+      uci -q set clashnivo.config.config_path="$RAW_CONFIG_FILE"
+      uci -q commit clashnivo
+      LOG_ERROR "Config Not Found, Switch Config File to【$RAW_CONFIG_FILE】"
+   fi
 fi
 
 if [ ! -f "$RAW_CONFIG_FILE" ]; then
    LOG_ERROR "Config Not Found"
    exit 0
 fi
-
-CONFIG_NAME=$(echo "$RAW_CONFIG_FILE" |awk -F '/' '{print $5}' 2>/dev/null)
-HISTORY_PATH="/etc/clashnivo/history/${CONFIG_NAME%.*}.db"
+clashnivo_service_config_assign_paths "$RAW_CONFIG_FILE"
 } >/dev/null 2>&1
 
 config_check()
@@ -3513,11 +3505,7 @@ ${trimmed}"
                val_clean=$(printf "%s" "$val" | sed "s/^[[:space:]]*['\"]//;s/['\"][[:space:]]*$//")
                RAW_CONFIG_FILE=$(eval "echo \"$val_clean\"")
                uci -q set clashnivo.@overwrite[0].config_path="$RAW_CONFIG_FILE"
-               cfg_name=$(basename "$RAW_CONFIG_FILE" 2>/dev/null)
-               if [ -n "$cfg_name" ]; then
-                  CONFIG_FILE="/etc/clashnivo/${cfg_name}"
-                  TMP_CONFIG_FILE="/tmp/yaml_config_tmp_${cfg_name}"
-               fi
+               clashnivo_service_config_assign_paths "$RAW_CONFIG_FILE"
             elif printf "%s" "$key_u" | grep -q "^SUB_INFO_URL$"; then
                val_clean=$(printf "%s" "$val" | sed "s/^[[:space:]]*['\"]//;s/['\"][[:space:]]*$//")
                url_key=$(eval "echo \"$val_clean\"")
@@ -3604,9 +3592,7 @@ get_config()
    clashnivo_service_network_load
 
    RAW_CONFIG_FILE=$(uci_get_config "config_path")
-   CFG_NAME=$(basename "$RAW_CONFIG_FILE" 2>/dev/null)
-   CONFIG_FILE="/etc/clashnivo/${CFG_NAME}"
-   TMP_CONFIG_FILE="/tmp/yaml_config_tmp_${CFG_NAME}"
+   clashnivo_service_config_assign_paths "$RAW_CONFIG_FILE"
    enable=$(uci_get_config "enable")
    enable_custom_clash_rules=$(uci_get_config "enable_custom_clash_rules")
    da_password=$(uci_get_config "dashboard_password")
