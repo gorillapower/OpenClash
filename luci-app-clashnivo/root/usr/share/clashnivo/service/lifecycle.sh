@@ -123,7 +123,7 @@ clashnivo_service_run_stop() {
       /usr/share/clashnivo/openclash_history_get.sh
 
       LOG_OUT "Step 2: Delete OpenClash Firewall Rules..."
-      clashnivo_service_firewall_cleanup
+      clashnivo_service_network_cleanup_runtime
 
       LOG_OUT "Step 3: Close The OpenClash Services..."
       for process in "openclash_streaming_unlock.lua"; do
@@ -139,14 +139,14 @@ clashnivo_service_run_stop() {
       clashnivo_service_stop_watchdog_instances
 
       LOG_OUT "Step 4: Restart Dnsmasq..."
-      clashnivo_service_dns_restore_runtime_state
+      clashnivo_service_network_restore_dns_runtime
 
       LOG_OUT "Step 5: Delete OpenClash Residue File..."
       LOG_TIP "OpenClash Already Stop!"
 
       if [ "$enable" != "1" ]; then
          clashnivo_service_clear_disabled_runtime_state
-         clashnivo_service_dns_cleanup_files
+         clashnivo_service_network_cleanup_disabled_runtime
          SLOG_CLEAN
       fi
 
@@ -197,21 +197,20 @@ clashnivo_service_run_reload() {
          exit 0
       fi
       LOG_OUT "【${CUR_RELOAD_NUM}/$MAX_RELOAD】Reload OpenClash Firewall Rules..."
-      clashnivo_service_firewall_cleanup
+      clashnivo_service_network_cleanup_firewall_only
       do_run_mode
       get_config
       check_core_status &
    fi
    if pidof clash >/dev/null && [ "$enable" == "1" ] && [ "$1" == "manual" ]; then
       LOG_OUT "Manually Reload Firewall Rules..."
-      clashnivo_service_firewall_cleanup
+      clashnivo_service_network_cleanup_firewall_only
       do_run_mode
       get_config
       check_core_status &
    fi
    if pidof clash >/dev/null && [ "$enable" == "1" ] && [ "$1" == "revert" ]; then
-      clashnivo_service_firewall_cleanup
-      clashnivo_service_dns_restore_runtime_state
+      clashnivo_service_network_cleanup_runtime
       SLOG_CLEAN
    fi
    if pidof clash >/dev/null && [ "$enable" == "1" ] && [ "$1" == "restore" ]; then

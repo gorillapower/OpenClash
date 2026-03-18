@@ -743,11 +743,10 @@ check_core_status()
 
    # redirect dns setting after core started, prevent core dns lookup failure
    if [ "$1" == "start" ]; then
-      clashnivo_service_dns_apply "$enable_redirect_dns"
-      clashnivo_service_firewall_apply
+      clashnivo_service_network_apply_runtime "start"
       LOG_TIP "OpenClash Start Successful!"
    else
-      clashnivo_service_firewall_apply
+      clashnivo_service_network_apply_runtime "reload"
       LOG_TIP "Firewall Reload Successful!"
    fi
 

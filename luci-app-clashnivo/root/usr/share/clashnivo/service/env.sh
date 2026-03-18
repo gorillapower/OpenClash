@@ -10,6 +10,7 @@ clashnivo_service_init_env() {
    . "${ipkg_instroot}/usr/share/clashnivo/service/firewall.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/service/dns.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/service/routing.sh"
+   . "${ipkg_instroot}/usr/share/clashnivo/service/orchestration.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/openclash_ps.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/ruby.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/log.sh"
