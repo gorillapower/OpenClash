@@ -81,6 +81,27 @@ function service_action(action, async)
 	return sys.call(string.format("%s %s%s", shellquote(CLASHNIVO_INIT), action, suffix))
 end
 
+local function service_json_command(action)
+	local output = sys.exec(string.format("%s %s 2>/dev/null", shellquote(CLASHNIVO_INIT), shellquote(action))) or ""
+	local parsed = json.parse(output)
+
+	if parsed and type(parsed) == "table" then
+		return parsed
+	end
+
+	return {
+		valid = false,
+		failed_layer = "service",
+		stages = {
+			{
+				name = action,
+				status = "failed",
+				message = "Unable to parse service JSON output",
+			},
+		},
+	}
+end
+
 function read_core_version(core_path)
 	if not fs.access(core_path) then
 		return ""
@@ -161,4 +182,12 @@ function start_core_update(status_file)
 	)
 
 	return sys.call(cmd)
+end
+
+function preview_config()
+	return service_json_command("preview")
+end
+
+function validate_config()
+	return service_json_command("validate")
 end

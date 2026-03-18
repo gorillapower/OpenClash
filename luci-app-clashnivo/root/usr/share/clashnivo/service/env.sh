@@ -13,6 +13,7 @@ clashnivo_service_init_env() {
    . "${ipkg_instroot}/usr/share/clashnivo/service/routing.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/service/orchestration.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/service/composition.sh"
+   . "${ipkg_instroot}/usr/share/clashnivo/service/preview.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/openclash_ps.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/ruby.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/log.sh"
@@ -24,6 +25,7 @@ clashnivo_service_init_env() {
    clashnivo_service_routing_init
    clashnivo_service_network_reset
    clashnivo_service_config_reset_outputs
+   clashnivo_service_preview_init
 
    [ -f /etc/openwrt_release ] && {
       FW4=$(command -v fw4)

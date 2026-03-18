@@ -464,6 +464,14 @@ function handlers.config_write(p)
     return handlers.file_write({ path, content })
 end
 
+function handlers.config_preview()
+    return backend.preview_config()
+end
+
+function handlers.config_validate()
+    return backend.validate_config()
+end
+
 -- ── core management handlers ───────────────────────────────────────────────
 
 local CORE_LATEST_CACHE = "/tmp/clashnivo_core_latest_version"
@@ -524,6 +532,8 @@ local METHOD_MAP = {
     ["config.delete"]            = handlers.config_delete,
     ["config.read"]              = handlers.config_read,
     ["config.write"]             = handlers.config_write,
+    ["config.preview"]           = handlers.config_preview,
+    ["config.validate"]          = handlers.config_validate,
     ["core.latestVersion"]       = handlers.core_latest_version,
     ["core.update"]              = handlers.core_update,
     ["core.updateStatus"]        = handlers.core_update_status,

@@ -14,6 +14,16 @@ status()
    clashnivo_service_status_exit_code
 }
 
+preview()
+{
+   clashnivo_service_preview_command
+}
+
+validate()
+{
+   clashnivo_service_validate_command
+}
+
 add_cron()
 {
    [ "$(tail -n1 /etc/crontabs/root | wc -l)" -eq 0 ] && [ -n "$(cat /etc/crontabs/root 2>/dev/null)" ] && echo >> /etc/crontabs/root
