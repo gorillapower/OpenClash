@@ -50,6 +50,14 @@ Current JSON fields:
   - whether the watchdog procd instance is running
 - `openclash_installed`
   - whether OpenClash appears installed via `/etc/init.d/openclash`
+- `openclash_enabled`
+  - whether the installed OpenClash service is enabled
+- `openclash_service_running`
+  - whether the OpenClash service instance is running
+- `openclash_watchdog_running`
+  - whether the OpenClash watchdog instance is running
+- `openclash_core_running`
+  - whether an OpenClash-owned core process is currently detected
 - `openclash_active`
   - whether a detectable OpenClash runtime is active
 - `blocked`
@@ -60,6 +68,8 @@ Current JSON fields:
   - whether Clash Nivo can currently attempt ownership
 - `core_pid`
   - detected core pid when available
+- `openclash_core_pid`
+  - detected OpenClash-owned core pid when available
 - `active_config`
   - current configured config path when present
 - `core_type`
@@ -100,9 +110,12 @@ This is the first structured status surface, not the final one.
 
 Still transitional:
 
-- OpenClash activity detection is intentionally conservative and will be refined in `#51`
 - watchdog identity still uses inherited naming in procd
 - some runtime internals still rely on inherited helper names and process checks
+
+The refined guard signals and blocked-start behavior are implemented separately in:
+
+- `docs/architecture/runtime-guard-implementation.md`
 
 ## References
 

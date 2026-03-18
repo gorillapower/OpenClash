@@ -10,6 +10,8 @@ start_service()
       exit 0
    fi
 
+   clashnivo_service_require_guard_clear "start" || exit $?
+
    LOG_TIP "OpenClash Start Running..."
 
    {
@@ -163,6 +165,11 @@ reload_service()
 {
    enable=$(uci_get_config "enable")
    MAX_RELOAD=10
+   case "$1" in
+      firewall|manual|restore)
+         clashnivo_service_require_guard_clear "reload:$1" || exit $?
+      ;;
+   esac
    if pidof clash >/dev/null && [ "$enable" == "1" ] && [ "$1" == "firewall" ]; then
       #sleep for avoiding system unready
       sleep 5
