@@ -9,6 +9,7 @@ clashnivo_service_init_env() {
    . "${ipkg_instroot}/usr/share/clashnivo/service/status.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/service/firewall.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/service/dns.sh"
+   . "${ipkg_instroot}/usr/share/clashnivo/service/routing.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/openclash_ps.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/ruby.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/log.sh"
@@ -16,6 +17,7 @@ clashnivo_service_init_env() {
 
    clashnivo_service_init_state
    clashnivo_service_firewall_init
+   clashnivo_service_routing_init
    clashnivo_service_network_reset
 
    [ -f /etc/openwrt_release ] && {
@@ -33,8 +35,8 @@ clashnivo_service_init_env() {
    CLASH_CONFIG="/etc/clashnivo"
    CRON_FILE="/etc/crontabs/root"
    CACHE_PATH="/etc/clashnivo/cache.db"
-   PROXY_FWMARK="0x162"
-   PROXY_ROUTE_TABLE="0x162"
+   PROXY_FWMARK="$CLASHNIVO_ROUTING_FWMARK"
+   PROXY_ROUTE_TABLE="$CLASHNIVO_ROUTING_TABLE"
    QUICK_START_CHECK=false
    QUICK_START=true
 

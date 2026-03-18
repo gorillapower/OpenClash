@@ -686,22 +686,22 @@ check_core_status()
       fi
 
       #wait 120s most for tun interface start
-      while ( [ -n "$(pidof clash)" ] && [ -z "$($ip_ route list |grep utun)" ] && [ "$TUN_WAIT" -le 120 ] )
+      while ( [ -n "$(pidof clash)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_WAIT" -le 120 ] )
       do
-         $ip_ link set utun up
+         $ip_ link set "$CLASHNIVO_ROUTING_TUN_DEVICE" up
          let TUN_WAIT++
          sleep 1
       done
 
-      if [ -n "$(pidof clash)" ] && [ -z "$($ip_ route list |grep utun)" ] && [ "$TUN_WAIT" -gt 120 ]; then
-         while ( [ -n "$(pidof clash)" ] && [ -z "$($ip_ route list |grep utun)" ] && [ "$TUN_RESTART" -le 3 ] )
+      if [ -n "$(pidof clash)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_WAIT" -gt 120 ]; then
+         while ( [ -n "$(pidof clash)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_RESTART" -le 3 ] )
          do
             LOG_WARN "TUN Interface Start Failed, Try to Restart Again..."
             start_run_core
             sleep 120
             let TUN_RESTART++
          done
-         if [ -n "$(pidof clash)" ] && [ -z "$($ip_ route list |grep utun)" ] && [ "$TUN_RESTART" -gt 3 ]; then
+         if [ -n "$(pidof clash)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_RESTART" -gt 3 ]; then
             LOG_WARN "TUN Interface Start Failed, Please Check The Dependence or Try to Restart Again!"
             start_fail
          fi
@@ -710,17 +710,14 @@ check_core_status()
       if [ -n "$(pidof clash)" ]; then
          while ( [ -n "$(pidof clash)" ] && [ -n "$(ip -6 rule show |grep 2022)" ] && [ "$CORE_WAIT" -le 10 ] )
          do
-            ip -6 rule del oif utun table 2022
-            ip -6 route del default dev utun table 2022
+            clashnivo_service_routing_cleanup_tun_core_table_ipv6 2022
             let CORE_WAIT++
          done
          if [ "$ipv6_mode" -eq 2 ] || [ "$ipv6_mode" -eq 3 ]; then
-            ip -6 route add default dev utun table "$PROXY_ROUTE_TABLE"
-            ip -6 rule add fwmark "$PROXY_FWMARK" table "$PROXY_ROUTE_TABLE" pref 1888
+            clashnivo_service_routing_apply_tun_ipv6
          fi
          if [ -n "$en_mode_tun" ]; then
-            ip route add default dev utun table "$PROXY_ROUTE_TABLE"
-            ip rule add fwmark "$PROXY_FWMARK" table "$PROXY_ROUTE_TABLE" pref 1888
+            clashnivo_service_routing_apply_tun_ipv4
          fi
       fi
    else
@@ -1676,8 +1673,7 @@ if [ -n "$FW4" ]; then
          #udp
          if [ "$enable_udp_proxy" -eq 1 ]; then
             check_mod "nft_tproxy"
-            ip rule add fwmark "$PROXY_FWMARK" table "$PROXY_ROUTE_TABLE"
-            ip route add local 0.0.0.0/0 dev lo table "$PROXY_ROUTE_TABLE"
+            clashnivo_service_routing_apply_local_ipv4
             nft 'add chain inet fw4 clashnivo_mangle'
             nft 'flush chain inet fw4 clashnivo_mangle'
             nft 'add chain inet fw4 clashnivo_upnp'
@@ -1718,8 +1714,7 @@ if [ -n "$FW4" ]; then
          fi
          if [ "$enable_udp_proxy" -ne 1 ] && [ "$en_mode" = "fake-ip" ]; then
             check_mod "nft_tproxy"
-            ip rule add fwmark "$PROXY_FWMARK" table "$PROXY_ROUTE_TABLE"
-            ip route add local 0.0.0.0/0 dev lo table "$PROXY_ROUTE_TABLE"
+            clashnivo_service_routing_apply_local_ipv4
             nft 'add chain inet fw4 clashnivo_mangle'
             nft 'flush chain inet fw4 clashnivo_mangle'
             nft add rule inet fw4 clashnivo_mangle meta l4proto { udp } ip daddr { "$fakeip_range" } mark set "$PROXY_FWMARK" tproxy ip to 127.0.0.1:"$tproxy_port" counter accept
@@ -2212,8 +2207,7 @@ if [ -n "$FW4" ]; then
       if [ "$ipv6_mode" -ne 2 ] && [ "$ipv6_mode" -ne 3 ]; then
          if [ "$enable_v6_udp_proxy" -eq 1 ] || [ "$ipv6_mode" -eq 0 ]; then
             check_mod "nft_tproxy"
-            ip -6 rule add fwmark "$PROXY_FWMARK" table "$PROXY_ROUTE_TABLE"
-            ip -6 route add local ::/0 dev lo table "$PROXY_ROUTE_TABLE"
+            clashnivo_service_routing_apply_local_ipv6
          fi
       fi
 
@@ -2525,8 +2519,7 @@ if [ -z "$FW4" ]; then
          #udp
          if [ "$enable_udp_proxy" -eq 1 ]; then
             check_mod "xt_TPROXY"
-            ip rule add fwmark "$PROXY_FWMARK" table "$PROXY_ROUTE_TABLE"
-            ip route add local 0.0.0.0/0 dev lo table "$PROXY_ROUTE_TABLE"
+            clashnivo_service_routing_apply_local_ipv4
             iptables -t mangle -N clashnivo
             iptables -t mangle -F clashnivo
             iptables -t mangle -N clashnivo_upnp
@@ -2566,8 +2559,7 @@ if [ -z "$FW4" ]; then
 
          if [ "$enable_udp_proxy" -ne 1 ] && [ "$en_mode" = "fake-ip" ]; then
             check_mod "xt_TPROXY"
-            ip rule add fwmark "$PROXY_FWMARK" table "$PROXY_ROUTE_TABLE"
-            ip route add local 0.0.0.0/0 dev lo table "$PROXY_ROUTE_TABLE"
+            clashnivo_service_routing_apply_local_ipv4
             iptables -t mangle -N clashnivo
             iptables -t mangle -F clashnivo
             iptables -t mangle -A clashnivo -p udp -d "$fakeip_range" -j TPROXY --on-port "$tproxy_port" --tproxy-mark "$PROXY_FWMARK"
@@ -3039,8 +3031,7 @@ if [ -z "$FW4" ]; then
       if [ "$ipv6_mode" -ne 2 ] && [ "$ipv6_mode" -ne 3 ]; then
          if [ "$enable_v6_udp_proxy" -eq 1 ] || [ "$ipv6_mode" -eq 0 ]; then
             check_mod "xt_TPROXY"
-            ip -6 rule add fwmark "$PROXY_FWMARK" table "$PROXY_ROUTE_TABLE"
-            ip -6 route add local ::/0 dev lo table "$PROXY_ROUTE_TABLE"
+            clashnivo_service_routing_apply_local_ipv6
          fi
       fi
 
@@ -3139,17 +3130,13 @@ revert_firewall()
 {
    rm -rf /var/etc/clashnivo.include
 
-   ip rule del fwmark "$PROXY_FWMARK" table "$PROXY_ROUTE_TABLE"
-   ip route del local 0.0.0.0/0 dev lo table "$PROXY_ROUTE_TABLE"
+   clashnivo_service_routing_cleanup_local_ipv4
 
-   ip -6 rule del fwmark "$PROXY_FWMARK" table "$PROXY_ROUTE_TABLE"
-   ip -6 route del local ::/0 dev lo table "$PROXY_ROUTE_TABLE"
+   clashnivo_service_routing_cleanup_local_ipv6
 
    #TUN
-   ip rule del fwmark "$PROXY_FWMARK" table "$PROXY_ROUTE_TABLE"
-   ip route del default dev utun table "$PROXY_ROUTE_TABLE"
-   ip -6 rule del fwmark "$PROXY_FWMARK" table "$PROXY_ROUTE_TABLE"
-   ip -6 route del default dev utun table "$PROXY_ROUTE_TABLE"
+   clashnivo_service_routing_cleanup_tun_ipv4
+   clashnivo_service_routing_cleanup_tun_ipv6
 
    if [ -n "$FW4" ]; then
       for nft in "input" "forward" "output" "dstnat" "srcnat" "nat_output" "mangle_prerouting" "mangle_output"; do
