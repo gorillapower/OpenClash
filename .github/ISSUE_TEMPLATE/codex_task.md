@@ -40,6 +40,12 @@ Summarize the relevant context in 3-8 lines.
 
 - Explain how this should be validated.
 - Include commands, test steps, or grep checks where relevant.
+- State which of these were added or updated:
+  - syntax checks
+  - validator checks
+  - automated tests
+  - manual integration checks
+- If no automated test is added for a stable module boundary, explain why and note the remaining risk.
 
 ## Notes For Codex
 
@@ -53,6 +59,8 @@ Summarize the relevant context in 3-8 lines.
 - If commit or push cannot be completed cleanly, report the blocker and do not close the issue as if the workflow were finished.
 - If the worktree contains unrelated or mixed changes, stop and separate or revert them before committing rather than sweeping them into the issue commit.
 - Unless a task explicitly says otherwise, assume there are no existing Clash Nivo installations that require backward-compatibility handling; do not add migration or transitional support for prior Clash Nivo builds by default.
+- Treat verification as part of the task, not an optional extra. At minimum run syntax checks for touched shell/Lua files and any relevant validator scripts.
+- If the task changes a service, RPC, or other stable module boundary, prefer adding or updating an automated test unless there is a documented reason not to.
 - Report back with:
   - changed files
   - what was verified
