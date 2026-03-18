@@ -3615,6 +3615,8 @@ clear_overwrite_set()
 
 get_config()
 {
+   clashnivo_service_network_load
+
    RAW_CONFIG_FILE=$(uci_get_config "config_path")
    CFG_NAME=$(basename "$RAW_CONFIG_FILE" 2>/dev/null)
    CONFIG_FILE="/etc/clashnivo/${CFG_NAME}"
@@ -3623,16 +3625,16 @@ get_config()
    enable_custom_clash_rules=$(uci_get_config "enable_custom_clash_rules")
    da_password=$(uci_get_config "dashboard_password")
    cn_port=$(uci_get_config "cn_port")
-   proxy_port=$(uci_get_config "proxy_port")
-   tproxy_port=$(uci_get_config "tproxy_port" || echo 7895)
-   proxy_mode=$(uci_get_config "proxy_mode")
-   ipv6_enable=$(uci_get_config "ipv6_enable")
-   ipv6_dns=$(uci_get_config "ipv6_dns" || echo 0)
+   proxy_port="${CLASHNIVO_NETWORK_PROXY_PORT}"
+   tproxy_port="${CLASHNIVO_NETWORK_TPROXY_PORT}"
+   proxy_mode="${CLASHNIVO_NETWORK_PROXY_MODE}"
+   ipv6_enable="${CLASHNIVO_NETWORK_IPV6_ENABLE}"
+   ipv6_dns="${CLASHNIVO_NETWORK_IPV6_DNS}"
    ipv6_mode=$(uci_get_config "ipv6_mode" || echo 0)
    enable_v6_udp_proxy=$(uci_get_config "enable_v6_udp_proxy" || echo 0)
-   http_port=$(uci_get_config "http_port")
-   socks_port=$(uci_get_config "socks_port")
-   enable_redirect_dns=$(uci_get_config "enable_redirect_dns" || echo 1)
+   http_port="${CLASHNIVO_NETWORK_HTTP_PORT}"
+   socks_port="${CLASHNIVO_NETWORK_SOCKS_PORT}"
+   enable_redirect_dns="${CLASHNIVO_NETWORK_ENABLE_REDIRECT_DNS}"
    if [ "$(uci_get_config "fakeip_range")"  == "0" ]; then
       fakeip_range=$(ruby_read "$RAW_CONFIG_FILE" "['dns']['fake-ip-range']")
    else
@@ -3659,23 +3661,23 @@ get_config()
    log_level=$(uci_get_config "log_level")
    intranet_allowed=$(uci_get_config "intranet_allowed")
    enable_udp_proxy=$(uci_get_config "enable_udp_proxy" || echo 1)
-   disable_udp_quic=$(uci_get_config "disable_udp_quic")
+   disable_udp_quic="${CLASHNIVO_NETWORK_DISABLE_UDP_QUIC}"
    operation_mode=$(uci_get_config "operation_mode")
    lan_ac_mode=$(uci_get_config "lan_ac_mode")
    enable_rule_proxy=$(uci_get_config "enable_rule_proxy")
-   stack_type=$(uci_get_config "stack_type")
-   stack_type_v6=$(uci_get_config "stack_type_v6" || echo "system")
-   china_ip_route=$(uci_get_config "china_ip_route"); [[ "$china_ip_route" != "0" && "$china_ip_route" != "1" && "$china_ip_route" != "2" ]] && china_ip_route=0
-   china_ip6_route=$(uci_get_config "china_ip6_route"); [[ "$china_ip6_route" != "0" && "$china_ip6_route" != "1" && "$china_ip6_route" != "2" ]] && china_ip6_route=0
+   stack_type="${CLASHNIVO_NETWORK_STACK_TYPE}"
+   stack_type_v6="${CLASHNIVO_NETWORK_STACK_TYPE_V6}"
+   china_ip_route="${CLASHNIVO_NETWORK_CHINA_IP_ROUTE}"
+   china_ip6_route="${CLASHNIVO_NETWORK_CHINA_IP6_ROUTE}"
    small_flash_memory=$(uci_get_config "small_flash_memory")
-   mixed_port=$(uci_get_config "mixed_port")
-   interface_name=$(uci_get_config "interface_name" || echo 0)
-   common_ports=$(uci_get_config "common_ports")
-   dns_port=$(uci_get_config "dns_port")
+   mixed_port="${CLASHNIVO_NETWORK_MIXED_PORT}"
+   interface_name="${CLASHNIVO_NETWORK_INTERFACE_NAME}"
+   common_ports="${CLASHNIVO_NETWORK_COMMON_PORTS}"
+   dns_port="${CLASHNIVO_NETWORK_DNS_PORT}"
    store_fakeip=$(uci_get_config "store_fakeip" || echo 0)
    bypass_gateway_compatible=$(uci_get_config "bypass_gateway_compatible" || echo 0)
    core_version=$(uci_get_config "core_version" || echo 0)
-   router_self_proxy=$(uci_get_config "router_self_proxy" || echo 1)
+   router_self_proxy="${CLASHNIVO_NETWORK_ROUTER_SELF_PROXY}"
    enable_meta_sniffer=$(uci_get_config "enable_meta_sniffer" || echo 0)
    enable_meta_sniffer_custom=$(uci_get_config "enable_meta_sniffer_custom" || echo 0)
    geodata_loader=$(uci_get_config "geodata_loader" || echo 0)

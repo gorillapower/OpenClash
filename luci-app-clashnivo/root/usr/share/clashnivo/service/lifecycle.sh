@@ -102,7 +102,8 @@ clashnivo_service_run_start() {
       LOG_OUT "Step 6: Core Status Checking and Firewall Rules Setting..."
       check_core_status "start" &
 
-      if [ "$ipv6_enable" -eq 0 ] && [ "$(uci -q get dhcp.lan.dhcpv6)" != "disabled" ] && [ -n "$(uci -q get dhcp.lan.dhcpv6)" ]; then
+      clashnivo_service_network_ensure_loaded
+      if [ "$ipv6_enable" -eq 0 ] && [ "${CLASHNIVO_NETWORK_LAN_DHCPV6}" != "disabled" ] && [ -n "${CLASHNIVO_NETWORK_LAN_DHCPV6}" ]; then
          LOG_WARN "Please Note That Network May Abnormal With IPv6's DHCP Server"
       fi
 
