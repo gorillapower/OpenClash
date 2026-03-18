@@ -8,9 +8,6 @@ local sys = require "luci.sys"
 local util = require "luci.util"
 
 local CLASHNIVO_INIT = "/etc/init.d/clashnivo"
-local CORE_UPDATE_SCRIPT = "/usr/share/clashnivo/openclash_core.sh"
-local CORE_LATEST_RELEASE_API = "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest"
-
 local function shellquote(value)
 	return util.shellquote(value or "")
 end
@@ -158,38 +155,56 @@ function write_string_file(path, content)
 	return write_file(path, content)
 end
 
-function fetch_latest_core_version(cache_path)
-	local cached = read_trimmed_file(cache_path)
-	if cached ~= "" then
-		return cached
+function update_command(action, ...)
+	local cmd = string.format("%s %s", shellquote(CLASHNIVO_INIT), shellquote(action))
+	local args = { ... }
+
+	for _, arg in ipairs(args) do
+		if arg and arg ~= "" then
+			cmd = cmd .. " " .. shellquote(arg)
+		end
 	end
 
-	local version = sys.exec(
-		"curl -sf --max-time 5 " .. shellquote(CORE_LATEST_RELEASE_API) ..
-		" | grep '\"tag_name\"' | head -1 | sed 's/.*\"tag_name\": *\"\\([^\"]*\\)\".*/\\1/' | tr -d '\\n'"
-	) or ""
+	local output = sys.exec(cmd .. " 2>/dev/null") or ""
+	local parsed = json.parse(output)
 
-	if version ~= "" then
-		write_string_file(cache_path, version .. "\n")
+	if parsed and type(parsed) == "table" then
+		return parsed
 	end
 
-	return version
+	return { accepted = false, error = "Unable to parse service JSON output" }
 end
 
-function start_core_update(status_file)
-	write_string_file(status_file, "downloading\n")
+function core_latest_version()
+	return update_command("update_core_latest")
+end
 
-	local status_log = shellquote(status_file .. ".log")
-	local quoted_status_file = shellquote(status_file)
-	local cmd = string.format(
-		"bash %s Meta >%s 2>&1 && echo 'done' > %s || echo 'error' > %s &",
-		shellquote(CORE_UPDATE_SCRIPT),
-		status_log,
-		quoted_status_file,
-		quoted_status_file
-	)
+function start_core_update()
+	return update_command("update_core")
+end
 
-	return sys.call(cmd)
+function core_update_status()
+	return update_command("update_status", "core")
+end
+
+function package_latest_version()
+	return update_command("update_package_latest")
+end
+
+function start_package_update()
+	return update_command("update_package")
+end
+
+function package_update_status()
+	return update_command("update_status", "package")
+end
+
+function start_assets_update(target)
+	return update_command("update_assets", target)
+end
+
+function assets_update_status(target)
+	return update_command("update_status", "assets", target)
 end
 
 function preview_config()

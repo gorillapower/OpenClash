@@ -99,7 +99,7 @@ Outputs:
 - custom rules
 - overwrite/merge model
 - merged config preview/validation
-- core and data update flows
+- core and asset update flows
 
 ### Epic 5: UI Integration
 

@@ -23,8 +23,6 @@ local LOG_SERVICE    = "/tmp/clashnivo.log"
 local LOG_CORE       = "/tmp/clash.log"
 local LOG_MAX_LINES  = 500
 local CONFIG_DIR     = "/etc/clashnivo/config"
-local CORE_UPDATE_STATUS_FILE = "/tmp/clashnivo_core_update_status"
-
 function index()
     local e = entry({"rpc", "clash-nivo"}, call("handle_rpc"))
     e.leaf      = true
@@ -474,34 +472,38 @@ end
 
 -- ── core management handlers ───────────────────────────────────────────────
 
-local CORE_LATEST_CACHE = "/tmp/clashnivo_core_latest_version"
-
 function handlers.core_latest_version()
-    local ver = backend.fetch_latest_core_version(CORE_LATEST_CACHE)
-    return { version = ver }
+    return backend.core_latest_version()
 end
 
 function handlers.core_update()
-    backend.start_core_update(CORE_UPDATE_STATUS_FILE)
-    return true
+    return backend.start_core_update()
 end
 
 function handlers.core_update_status()
-    local status = backend.read_trimmed_file(CORE_UPDATE_STATUS_FILE)
-    if status == "" then
-        return { status = "idle" }
-    end
-    -- The status file contains one of: downloading | installing | done | error
-    -- Optionally a message on the second line
-    local first_line = status:match("^([^\n]+)") or status
-    local second_line = status:match("\n(.+)$")
-    local valid = { downloading=true, installing=true, done=true, error=true }
-    local s = valid[first_line] and first_line or "idle"
-    local result = { status = s }
-    if second_line and second_line ~= "" then
-        result.message = second_line
-    end
-    return result
+    return backend.core_update_status()
+end
+
+function handlers.package_latest_version()
+    return backend.package_latest_version()
+end
+
+function handlers.package_update()
+    return backend.start_package_update()
+end
+
+function handlers.package_update_status()
+    return backend.package_update_status()
+end
+
+function handlers.assets_update(p)
+    local target = p[1]
+    return backend.start_assets_update(target)
+end
+
+function handlers.assets_update_status(p)
+    local target = p[1]
+    return backend.assets_update_status(target)
 end
 
 -- ── method dispatch table (dot-notation → handler) ─────────────────────────
@@ -537,6 +539,11 @@ local METHOD_MAP = {
     ["core.latestVersion"]       = handlers.core_latest_version,
     ["core.update"]              = handlers.core_update,
     ["core.updateStatus"]        = handlers.core_update_status,
+    ["package.latestVersion"]    = handlers.package_latest_version,
+    ["package.update"]           = handlers.package_update,
+    ["package.updateStatus"]     = handlers.package_update_status,
+    ["assets.update"]            = handlers.assets_update,
+    ["assets.updateStatus"]      = handlers.assets_update_status,
 }
 
 -- ── main RPC handler ────────────────────────────────────────────────────────

@@ -24,6 +24,36 @@ validate()
    clashnivo_service_validate_command
 }
 
+update_status()
+{
+   clashnivo_service_update_status_command "$1" "$2"
+}
+
+update_core()
+{
+   clashnivo_service_update_core_command
+}
+
+update_core_latest()
+{
+   clashnivo_service_update_core_latest_command
+}
+
+update_package()
+{
+   clashnivo_service_update_package_command
+}
+
+update_package_latest()
+{
+   clashnivo_service_update_package_latest_command
+}
+
+update_assets()
+{
+   clashnivo_service_update_assets_command "$1"
+}
+
 refresh_source()
 {
    clashnivo_service_subscription_refresh_command "$1"
