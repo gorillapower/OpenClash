@@ -110,7 +110,7 @@ This is the first structured status surface, not the final one.
 
 Still transitional:
 
-- watchdog identity still uses inherited naming in procd
+- status treats `clashnivo-watchdog` as the only Clash Nivo-owned watchdog identity
 - some runtime internals still rely on inherited helper names and process checks
 
 The refined guard signals and blocked-start behavior are implemented separately in:

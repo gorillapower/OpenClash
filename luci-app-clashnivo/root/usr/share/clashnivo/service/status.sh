@@ -14,16 +14,22 @@ clashnivo_service_uci_get() {
    uci -q get "clashnivo.config.$1" 2>/dev/null
 }
 
-clashnivo_service_running() {
-   ubus call service list '{"name":"clashnivo"}' 2>/dev/null | \
-      jsonfilter -e '@.clashnivo.instances.*.running' 2>/dev/null | \
+clashnivo_service_instance_running() {
+   local name="${1:-}"
+
+   [ -z "$name" ] && return 1
+
+   ubus call service list "{\"name\":\"${name}\"}" 2>/dev/null | \
+      jsonfilter -e "@[\"${name}\"].instances.*.running" 2>/dev/null | \
       grep -q 'true'
 }
 
+clashnivo_service_running() {
+   clashnivo_service_instance_running "${CLASHNIVO_SERVICE_NAME}"
+}
+
 clashnivo_service_watchdog_running() {
-   ubus call service list '{"name":"openclash-watchdog"}' 2>/dev/null | \
-      jsonfilter -e '@["openclash-watchdog"].instances.*.running' 2>/dev/null | \
-      grep -q 'true'
+   clashnivo_service_instance_running "${CLASHNIVO_WATCHDOG_SERVICE_NAME}"
 }
 
 clashnivo_service_core_pid() {

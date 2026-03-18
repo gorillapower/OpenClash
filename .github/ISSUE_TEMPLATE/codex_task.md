@@ -52,6 +52,7 @@ Summarize the relevant context in 3-8 lines.
 - After creating the commit, push it if the branch is in a publishable state and remote push is available.
 - If commit or push cannot be completed cleanly, report the blocker and do not close the issue as if the workflow were finished.
 - If the worktree contains unrelated or mixed changes, stop and separate or revert them before committing rather than sweeping them into the issue commit.
+- Unless a task explicitly says otherwise, assume there are no existing Clash Nivo installations that require backward-compatibility handling; do not add migration or transitional support for prior Clash Nivo builds by default.
 - Report back with:
   - changed files
   - what was verified

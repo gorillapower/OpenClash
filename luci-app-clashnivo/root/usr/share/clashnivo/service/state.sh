@@ -4,6 +4,8 @@ clashnivo_service_init_state() {
    CLASHNIVO_STATE_DIR="/tmp"
    CLASHNIVO_RUNTIME_PREFIX="${CLASHNIVO_STATE_DIR}/clashnivo"
    CLASHNIVO_TMP_ETC_DIR="/tmp/etc/clashnivo"
+   CLASHNIVO_SERVICE_NAME="clashnivo"
+   CLASHNIVO_WATCHDOG_SERVICE_NAME="clashnivo-watchdog"
 
    CLASHNIVO_LOG_FILE="${CLASHNIVO_RUNTIME_PREFIX}.log"
    CLASHNIVO_START_LOG_FILE="${CLASHNIVO_RUNTIME_PREFIX}_start.log"

@@ -112,7 +112,7 @@ This is the first implemented guard, not the final one.
 
 Still transitional:
 
-- watchdog naming still contains inherited `openclash` identity
+- OpenClash guard detection still relies on the inherited `openclash-watchdog` watchdog name because that is the upstream-owned runtime identity Clash Nivo must block on
 - OpenClash core detection still relies on process-argument inspection rather than a dedicated upstream contract
 - RPC start/restart methods do not yet return rich structured guard errors directly; they rely on the service status surface
 

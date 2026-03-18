@@ -67,6 +67,12 @@ Define the Clash Nivo product boundary and coexistence policy with installed Ope
   - ongoing config synchronization with OpenClash
   - continued use of `openclash` namespaced runtime ownership as part of the target architecture
 
+### Legacy Clash Nivo Assumption
+
+- Later implementation work should assume there are no existing Clash Nivo installations that require backward-compatibility handling by default.
+- Tickets should not add transitional support for prior Clash Nivo-specific runtime names, state files, or service identities unless a decision doc or issue explicitly requires it.
+- OpenClash import and coexistence rules still apply because upstream installs are part of the accepted product boundary.
+
 ### Documentation And Ticketing Rule
 
 - Later implementation tickets must treat this document as the source of truth for:

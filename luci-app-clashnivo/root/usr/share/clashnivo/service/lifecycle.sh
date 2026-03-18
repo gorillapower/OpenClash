@@ -1,11 +1,25 @@
 #!/bin/sh
 
-start_service()
-{
+clashnivo_service_runtime_active() {
+   clashnivo_service_running || clashnivo_service_core_running || clashnivo_service_watchdog_running
+}
+
+clashnivo_service_stop_watchdog_instances() {
+   procd_kill "${CLASHNIVO_WATCHDOG_SERVICE_NAME}" >/dev/null 2>&1
+}
+
+clashnivo_service_start_watchdog() {
+   clashnivo_service_stop_watchdog_instances
+   procd_open_instance "${CLASHNIVO_WATCHDOG_SERVICE_NAME}"
+   procd_set_param command "/usr/share/clashnivo/openclash_watchdog.sh"
+   procd_close_instance
+}
+
+clashnivo_service_run_start() {
    enable=$(uci_get_config "enable")
    [ "$enable" != "1" ] && LOG_WARN "OpenClash Now Disabled, Need Start From Luci Page, Exit..." && SLOG_CLEAN && exit 0
 
-   if /etc/init.d/clashnivo status >/dev/null 2>&1; then
+   if clashnivo_service_running; then
       LOG_TIP "OpenClash Already Running, Exit..."
       exit 0
    fi
@@ -98,8 +112,7 @@ start_service()
    echo "OpenClash Already Start!"
 }
 
-stop_service()
-{
+clashnivo_service_run_stop() {
    enable=$(uci_get_config "enable")
 
    LOG_TIP "OpenClash Stoping..."
@@ -121,7 +134,8 @@ stop_service()
          fi
       done
       # prevent respawn during stopping
-      procd_kill "clashnivo"
+      procd_kill "${CLASHNIVO_SERVICE_NAME}"
+      clashnivo_service_stop_watchdog_instances
 
       LOG_OUT "Step 4: Restart Dnsmasq..."
       revert_dnsmasq
@@ -145,24 +159,15 @@ stop_service()
    echo "OpenClash Already Stop!"
 }
 
-restart()
-{
+clashnivo_service_run_restart() {
    echo "OpenClash Restart..."
    LOG_TIP "OpenClash Restart..."
    check_run_quick
-   stop
-   start
+   clashnivo_service_run_stop
+   clashnivo_service_run_start
 }
 
-start_watchdog()
-{
-   procd_open_instance "openclash-watchdog"
-	procd_set_param command "/usr/share/clashnivo/openclash_watchdog.sh"
-	procd_close_instance
-}
-
-reload_service()
-{
+clashnivo_service_run_reload() {
    enable=$(uci_get_config "enable")
    MAX_RELOAD=10
    case "$1" in
@@ -218,13 +223,42 @@ reload_service()
    fi
 } >/dev/null 2>&1
 
-boot()
-{
+clashnivo_service_run_boot() {
 	delay_start=$(uci_get_config "delay_start" || echo 0)
 	enable=$(uci_get_config "enable")
 	if [ "$delay_start" -gt 0 ] && [ "$enable" == "1" ]; then
 		LOG_OUT "Enable Delay Start, OpenClash Will Start After【$delay_start】Seconds..."
 		sleep "$delay_start"
 	fi
-	restart
+	clashnivo_service_run_restart
+}
+
+start_service()
+{
+   clashnivo_service_run_start
+}
+
+stop_service()
+{
+   clashnivo_service_run_stop
+}
+
+restart()
+{
+   clashnivo_service_run_restart
+}
+
+start_watchdog()
+{
+   clashnivo_service_start_watchdog
+}
+
+reload_service()
+{
+   clashnivo_service_run_reload "$@"
+}
+
+boot()
+{
+   clashnivo_service_run_boot
 }
