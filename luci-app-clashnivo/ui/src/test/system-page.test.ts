@@ -2,12 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte'
 import type { CreateQueryResult, CreateMutationResult } from '@tanstack/svelte-query'
 import type { ClashVersion } from '$lib/api/clash'
-import type { CoreVersionResult } from '$lib/api/luci'
+import type { CoreVersionResult, UpdateStatusResult, UciPackage } from '$lib/api/luci'
 import SystemPage from '../pages/SystemPage.svelte'
-
-// ---------------------------------------------------------------------------
-// Mock helpers
-// ---------------------------------------------------------------------------
 
 function makeQueryResult<T>(data: T) {
   return { data, isPending: false, isError: false, isSuccess: true } as unknown
@@ -17,206 +13,260 @@ function makePendingQueryResult() {
   return { data: undefined, isPending: true, isError: false, isSuccess: false } as unknown
 }
 
-function makeErrorQueryResult() {
-  return { data: undefined, isPending: false, isError: true, isSuccess: false } as unknown
-}
-
 function makeMutationResult(mutateAsync = vi.fn().mockResolvedValue(undefined)) {
   return { isPending: false, isError: false, isSuccess: false, mutateAsync } as unknown
 }
-
-// ---------------------------------------------------------------------------
-// Module mocks
-// ---------------------------------------------------------------------------
 
 vi.mock('$lib/queries/clash', () => ({
   useClashVersion: vi.fn()
 }))
 
 vi.mock('$lib/queries/luci', () => ({
+  useUciConfig: vi.fn(),
+  useSetUciConfig: vi.fn(),
+  useSetUciConfigBatch: vi.fn(),
   useCoreLatestVersion: vi.fn(),
-  useCoreUpdate: vi.fn(),
   useCoreUpdateStatus: vi.fn(),
-  luciKeys: {
-    all: ['luci'],
-    coreUpdateStatus: ['luci', 'core-update-status']
-  }
+  useCoreUpdate: vi.fn(),
+  usePackageLatestVersion: vi.fn(),
+  usePackageUpdateStatus: vi.fn(),
+  usePackageUpdate: vi.fn(),
+  useAssetsUpdateStatus: vi.fn(),
+  useAssetsUpdate: vi.fn()
 }))
 
 vi.mock('@tanstack/svelte-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/svelte-query')>()
-  const pendingQuery = { data: undefined, isPending: true, isError: false, isSuccess: false }
+  const pendingQuery = { data: '', isPending: false, isError: false, isSuccess: true }
   return {
     ...actual,
     useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
-    // LogsViewer uses createQuery directly — return a pending stub so the component renders
-    createQuery: vi.fn(() => pendingQuery),
+    createQuery: vi.fn(() => pendingQuery)
   }
 })
 
 import { useClashVersion } from '$lib/queries/clash'
-import { useCoreLatestVersion, useCoreUpdate, useCoreUpdateStatus } from '$lib/queries/luci'
-
-// ---------------------------------------------------------------------------
-// Test utilities
-// ---------------------------------------------------------------------------
+import {
+  useAssetsUpdate,
+  useAssetsUpdateStatus,
+  useCoreLatestVersion,
+  useCoreUpdate,
+  useCoreUpdateStatus,
+  usePackageLatestVersion,
+  usePackageUpdate,
+  usePackageUpdateStatus,
+  useSetUciConfig,
+  useSetUciConfigBatch,
+  useUciConfig
+} from '$lib/queries/luci'
 
 function setupMocks({
-  currentVersion = '1.18.0',
-  meta = true,
-  latestVersion = '1.18.0',
-  latestPending = false,
-  latestError = false,
-  updateMutate = vi.fn().mockResolvedValue(undefined)
+  uciData = {
+    config: {
+      dashboard_type: 'Official',
+      dashboard_forward_ssl: '0'
+    }
+  } as UciPackage,
+  currentVersion = { version: '1.18.0', meta: true } as ClashVersion,
+  latestCore = {
+    version: '1.19.0',
+    core_type: 'Meta',
+    source_policy: 'openclash',
+    source_branch: 'master',
+    source_base: 'https://raw.githubusercontent.com/vernesong/OpenClash/core'
+  } as CoreVersionResult,
+  coreStatus = { status: 'idle' } as UpdateStatusResult,
+  packageLatest = { version: 'v1.2.3', source_policy: 'package-branch' } as CoreVersionResult,
+  packageStatus = { status: 'idle' } as UpdateStatusResult,
+  assetsStatus = { status: 'idle' } as UpdateStatusResult,
+  coreUpdateMutate = vi.fn().mockResolvedValue(undefined),
+  packageUpdateMutate = vi.fn().mockResolvedValue(undefined),
+  assetsUpdateMutate = vi.fn().mockResolvedValue(undefined)
 } = {}) {
+  vi.mocked(useUciConfig).mockReturnValue(
+    makeQueryResult(uciData) as CreateQueryResult<UciPackage>
+  )
+  vi.mocked(useSetUciConfig).mockReturnValue(
+    makeMutationResult() as CreateMutationResult<void, unknown, string | string[], unknown>
+  )
+  vi.mocked(useSetUciConfigBatch).mockReturnValue(
+    makeMutationResult() as CreateMutationResult<void, unknown, { option: string; value: string | string[] }[], unknown>
+  )
   vi.mocked(useClashVersion).mockReturnValue(
-    makeQueryResult({ version: currentVersion, meta }) as CreateQueryResult<ClashVersion>
+    makeQueryResult(currentVersion) as CreateQueryResult<ClashVersion>
   )
-
-  if (latestPending) {
-    vi.mocked(useCoreLatestVersion).mockReturnValue(
-      makePendingQueryResult() as CreateQueryResult<CoreVersionResult>
-    )
-  } else if (latestError) {
-    vi.mocked(useCoreLatestVersion).mockReturnValue(
-      makeErrorQueryResult() as CreateQueryResult<CoreVersionResult>
-    )
-  } else {
-    vi.mocked(useCoreLatestVersion).mockReturnValue(
-      makeQueryResult({ version: latestVersion }) as CreateQueryResult<CoreVersionResult>
-    )
-  }
-
-  vi.mocked(useCoreUpdate).mockReturnValue(
-    makeMutationResult(updateMutate) as CreateMutationResult<void, unknown, void, unknown>
+  vi.mocked(useCoreLatestVersion).mockReturnValue(
+    makeQueryResult(latestCore) as CreateQueryResult<CoreVersionResult>
   )
-
   vi.mocked(useCoreUpdateStatus).mockReturnValue(
-    makeQueryResult({ status: 'idle' }) as CreateQueryResult<{ status: string }>
+    makeQueryResult(coreStatus) as CreateQueryResult<UpdateStatusResult>
+  )
+  vi.mocked(useCoreUpdate).mockReturnValue(
+    makeMutationResult(coreUpdateMutate) as CreateMutationResult<UpdateStatusResult, unknown, void, unknown>
+  )
+  vi.mocked(usePackageLatestVersion).mockReturnValue(
+    makeQueryResult(packageLatest) as CreateQueryResult<CoreVersionResult>
+  )
+  vi.mocked(usePackageUpdateStatus).mockReturnValue(
+    makeQueryResult(packageStatus) as CreateQueryResult<UpdateStatusResult>
+  )
+  vi.mocked(usePackageUpdate).mockReturnValue(
+    makeMutationResult(packageUpdateMutate) as CreateMutationResult<UpdateStatusResult, unknown, void, unknown>
+  )
+  vi.mocked(useAssetsUpdateStatus).mockReturnValue(
+    makeQueryResult(assetsStatus) as CreateQueryResult<UpdateStatusResult>
+  )
+  vi.mocked(useAssetsUpdate).mockReturnValue(
+    makeMutationResult(assetsUpdateMutate) as CreateMutationResult<UpdateStatusResult, unknown, void, unknown>
   )
 }
 
-function renderPage() {
-  return render(SystemPage)
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
-describe('SystemPage — page structure', () => {
+describe('SystemPage', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('renders the System heading', () => {
+  it('renders the baseline maintenance sections', () => {
     setupMocks()
-    renderPage()
+    render(SystemPage)
+
     expect(screen.getByRole('heading', { name: 'System' })).toBeInTheDocument()
+    expect(screen.getByText('Core runtime')).toBeInTheDocument()
+    expect(screen.getByText('Package update')).toBeInTheDocument()
+    expect(screen.getByText('Asset maintenance')).toBeInTheDocument()
+    expect(screen.getByText('Dashboard access')).toBeInTheDocument()
   })
 
-  it('renders the Clash Core section', () => {
-    setupMocks()
-    renderPage()
-    expect(screen.getByText('Clash Core')).toBeInTheDocument()
+  it('shows read-only core source policy context', () => {
+    setupMocks({
+      latestCore: {
+        version: '1.19.0',
+        source_policy: 'clashnivo',
+        source_branch: 'master',
+        source_base: 'https://raw.githubusercontent.com/gorillapower/OpenClash/core'
+      }
+    })
+    render(SystemPage)
+
+    expect(screen.getAllByText('Clash Nivo').length).toBeGreaterThan(0)
+    expect(screen.getByText(/core source mode is informational here/i)).toBeInTheDocument()
   })
-})
 
-describe('SystemPage — current version display', () => {
-  beforeEach(() => vi.clearAllMocks())
+  it('shows current and latest core versions', () => {
+    setupMocks({
+      currentVersion: { version: '1.18.3', meta: true },
+      latestCore: { version: '1.19.0', core_type: 'Meta', source_policy: 'openclash' }
+    })
+    render(SystemPage)
 
-  it('displays the current Clash core version', () => {
-    setupMocks({ currentVersion: '1.18.3' })
-    renderPage()
     expect(screen.getByText('1.18.3')).toBeInTheDocument()
-  })
-
-  it('shows "Mihomo" label when meta is true', () => {
-    setupMocks({ meta: true })
-    renderPage()
-    expect(screen.getByText('Mihomo')).toBeInTheDocument()
-  })
-
-  it('hides "Mihomo" label when meta is false', () => {
-    setupMocks({ meta: false })
-    renderPage()
-    expect(screen.queryByText('Mihomo')).not.toBeInTheDocument()
-  })
-})
-
-describe('SystemPage — latest version and update badge', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('shows "Checking…" while latest version is loading', () => {
-    setupMocks({ latestPending: true })
-    renderPage()
-    expect(screen.getByText('Checking…')).toBeInTheDocument()
-  })
-
-  it('displays the latest version once loaded', () => {
-    setupMocks({ currentVersion: '1.18.0', latestVersion: '1.19.0' })
-    renderPage()
     expect(screen.getByText('1.19.0')).toBeInTheDocument()
   })
 
-  it('shows "Update available" badge when latest > current', () => {
-    setupMocks({ currentVersion: '1.18.0', latestVersion: '1.19.0' })
-    renderPage()
-    expect(screen.getByText('Update available')).toBeInTheDocument()
+  it('shows dashboard link using configured transport', () => {
+    setupMocks({
+      uciData: {
+        config: {
+          dashboard_type: 'Official',
+          dashboard_forward_ssl: '1'
+        }
+      }
+    })
+    render(SystemPage)
+
+    expect(screen.getByRole('link', { name: /open dashboard/i })).toHaveAttribute('href', 'https://localhost:9090/ui')
   })
 
-  it('hides update badge when already on latest version', () => {
-    setupMocks({ currentVersion: '1.19.0', latestVersion: '1.19.0' })
-    renderPage()
-    expect(screen.queryByText('Update available')).not.toBeInTheDocument()
+  it('calls core update when the button is clicked', async () => {
+    const coreUpdateMutate = vi.fn().mockResolvedValue(undefined)
+    setupMocks({ coreUpdateMutate })
+    render(SystemPage)
+
+    await fireEvent.click(screen.getByRole('button', { name: /update core/i }))
+    expect(coreUpdateMutate).toHaveBeenCalledOnce()
   })
 
-  it('hides update badge when current is newer than latest', () => {
-    setupMocks({ currentVersion: '1.20.0', latestVersion: '1.19.0' })
-    renderPage()
-    expect(screen.queryByText('Update available')).not.toBeInTheDocument()
+  it('calls package update when the button is clicked', async () => {
+    const packageUpdateMutate = vi.fn().mockResolvedValue(undefined)
+    setupMocks({ packageUpdateMutate })
+    render(SystemPage)
+
+    await fireEvent.click(screen.getByRole('button', { name: /update package/i }))
+    expect(packageUpdateMutate).toHaveBeenCalledOnce()
   })
 
-  it('shows dash for latest version on error', () => {
-    setupMocks({ latestError: true })
-    renderPage()
-    // Both current and latest "—" placeholders — check at least one is shown
-    const dashes = screen.getAllByText('—')
-    expect(dashes.length).toBeGreaterThan(0)
-  })
-})
+  it('calls asset update when the button is clicked', async () => {
+    const assetsUpdateMutate = vi.fn().mockResolvedValue(undefined)
+    setupMocks({ assetsUpdateMutate })
+    render(SystemPage)
 
-describe('SystemPage — update button', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('shows update button when update is available', () => {
-    setupMocks({ currentVersion: '1.18.0', latestVersion: '1.19.0' })
-    renderPage()
-    expect(screen.getByRole('button', { name: /update to/i })).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: /update all assets/i }))
+    expect(assetsUpdateMutate).toHaveBeenCalledOnce()
   })
 
-  it('hides update button when already on latest version', () => {
-    setupMocks({ currentVersion: '1.19.0', latestVersion: '1.19.0' })
-    renderPage()
-    expect(screen.queryByRole('button', { name: /update to/i })).not.toBeInTheDocument()
-  })
-
-  it('calls useCoreUpdate mutateAsync when update button is clicked', async () => {
-    const updateMutate = vi.fn().mockResolvedValue(undefined)
-    setupMocks({ currentVersion: '1.18.0', latestVersion: '1.19.0', updateMutate })
-    renderPage()
-
-    await fireEvent.click(screen.getByRole('button', { name: /update to/i }))
-    expect(updateMutate).toHaveBeenCalledOnce()
-  })
-
-  it('shows "Updating…" and disables the button while mutation is pending', async () => {
-    const updateMutate = vi.fn().mockReturnValue(new Promise(() => {}))
-    setupMocks({ currentVersion: '1.18.0', latestVersion: '1.19.0', updateMutate })
-    renderPage()
-
-    fireEvent.click(screen.getByRole('button', { name: /update to/i }))
+  it('shows running state labels when updates are active', async () => {
+    setupMocks({
+      coreStatus: { status: 'running' },
+      packageStatus: { status: 'accepted' },
+      assetsStatus: { status: 'running' }
+    })
+    render(SystemPage)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /updating/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /updating core/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /updating package/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /updating assets/i })).toBeDisabled()
     })
+  })
+
+  it('shows update status messages when present', () => {
+    setupMocks({
+      packageStatus: { status: 'error', message: 'Package update failed' },
+      assetsStatus: { status: 'nochange', message: 'No asset update required' }
+    })
+    render(SystemPage)
+
+    expect(screen.getByText('Package update failed')).toBeInTheDocument()
+    expect(screen.getByText('No asset update required')).toBeInTheDocument()
+  })
+
+  it('shows checking state while latest core version is loading', () => {
+    vi.mocked(useUciConfig).mockReturnValue(
+      makeQueryResult({ config: { dashboard_type: 'Official', dashboard_forward_ssl: '0' } }) as CreateQueryResult<UciPackage>
+    )
+    vi.mocked(useSetUciConfig).mockReturnValue(
+      makeMutationResult() as CreateMutationResult<void, unknown, string | string[], unknown>
+    )
+    vi.mocked(useSetUciConfigBatch).mockReturnValue(
+      makeMutationResult() as CreateMutationResult<void, unknown, { option: string; value: string | string[] }[], unknown>
+    )
+    vi.mocked(useClashVersion).mockReturnValue(
+      makeQueryResult({ version: '1.18.0', meta: true }) as CreateQueryResult<ClashVersion>
+    )
+    vi.mocked(useCoreLatestVersion).mockReturnValue(
+      makePendingQueryResult() as CreateQueryResult<CoreVersionResult>
+    )
+    vi.mocked(useCoreUpdateStatus).mockReturnValue(
+      makeQueryResult({ status: 'idle' }) as CreateQueryResult<UpdateStatusResult>
+    )
+    vi.mocked(useCoreUpdate).mockReturnValue(
+      makeMutationResult() as CreateMutationResult<UpdateStatusResult, unknown, void, unknown>
+    )
+    vi.mocked(usePackageLatestVersion).mockReturnValue(
+      makeQueryResult({ version: 'v1.2.3' }) as CreateQueryResult<CoreVersionResult>
+    )
+    vi.mocked(usePackageUpdateStatus).mockReturnValue(
+      makeQueryResult({ status: 'idle' }) as CreateQueryResult<UpdateStatusResult>
+    )
+    vi.mocked(usePackageUpdate).mockReturnValue(
+      makeMutationResult() as CreateMutationResult<UpdateStatusResult, unknown, void, unknown>
+    )
+    vi.mocked(useAssetsUpdateStatus).mockReturnValue(
+      makeQueryResult({ status: 'idle' }) as CreateQueryResult<UpdateStatusResult>
+    )
+    vi.mocked(useAssetsUpdate).mockReturnValue(
+      makeMutationResult() as CreateMutationResult<UpdateStatusResult, unknown, void, unknown>
+    )
+
+    render(SystemPage)
+    expect(screen.getByText('Checking…')).toBeInTheDocument()
   })
 })

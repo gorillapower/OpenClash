@@ -1,128 +1,347 @@
 <script lang="ts">
   import { useClashVersion } from '$lib/queries/clash'
-  import { useCoreLatestVersion, useCoreUpdate, useCoreUpdateStatus } from '$lib/queries/luci'
-  import { useQueryClient } from '@tanstack/svelte-query'
-  import { luciKeys } from '$lib/queries/luci'
+  import {
+    useAssetsUpdate,
+    useAssetsUpdateStatus,
+    useCoreLatestVersion,
+    useCoreUpdate,
+    useCoreUpdateStatus,
+    usePackageLatestVersion,
+    usePackageUpdate,
+    usePackageUpdateStatus,
+    useUciConfig
+  } from '$lib/queries/luci'
   import Button from '$lib/components/ui/button/button.svelte'
   import { Card, CardHeader, CardContent } from '$lib/components/ui/card/index'
+  import AutoUpdatesCard from '$lib/components/AutoUpdatesCard.svelte'
   import LogsViewer from '$lib/components/LogsViewer.svelte'
 
-  const queryClient = useQueryClient()
+  const config = useUciConfig('clashnivo')
 
-  const currentVersion = useClashVersion()
-  const latestVersion = useCoreLatestVersion()
-  const updateMutation = useCoreUpdate()
-
-  // Declared before useCoreUpdateStatus so the refetchInterval closure can read it
-  let isUpdating = $state(false)
-
-  // Poll update status while an update is in flight
-  const updateStatus = useCoreUpdateStatus({
-    refetchInterval: () => (isUpdating ? 2000 : false),
-    enabled: false
+  const currentCore = useClashVersion()
+  const latestCore = useCoreLatestVersion()
+  const coreUpdateStatus = useCoreUpdateStatus({
+    refetchInterval: (query) => isPendingState(query.state.data?.status) ? 2000 : false
   } as never)
+  const coreUpdate = useCoreUpdate()
 
-  const current = $derived(currentVersion.data?.version ?? null)
-  const latest = $derived(latestVersion.data?.version ?? null)
-  const isMihomo = $derived(currentVersion.data?.meta ?? false)
+  const latestPackage = usePackageLatestVersion()
+  const packageUpdateStatus = usePackageUpdateStatus({
+    refetchInterval: (query) => isPendingState(query.state.data?.status) ? 2000 : false
+  } as never)
+  const packageUpdate = usePackageUpdate()
 
-  // Update is available when both versions are known and latest > current
-  const updateAvailable = $derived(
-    current !== null && latest !== null && isNewerVersion(latest, current)
+  const assetsUpdateStatus = useAssetsUpdateStatus('all', {
+    refetchInterval: (query) => isPendingState(query.state.data?.status) ? 2000 : false
+  } as never)
+  const assetsUpdate = useAssetsUpdate('all')
+
+  const cfg = $derived(config.data?.config ?? {})
+  const dashboardType = $derived((cfg['dashboard_type'] as string | undefined) ?? 'Official')
+  const dashboardForwardSsl = $derived((cfg['dashboard_forward_ssl'] as string | undefined) === '1')
+  const coreSourcePolicy = $derived(latestCore.data?.source_policy ?? 'openclash')
+  const coreSourceBase = $derived(latestCore.data?.source_base ?? '')
+  const coreSourceBranch = $derived(latestCore.data?.source_branch ?? '')
+  const dashboardUrl = $derived(
+    `${dashboardForwardSsl ? 'https' : 'http'}://${window.location.hostname}:9090/ui`
   )
 
-  function isNewerVersion(candidate: string, current: string): boolean {
-    const parse = (v: string) => v.replace(/^v/, '').split('.').map(Number)
-    const a = parse(candidate)
-    const b = parse(current)
-    for (let i = 0; i < Math.max(a.length, b.length); i++) {
-      const diff = (a[i] ?? 0) - (b[i] ?? 0)
-      if (diff !== 0) return diff > 0
-    }
-    return false
+  const currentCoreVersion = $derived(currentCore.data?.version ?? null)
+  const latestCoreVersion = $derived(latestCore.data?.version ?? null)
+  const currentCoreType = $derived(currentCore.data?.meta ? 'Mihomo' : 'Clash')
+  const latestCoreType = $derived(latestCore.data?.core_type ?? currentCoreType)
+  const latestPackageVersion = $derived(latestPackage.data?.version ?? null)
+
+  const coreBusy = $derived(isPendingState(coreUpdateStatus.data?.status) || coreUpdate.isPending)
+  const packageBusy = $derived(
+    isPendingState(packageUpdateStatus.data?.status) || packageUpdate.isPending
+  )
+  const assetsBusy = $derived(
+    isPendingState(assetsUpdateStatus.data?.status) || assetsUpdate.isPending
+  )
+
+  function isPendingState(status?: string) {
+    return status === 'accepted' || status === 'running'
   }
 
-  async function handleUpdate() {
-    isUpdating = true
-    // Enable status polling
-    queryClient.invalidateQueries({ queryKey: luciKeys.coreUpdateStatus })
-    try {
-      await updateMutation.mutateAsync()
-      // Refresh current version after update
-      queryClient.invalidateQueries({ queryKey: ['clash', 'version'] })
-    } finally {
-      isUpdating = false
+  function formatStatus(status?: string) {
+    switch (status) {
+      case 'accepted':
+        return 'Queued'
+      case 'running':
+        return 'Running'
+      case 'done':
+        return 'Completed'
+      case 'nochange':
+        return 'No change'
+      case 'error':
+        return 'Failed'
+      default:
+        return 'Idle'
     }
+  }
+
+  function titleCasePolicy(policy?: string) {
+    if (!policy) return 'Unknown'
+    if (policy === 'openclash') return 'OpenClash'
+    if (policy === 'clashnivo') return 'Clash Nivo'
+    return 'Custom'
   }
 </script>
 
 <div class="space-y-6">
   <div>
     <h1 class="text-2xl font-semibold tracking-tight">System</h1>
-    <p class="mt-1 text-sm text-muted-foreground">Core updates, logs, and diagnostics.</p>
+    <p class="mt-1 text-sm text-muted-foreground">
+      Updates, schedules, logs, diagnostics, and dashboard access.
+    </p>
   </div>
 
-  <!-- Clash Core section -->
-  <Card>
-    <CardHeader>
-      <div class="flex items-center justify-between">
-        <span class="text-sm font-semibold">Clash Core</span>
-        {#if updateAvailable}
-          <span class="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
-            Update available
-          </span>
-        {/if}
-      </div>
-    </CardHeader>
-    <CardContent>
-      <div class="space-y-4">
-        <!-- Version rows -->
-        <div class="space-y-2 text-sm">
-          <div class="flex items-baseline justify-between gap-4">
-            <span class="text-muted-foreground">Current</span>
-            <div class="flex items-baseline gap-2">
-              {#if current}
-                <span class="font-medium tabular-nums">{current}</span>
-                {#if isMihomo}
-                  <span class="text-xs text-muted-foreground">Mihomo</span>
-                {/if}
-              {:else}
-                <span class="text-muted-foreground">—</span>
-              {/if}
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+    <div class="space-y-6">
+      <Card>
+        <CardHeader>
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h2 class="text-sm font-semibold">Core runtime</h2>
+              <p class="mt-1 text-sm text-muted-foreground">
+                Current and latest core information with explicit source policy context.
+              </p>
             </div>
+            <span class="rounded-full border border-border px-2.5 py-1 text-xs font-medium">
+              {titleCasePolicy(coreSourcePolicy)}
+            </span>
           </div>
-          <div class="flex items-baseline justify-between gap-4">
-            <span class="text-muted-foreground">Latest</span>
-            <div class="flex items-baseline gap-2">
-              {#if latestVersion.isPending}
-                <span class="text-muted-foreground">Checking…</span>
-              {:else if latest}
-                <span class="font-medium tabular-nums">{latest}</span>
-              {:else}
-                <span class="text-muted-foreground">—</span>
-              {/if}
+        </CardHeader>
+        <CardContent>
+          <div class="space-y-4">
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div class="rounded-lg border border-border bg-card px-4 py-3">
+                <div class="text-xs uppercase tracking-wider text-muted-foreground">Current</div>
+                <div class="mt-2 flex items-baseline gap-2">
+                  <span class="text-lg font-semibold tabular-nums">
+                    {currentCoreVersion ?? '—'}
+                  </span>
+                  <span class="text-xs text-muted-foreground">{currentCoreType}</span>
+                </div>
+              </div>
+              <div class="rounded-lg border border-border bg-card px-4 py-3">
+                <div class="text-xs uppercase tracking-wider text-muted-foreground">Latest</div>
+                <div class="mt-2 flex items-baseline gap-2">
+                  {#if latestCore.isPending}
+                    <span class="text-sm text-muted-foreground">Checking…</span>
+                  {:else}
+                    <span class="text-lg font-semibold tabular-nums">
+                      {latestCoreVersion ?? '—'}
+                    </span>
+                    <span class="text-xs text-muted-foreground">{latestCoreType}</span>
+                  {/if}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        <!-- Update button -->
-        {#if updateAvailable || isUpdating}
-          <Button
-            variant="default"
-            disabled={isUpdating || updateMutation.isPending}
-            onclick={handleUpdate}
-          >
-            {#if isUpdating || updateMutation.isPending}
-              Updating…
-            {:else}
-              Update to {latest}
+            <dl class="grid gap-2 text-sm sm:grid-cols-3">
+              <div>
+                <dt class="text-muted-foreground">Source</dt>
+                <dd class="mt-1 font-medium">{titleCasePolicy(coreSourcePolicy)}</dd>
+              </div>
+              <div>
+                <dt class="text-muted-foreground">Branch</dt>
+                <dd class="mt-1 font-medium">{coreSourceBranch || '—'}</dd>
+              </div>
+              <div>
+                <dt class="text-muted-foreground">Status</dt>
+                <dd class="mt-1 font-medium">{formatStatus(coreUpdateStatus.data?.status)}</dd>
+              </div>
+            </dl>
+
+            {#if coreSourceBase}
+              <p class="text-xs text-muted-foreground break-all">
+                Resolved source base: {coreSourceBase}
+              </p>
             {/if}
-          </Button>
-        {/if}
-      </div>
-    </CardContent>
-  </Card>
 
-  <!-- Logs section -->
-  <LogsViewer />
+            {#if coreUpdateStatus.data?.message}
+              <p class="text-sm text-muted-foreground">{coreUpdateStatus.data.message}</p>
+            {/if}
+
+            <div class="flex flex-wrap items-center gap-3">
+              <Button
+                variant="default"
+                disabled={coreBusy || latestCore.isPending}
+                onclick={() => coreUpdate.mutateAsync()}
+              >
+                {#if coreBusy}
+                  Updating core…
+                {:else}
+                  Update core
+                {/if}
+              </Button>
+              <p class="text-xs text-muted-foreground">
+                Core source mode is informational here. Editing it is deferred to a later System
+                settings pass.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div class="grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <div>
+              <h2 class="text-sm font-semibold">Package update</h2>
+              <p class="mt-1 text-sm text-muted-foreground">
+                Update the installed LuCI package and supporting scripts.
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div class="space-y-4">
+              <div class="text-sm">
+                <div class="flex items-baseline justify-between gap-3">
+                  <span class="text-muted-foreground">Latest package</span>
+                  <span class="font-medium tabular-nums">{latestPackageVersion ?? '—'}</span>
+                </div>
+                <div class="mt-2 flex items-baseline justify-between gap-3">
+                  <span class="text-muted-foreground">Status</span>
+                  <span class="font-medium">{formatStatus(packageUpdateStatus.data?.status)}</span>
+                </div>
+              </div>
+
+              {#if packageUpdateStatus.data?.message}
+                <p class="text-sm text-muted-foreground">{packageUpdateStatus.data.message}</p>
+              {/if}
+
+              <Button
+                variant="default"
+                disabled={packageBusy || latestPackage.isPending}
+                onclick={() => packageUpdate.mutateAsync()}
+              >
+                {#if packageBusy}
+                  Updating package…
+                {:else}
+                  Update package
+                {/if}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div>
+              <h2 class="text-sm font-semibold">Asset maintenance</h2>
+              <p class="mt-1 text-sm text-muted-foreground">
+                Refresh IPDB, GeoIP, GeoSite, GeoASN, and Chnroute support assets.
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div class="space-y-4">
+              <div class="text-sm">
+                <div class="flex items-baseline justify-between gap-3">
+                  <span class="text-muted-foreground">Target</span>
+                  <span class="font-medium">All assets</span>
+                </div>
+                <div class="mt-2 flex items-baseline justify-between gap-3">
+                  <span class="text-muted-foreground">Status</span>
+                  <span class="font-medium">{formatStatus(assetsUpdateStatus.data?.status)}</span>
+                </div>
+              </div>
+
+              {#if assetsUpdateStatus.data?.message}
+                <p class="text-sm text-muted-foreground">{assetsUpdateStatus.data.message}</p>
+              {/if}
+
+              <Button variant="default" disabled={assetsBusy} onclick={() => assetsUpdate.mutateAsync()}>
+                {#if assetsBusy}
+                  Updating assets…
+                {:else}
+                  Update all assets
+                {/if}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <AutoUpdatesCard />
+
+      <Card>
+        <CardHeader>
+          <div>
+            <h2 class="text-sm font-semibold">Logs and diagnostics</h2>
+            <p class="mt-1 text-sm text-muted-foreground">
+              Service and core logs for immediate troubleshooting.
+            </p>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <LogsViewer />
+        </CardContent>
+      </Card>
+    </div>
+
+    <div class="space-y-6">
+      <Card>
+        <CardHeader>
+          <div>
+            <h2 class="text-sm font-semibold">Maintenance summary</h2>
+            <p class="mt-1 text-sm text-muted-foreground">
+              Quick read-only context for update and dashboard behavior.
+            </p>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <dl class="space-y-4 text-sm">
+            <div>
+              <dt class="text-muted-foreground">Core source policy</dt>
+              <dd class="mt-1 font-medium">{titleCasePolicy(coreSourcePolicy)}</dd>
+            </div>
+            <div>
+              <dt class="text-muted-foreground">Dashboard</dt>
+              <dd class="mt-1 font-medium">{dashboardType}</dd>
+            </div>
+            <div>
+              <dt class="text-muted-foreground">Dashboard transport</dt>
+              <dd class="mt-1 font-medium">{dashboardForwardSsl ? 'HTTPS' : 'HTTP'}</dd>
+            </div>
+            <div>
+              <dt class="text-muted-foreground">Advanced settings</dt>
+              <dd class="mt-1 text-muted-foreground">
+                Deferred until the advanced-settings catalogue in `#82` is complete.
+              </dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div>
+            <h2 class="text-sm font-semibold">Dashboard access</h2>
+            <p class="mt-1 text-sm text-muted-foreground">
+              External dashboards remain a supported runtime integration.
+            </p>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div class="space-y-3">
+            <p class="text-sm text-muted-foreground break-all">
+              {dashboardUrl}
+            </p>
+            <a
+              class="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              href={dashboardUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open dashboard
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  </div>
 </div>

@@ -16,7 +16,7 @@ import {
   type FileReadResult,
   type ConfigCompositionResult,
   type CoreVersionResult,
-  type CoreUpdateStatus
+  type UpdateStatusResult
 } from '$lib/api/luci'
 import { clashClient } from '$lib/api/clash'
 import { isApiError } from '$lib/api/errors'
@@ -43,6 +43,9 @@ export const luciKeys = {
   advancedYaml: [...['luci'], 'advanced-yaml'] as const,
   coreLatestVersion: [...['luci'], 'core-latest-version'] as const,
   coreUpdateStatus: [...['luci'], 'core-update-status'] as const,
+  packageLatestVersion: [...['luci'], 'package-latest-version'] as const,
+  packageUpdateStatus: [...['luci'], 'package-update-status'] as const,
+  assetsUpdateStatus: (target: string) => [...['luci'], 'assets-update-status', target] as const,
   logService: (lines: number) => [...['luci'], 'log-service', lines] as const,
   logCore: (lines: number) => [...['luci'], 'log-core', lines] as const
 }
@@ -148,6 +151,32 @@ export function useSetUciConfig(
     mutationFn: (value: string | string[]) => luciRpc.uciSet(pkg, section, option, value) as Promise<void>,
     async onSuccess() {
       await luciRpc.uciCommit(pkg)
+      queryClient.invalidateQueries({ queryKey: luciKeys.uci(pkg) })
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export interface UciBatchItem {
+  option: string
+  value: string | string[]
+}
+
+export function useSetUciConfigBatch(
+  pkg: string,
+  section: string,
+  opts?: Partial<CreateMutationOptions<void, unknown, UciBatchItem[]>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, UciBatchItem[]>(() => ({
+    mutationFn: async (items: UciBatchItem[]) => {
+      for (const item of items) {
+        await luciRpc.uciSet(pkg, section, item.option, item.value)
+      }
+      await luciRpc.uciCommit(pkg)
+    },
+    onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.uci(pkg) })
     },
     onError: onMutationError,
@@ -493,11 +522,11 @@ export function useDeleteProxyGroup(
 }
 
 export function useToggleProxyGroup(
-  opts?: Partial<CreateMutationOptions<void, unknown, { id: string; enabled: boolean }>>
+  opts?: Partial<CreateMutationOptions<void, unknown, { id: string; enabled: boolean }, { previous?: ProxyGroup[] }>>
 ) {
   const queryClient = useQueryClient()
   return createMutation<void, unknown, { id: string; enabled: boolean }, { previous?: ProxyGroup[] }>(() => ({
-    async onMutate({ id, enabled }) {
+    async onMutate({ id, enabled }): Promise<{ previous?: ProxyGroup[] }> {
       // Optimistically update so the toggle feels instant
       await queryClient.cancelQueries({ queryKey: luciKeys.proxyGroups })
       const previous = queryClient.getQueryData<ProxyGroup[]>(luciKeys.proxyGroups)
@@ -768,11 +797,11 @@ export function useDeleteRuleProvider(
 }
 
 export function useToggleRuleProvider(
-  opts?: Partial<CreateMutationOptions<void, unknown, { id: string; enabled: boolean }>>
+  opts?: Partial<CreateMutationOptions<void, unknown, { id: string; enabled: boolean }, { previous?: RuleProvider[] }>>
 ) {
   const queryClient = useQueryClient()
   return createMutation<void, unknown, { id: string; enabled: boolean }, { previous?: RuleProvider[] }>(() => ({
-    async onMutate({ id, enabled }) {
+    async onMutate({ id, enabled }): Promise<{ previous?: RuleProvider[] }> {
       await queryClient.cancelQueries({ queryKey: luciKeys.ruleProviders })
       const previous = queryClient.getQueryData<RuleProvider[]>(luciKeys.ruleProviders)
       queryClient.setQueryData<RuleProvider[]>(luciKeys.ruleProviders, (old) =>
@@ -842,26 +871,89 @@ export function useCoreLatestVersion(opts?: Partial<CreateQueryOptions<CoreVersi
 }
 
 export function useCoreUpdateStatus(
-  opts?: Partial<CreateQueryOptions<CoreUpdateStatus>>
+  opts?: Partial<CreateQueryOptions<UpdateStatusResult>>
 ) {
-  return createQuery<CoreUpdateStatus>(() => ({
+  return createQuery<UpdateStatusResult>(() => ({
     queryKey: luciKeys.coreUpdateStatus,
     queryFn: () => luciRpc.coreUpdateStatus(),
     retry: false,
     ...opts
-  } as CreateQueryOptions<CoreUpdateStatus>))
+  } as CreateQueryOptions<UpdateStatusResult>))
 }
 
 export function useCoreUpdate(
-  opts?: Partial<CreateMutationOptions<void, unknown, void>>
+  opts?: Partial<CreateMutationOptions<UpdateStatusResult, unknown, void>>
 ) {
   const queryClient = useQueryClient()
-  return createMutation<void, unknown, void>(() => ({
+  return createMutation<UpdateStatusResult, unknown, void>(() => ({
     mutationFn: () => luciRpc.coreUpdate(),
     onSuccess() {
       // Invalidate both so version + status refresh after update completes
       queryClient.invalidateQueries({ queryKey: luciKeys.coreLatestVersion })
       queryClient.invalidateQueries({ queryKey: luciKeys.coreUpdateStatus })
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function usePackageLatestVersion(opts?: Partial<CreateQueryOptions<CoreVersionResult>>) {
+  return createQuery<CoreVersionResult>(() => ({
+    queryKey: luciKeys.packageLatestVersion,
+    queryFn: () => luciRpc.packageLatestVersion(),
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+    ...opts
+  } as CreateQueryOptions<CoreVersionResult>))
+}
+
+export function usePackageUpdateStatus(
+  opts?: Partial<CreateQueryOptions<UpdateStatusResult>>
+) {
+  return createQuery<UpdateStatusResult>(() => ({
+    queryKey: luciKeys.packageUpdateStatus,
+    queryFn: () => luciRpc.packageUpdateStatus(),
+    retry: false,
+    ...opts
+  } as CreateQueryOptions<UpdateStatusResult>))
+}
+
+export function usePackageUpdate(
+  opts?: Partial<CreateMutationOptions<UpdateStatusResult, unknown, void>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<UpdateStatusResult, unknown, void>(() => ({
+    mutationFn: () => luciRpc.packageUpdate(),
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.packageLatestVersion })
+      queryClient.invalidateQueries({ queryKey: luciKeys.packageUpdateStatus })
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useAssetsUpdateStatus(
+  target = 'all',
+  opts?: Partial<CreateQueryOptions<UpdateStatusResult>>
+) {
+  return createQuery<UpdateStatusResult>(() => ({
+    queryKey: luciKeys.assetsUpdateStatus(target),
+    queryFn: () => luciRpc.assetsUpdateStatus(target),
+    retry: false,
+    ...opts
+  } as CreateQueryOptions<UpdateStatusResult>))
+}
+
+export function useAssetsUpdate(
+  target = 'all',
+  opts?: Partial<CreateMutationOptions<UpdateStatusResult, unknown, void>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<UpdateStatusResult, unknown, void>(() => ({
+    mutationFn: () => luciRpc.assetsUpdate(target),
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.assetsUpdateStatus(target) })
     },
     onError: onMutationError,
     ...opts
@@ -1091,11 +1183,11 @@ export function useDeleteCustomProxy(
 }
 
 export function useToggleCustomProxy(
-  opts?: Partial<CreateMutationOptions<void, unknown, { id: string; enabled: boolean }>>
+  opts?: Partial<CreateMutationOptions<void, unknown, { id: string; enabled: boolean }, { previous?: CustomProxy[] }>>
 ) {
   const queryClient = useQueryClient()
   return createMutation<void, unknown, { id: string; enabled: boolean }, { previous?: CustomProxy[] }>(() => ({
-    async onMutate({ id, enabled }) {
+    async onMutate({ id, enabled }): Promise<{ previous?: CustomProxy[] }> {
       await queryClient.cancelQueries({ queryKey: luciKeys.customProxies })
       const previous = queryClient.getQueryData<CustomProxy[]>(luciKeys.customProxies)
       queryClient.setQueryData<CustomProxy[]>(luciKeys.customProxies, (old) =>

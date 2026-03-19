@@ -1,4 +1,4 @@
-import { test, expect, type Route } from '@playwright/test'
+import { test, expect, type Page, type Route } from '@playwright/test'
 
 const BASE = '/luci-static/clash-nivo/'
 const RPC_URL = '**/cgi-bin/luci/rpc/clash-nivo'
@@ -279,7 +279,7 @@ test.describe('Config Files lifecycle', () => {
     { name: 'backup.yaml', active: false, size: 1024 }
   ]
 
-  async function goToConfigs(page: Parameters<Parameters<typeof test>[1]>[0]) {
+  async function goToConfigs(page: Page) {
     await page.route(RPC_URL, makeFullRpcHandler([], initialConfigs))
     await page.goto(`${BASE}#/sources`)
     await page.waitForLoadState('networkidle')

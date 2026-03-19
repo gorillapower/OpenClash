@@ -9,7 +9,7 @@ function makeQuery<T>(data: T | undefined, isPending = false) {
 }
 
 function makeMutation<TData = unknown, TVars = unknown>(
-  mutateAsync = vi.fn<(...args: TVars[]) => Promise<TData>>().mockResolvedValue(undefined as TData),
+  mutateAsync = vi.fn<(...args: TVars[]) => Promise<TData>>().mockResolvedValue(undefined as Awaited<TData>),
   isPending = false
 ) {
   return {

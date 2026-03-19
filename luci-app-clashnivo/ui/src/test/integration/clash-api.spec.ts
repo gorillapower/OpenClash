@@ -11,7 +11,7 @@ const CLASH_URL    = process.env.CLASH_URL    ?? process.env.CLASH_TARGET     ??
 const CLASH_SECRET = process.env.CLASH_SECRET ?? process.env.VITE_CLASH_SECRET ?? ''
 
 function clashHeaders() {
-  return CLASH_SECRET ? { Authorization: `Bearer ${CLASH_SECRET}` } : {}
+  return CLASH_SECRET ? ({ Authorization: `Bearer ${CLASH_SECRET}` } as Record<string, string>) : undefined
 }
 
 async function isClashRunning(page: import('@playwright/test').Page): Promise<boolean> {

@@ -1,9 +1,9 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
 const BASE = '/luci-static/clash-nivo/'
 
 /** Navigate to Sources and open the Add Subscription sheet. */
-async function openSheet(page: Parameters<Parameters<typeof test>[1]>[0]) {
+async function openSheet(page: Page) {
   await page.goto(`${BASE}#/sources`)
   await page.waitForLoadState('networkidle')
   await page.getByRole('button', { name: 'Add Subscription' }).first().click()

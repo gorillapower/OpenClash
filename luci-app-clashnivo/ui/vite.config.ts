@@ -6,6 +6,9 @@ import { mockRpcPlugin } from './mock-rpc-plugin'
 
 const proxyPrefixes = ['/cgi-bin', '/rpc', '/api']
 
+type ProxyReqLike = { setHeader: (k: string, v: string) => void }
+type ProxyLike = { on: (event: string, cb: (proxyReq: ProxyReqLike) => void) => void }
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const routerTarget = env.VITE_ROUTER_URL || 'http://192.168.1.1'
@@ -17,8 +20,8 @@ export default defineConfig(({ mode }) => {
   // Cookie injector for LuCI proxy routes
   const withCookie = env.VITE_ROUTER_COOKIE
     ? {
-        configure: (proxy: { on: (event: string, cb: (...args: unknown[]) => void) => void }) => {
-          proxy.on('proxyReq', (proxyReq: { setHeader: (k: string, v: string) => void }) => {
+        configure: (proxy: ProxyLike) => {
+          proxy.on('proxyReq', (proxyReq: ProxyReqLike) => {
             proxyReq.setHeader('Cookie', env.VITE_ROUTER_COOKIE)
           })
         }
@@ -48,8 +51,8 @@ export default defineConfig(({ mode }) => {
           secure: false,
           rewrite: (path: string) => path.replace(/^\/clash-api/, ''),
           ...(env.VITE_CLASH_SECRET ? {
-            configure: (proxy: { on: (event: string, cb: (...args: unknown[]) => void) => void }) => {
-              proxy.on('proxyReq', (proxyReq: { setHeader: (k: string, v: string) => void }) => {
+            configure: (proxy: ProxyLike) => {
+              proxy.on('proxyReq', (proxyReq: ProxyReqLike) => {
                 proxyReq.setHeader('Authorization', `Bearer ${env.VITE_CLASH_SECRET}`)
               })
             }

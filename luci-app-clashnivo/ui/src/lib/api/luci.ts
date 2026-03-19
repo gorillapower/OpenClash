@@ -71,13 +71,28 @@ export interface FileReadResult {
 
 export interface CoreVersionResult {
   version: string
+  kind?: string
+  core_type?: string
+  source_policy?: string
+  source_branch?: string
+  source_base?: string
 }
 
-export type CoreUpdateState = 'idle' | 'downloading' | 'installing' | 'done' | 'error'
+export type UpdateState = 'idle' | 'accepted' | 'running' | 'done' | 'nochange' | 'error'
 
-export interface CoreUpdateStatus {
-  status: CoreUpdateState
+export interface UpdateStatusResult {
+  kind?: string
+  target?: string
+  accepted?: boolean
+  async?: boolean
+  status: UpdateState
   message?: string
+  version?: string
+  source_policy?: string
+  source_branch?: string
+  source_base?: string
+  status_path?: string
+  log_path?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -313,12 +328,32 @@ export const luciRpc = {
     return rpcCall('core.latestVersion', [])
   },
 
-  coreUpdate(): Promise<void> {
+  coreUpdate(): Promise<UpdateStatusResult> {
     return rpcCall('core.update', [])
   },
 
-  coreUpdateStatus(): Promise<CoreUpdateStatus> {
+  coreUpdateStatus(): Promise<UpdateStatusResult> {
     return rpcCall('core.updateStatus', [])
+  },
+
+  packageLatestVersion(): Promise<CoreVersionResult> {
+    return rpcCall('package.latestVersion', [])
+  },
+
+  packageUpdate(): Promise<UpdateStatusResult> {
+    return rpcCall('package.update', [])
+  },
+
+  packageUpdateStatus(): Promise<UpdateStatusResult> {
+    return rpcCall('package.updateStatus', [])
+  },
+
+  assetsUpdate(target = 'all'): Promise<UpdateStatusResult> {
+    return rpcCall('assets.update', [target])
+  },
+
+  assetsUpdateStatus(target = 'all'): Promise<UpdateStatusResult> {
+    return rpcCall('assets.updateStatus', [target])
   },
 
   // Logs
