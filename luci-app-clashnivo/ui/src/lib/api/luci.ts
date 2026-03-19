@@ -81,6 +81,28 @@ export interface CoreUpdateStatus {
 }
 
 // ---------------------------------------------------------------------------
+// Composition preview / validation types
+// ---------------------------------------------------------------------------
+
+export interface ConfigStageResult {
+  name: string
+  status: string
+  message?: string
+}
+
+export interface ConfigCompositionResult {
+  valid: boolean
+  config_name?: string
+  source_path?: string
+  preview_path?: string
+  preview_exists?: boolean
+  report_path?: string
+  failed_layer?: string
+  preview_content?: string
+  stages?: ConfigStageResult[]
+}
+
+// ---------------------------------------------------------------------------
 // Config file types
 // ---------------------------------------------------------------------------
 
@@ -276,6 +298,14 @@ export const luciRpc = {
 
   configWrite(name: string, content: string): Promise<void> {
     return rpcCall('config.write', [name, content])
+  },
+
+  configPreview(): Promise<ConfigCompositionResult> {
+    return rpcCall('config.preview', [])
+  },
+
+  configValidate(): Promise<ConfigCompositionResult> {
+    return rpcCall('config.validate', [])
   },
 
   // Core management

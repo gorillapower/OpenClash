@@ -14,6 +14,7 @@ import {
   type SubscriptionEditData,
   type ConfigFile,
   type FileReadResult,
+  type ConfigCompositionResult,
   type CoreVersionResult,
   type CoreUpdateStatus
 } from '$lib/api/luci'
@@ -31,6 +32,8 @@ export const luciKeys = {
   serviceStatus: (name: string) => [...luciKeys.all, 'service', name, 'status'] as const,
   subscriptions: [...['luci'], 'subscriptions'] as const,
   configs: [...['luci'], 'configs'] as const,
+  configPreview: [...['luci'], 'config-preview'] as const,
+  configValidate: [...['luci'], 'config-validate'] as const,
   firewallRules: [...['luci'], 'firewall-rules'] as const,
   proxyGroups: [...['luci'], 'proxy-groups'] as const,
   customRules: [...['luci'], 'custom-rules'] as const,
@@ -287,6 +290,26 @@ export function useConfigWrite(
       queryClient.invalidateQueries({ queryKey: luciKeys.configs })
       toasts.success(`${name} saved`)
     },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useConfigPreview(
+  opts?: Partial<CreateMutationOptions<ConfigCompositionResult, unknown, void>>
+) {
+  return createMutation<ConfigCompositionResult, unknown, void>(() => ({
+    mutationFn: () => luciRpc.configPreview(),
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useConfigValidate(
+  opts?: Partial<CreateMutationOptions<ConfigCompositionResult, unknown, void>>
+) {
+  return createMutation<ConfigCompositionResult, unknown, void>(() => ({
+    mutationFn: () => luciRpc.configValidate(),
     onError: onMutationError,
     ...opts
   }))
