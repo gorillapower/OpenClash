@@ -19,6 +19,7 @@
   import { Card, CardHeader, CardContent } from '$lib/components/ui/card/index'
   import PageIntro from '$lib/components/PageIntro.svelte'
   import ContextNote from '$lib/components/ContextNote.svelte'
+  import EmptyState from '$lib/components/EmptyState.svelte'
 
   const queryClient = useQueryClient()
 
@@ -202,15 +203,13 @@
   />
 
   {#if isEmpty}
-    <div class="flex flex-col items-start gap-4 py-2">
-      <div class="space-y-1">
-        <p class="text-lg font-medium">Add your first source</p>
-        <p class="text-sm text-muted-foreground">
-          Paste a Clash subscription URL to create your first source config. Source management continues in Sources and Compose.
-        </p>
-      </div>
+    <div class="space-y-5 py-2">
+      <EmptyState
+        title="Add a subscription"
+        body=""
+      />
 
-      <div class="flex w-full max-w-xl flex-col gap-2">
+      <div class="flex w-full max-w-2xl flex-col gap-2">
         <div class="flex gap-2">
           <Input
             type="url"
@@ -226,16 +225,16 @@
             onclick={handleGetStarted}
           >
             {#if subscriptionAdd.isPending}
-              Creating source...
+              Adding subscription...
             {:else}
-              Add Source
+              Add subscription
             {/if}
           </Button>
         </div>
         {#if urlError}
           <p class="text-sm text-destructive">{urlError}</p>
         {/if}
-        <div class="flex gap-3 text-sm">
+        <div class="flex flex-wrap gap-3 text-sm">
           <a href="#/sources" class="text-foreground underline underline-offset-4">Open Sources</a>
           <a href="#/compose" class="text-muted-foreground underline underline-offset-4">Open Compose</a>
         </div>

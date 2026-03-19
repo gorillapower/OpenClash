@@ -11,6 +11,7 @@
   import SectionHeader from '$lib/components/SectionHeader.svelte'
   import SummaryStatCard from '$lib/components/SummaryStatCard.svelte'
   import ContextNote from '$lib/components/ContextNote.svelte'
+  import EmptyState from '$lib/components/EmptyState.svelte'
   import {
     useSubscriptions,
     useSubscriptionAdd,
@@ -317,13 +318,11 @@
         {/each}
       </div>
     {:else if !subscriptions.data || subscriptions.data.length === 0}
-      <div class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16 text-center">
-        <p class="text-sm font-medium">No subscriptions yet</p>
-        <p class="mt-1 text-sm text-muted-foreground">
-          Add a subscription URL to start building your source inventory.
-        </p>
-        <Button class="mt-4" size="sm" onclick={openAdd}>Add your first subscription</Button>
-      </div>
+      <EmptyState
+        eyebrow="Remote sources"
+        title="No subscriptions"
+        body=""
+      />
     {:else}
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {#each subscriptions.data as subscription (subscription.name)}
@@ -356,13 +355,10 @@
         {/each}
       </div>
     {:else if !configs.data || configs.data.length === 0}
-      <div class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16 text-center">
-        <p class="text-sm font-medium">No uploaded sources yet</p>
-        <p class="mt-1 text-sm text-muted-foreground">
-          Upload a YAML source file to make it available for selection.
-        </p>
-        <Button class="mt-4" size="sm" onclick={openUploadConfig}>Upload your first source</Button>
-      </div>
+      <EmptyState
+        eyebrow="Local sources"
+        title="No uploaded sources"
+      />
     {:else}
       <div class="space-y-3">
         {#each configs.data as config (config.name)}

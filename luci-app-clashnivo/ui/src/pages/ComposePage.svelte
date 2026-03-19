@@ -17,6 +17,7 @@
   import SectionHeader from '$lib/components/SectionHeader.svelte'
   import SummaryStatCard from '$lib/components/SummaryStatCard.svelte'
   import ContextNote from '$lib/components/ContextNote.svelte'
+  import EmptyState from '$lib/components/EmptyState.svelte'
   import ClashConfigTab from './settings/ClashConfigTab.svelte'
 
   const configs = useConfigs()
@@ -116,18 +117,18 @@
             </div>
           </div>
         {:else}
-          <div class="rounded-lg border border-dashed border-border bg-card px-4 py-6">
-            <p class="text-sm font-medium text-foreground">No source selected</p>
-            <p class="mt-1 text-sm text-muted-foreground">
-              Add or select a source in Sources before previewing, validating, or activating a
-              generated config.
-            </p>
-            <div class="mt-4">
-              <a href="#/sources" class="text-sm text-foreground underline underline-offset-4">
+          <EmptyState
+            compact
+            eyebrow="Selection required"
+            title="No source selected"
+            body="Add or select a source in Sources before previewing, validating, or activating a generated config."
+          >
+            {#snippet actions()}
+              <a href="#/sources" class="text-sm font-medium text-foreground underline underline-offset-4">
                 Go to Sources
               </a>
-            </div>
-          </div>
+            {/snippet}
+          </EmptyState>
         {/if}
 
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -255,9 +256,11 @@
         {#if previewResult.preview_content}
           <pre class="max-h-[28rem] overflow-auto rounded-lg border border-border bg-muted/40 p-4 text-xs text-foreground"><code>{previewResult.preview_content}</code></pre>
         {:else}
-          <div class="rounded-lg border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">
-            No preview content was returned.
-          </div>
+          <EmptyState
+            compact
+            title="No preview content returned"
+            body="The backend returned a preview result without generated YAML content. Validate the selected source and custom layers, then try again."
+          />
         {/if}
       </CardContent>
     </Card>

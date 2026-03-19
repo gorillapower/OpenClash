@@ -76,8 +76,8 @@ describe('StatusPage empty state', () => {
     setupEmptyState()
     render(StatusPage)
 
-    expect(screen.getByText('Add your first source')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /add source/i })).toBeInTheDocument()
+    expect(screen.getByText('Add a subscription')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /add subscription/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /open sources/i })).toHaveAttribute('href', '#/sources')
   })
 
@@ -94,7 +94,7 @@ describe('StatusPage empty state', () => {
     setupEmptyState()
     render(StatusPage)
 
-    await fireEvent.click(screen.getByRole('button', { name: /add source/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /add subscription/i }))
     await waitFor(() => {
       expect(screen.getByText(/please enter a subscription url/i)).toBeInTheDocument()
     })
@@ -102,7 +102,7 @@ describe('StatusPage empty state', () => {
     const input = screen.getByRole('textbox', { name: /subscription url/i }) as HTMLInputElement
     input.value = 'not a url'
     await fireEvent.input(input)
-    await fireEvent.click(screen.getByRole('button', { name: /add source/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /add subscription/i }))
 
     await waitFor(() => {
       expect(screen.getByText(/please enter a valid url/i)).toBeInTheDocument()
@@ -117,7 +117,7 @@ describe('StatusPage empty state', () => {
     const input = screen.getByRole('textbox', { name: /subscription url/i }) as HTMLInputElement
     input.value = 'https://example.com/sub?token=abc'
     await fireEvent.input(input)
-    await fireEvent.click(screen.getByRole('button', { name: /add source/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /add subscription/i }))
 
     await waitFor(() => {
       expect(addMutate).toHaveBeenCalledWith({ url: 'https://example.com/sub?token=abc' })

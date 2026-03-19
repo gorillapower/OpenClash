@@ -169,8 +169,7 @@ describe('SourcesPage', () => {
   it('shows empty state when no subscriptions', () => {
     setupMocks({ subs: [] })
     render(SourcesPage)
-    expect(screen.getByText(/no subscriptions yet/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /add your first subscription/i })).toBeInTheDocument()
+    expect(screen.getByText(/no subscriptions/i)).toBeInTheDocument()
   })
 
   it('opens add subscription sheet and validates empty URL', async () => {

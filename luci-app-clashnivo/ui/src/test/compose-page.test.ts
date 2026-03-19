@@ -159,6 +159,7 @@ describe('ComposePage', () => {
     render(ComposePage)
 
     expect(screen.getByText(/no source selected/i)).toBeInTheDocument()
+    expect(screen.getByText(/selection required/i)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /go to sources/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /preview generated config/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /validate generated config/i })).toBeDisabled()
