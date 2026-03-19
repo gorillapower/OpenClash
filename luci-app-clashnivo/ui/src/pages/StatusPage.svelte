@@ -1,28 +1,39 @@
 <script lang="ts">
-  import { useServiceStatus, useServiceStart, useServiceStop, useServiceRestart, useUciConfig, useSubscriptionAdd, luciKeys } from '$lib/queries/luci'
-  import { useClashConfig, useClashVersion, useConnections, useExternalIp } from '$lib/queries/clash'
+  import {
+    useServiceStatus,
+    useServiceStart,
+    useServiceStop,
+    useServiceRestart,
+    useUciConfig,
+    useSubscriptionAdd,
+    useProxyGroups,
+    useRuleProviders,
+    useCustomProxies,
+    useCustomRules,
+    useConfigOverwrite,
+    luciKeys
+  } from '$lib/queries/luci'
   import { useQueryClient } from '@tanstack/svelte-query'
   import Button from '$lib/components/ui/button/button.svelte'
   import { Input } from '$lib/components/ui/input/index'
-  import { Card, CardHeader, CardTitle, CardContent } from '$lib/components/ui/card/index'
-  import { formatBytes } from '$lib/utils'
+  import { Card, CardHeader, CardContent } from '$lib/components/ui/card/index'
 
   const queryClient = useQueryClient()
 
   const serviceStatus = useServiceStatus('clashnivo', { refetchInterval: 5000 })
-  const clashConfig = useClashConfig()
-  const uciConfig = useUciConfig('clashnivo')   // no polling — only re-fetched on demand
-  const clashVersion = useClashVersion()
+  const uciConfig = useUciConfig('clashnivo')
+  const proxyGroups = useProxyGroups()
+  const ruleProviders = useRuleProviders()
+  const customProxies = useCustomProxies()
+  const customRules = useCustomRules()
+  const configOverwrite = useConfigOverwrite()
 
   const startMutation = useServiceStart('clashnivo')
   const stopMutation = useServiceStop('clashnivo')
   const restartMutation = useServiceRestart('clashnivo')
   const subscriptionAdd = useSubscriptionAdd()
 
-  // Optimistic state: set immediately on button click, cleared once mutation settles
   let optimisticRunning = $state<boolean | null>(null)
-
-  // Empty state form
   let subscriptionUrl = $state('')
   let urlError = $state<string | null>(null)
 
@@ -33,19 +44,75 @@
     startMutation.isPending || stopMutation.isPending || restartMutation.isPending
   )
 
-  const configPath = $derived((uciConfig.data?.config as Record<string, string> | undefined)?.config_path ?? null)
-  const configName = $derived(configPath ? configPath.split('/').pop()?.replace(/\.ya?ml$/i, '') ?? configPath : null)
-  const operationMode = $derived((uciConfig.data?.config as Record<string, string> | undefined)?.operation_mode ?? null)
-  const proxyMode = $derived(clashConfig.data?.mode ?? null)
+  const activeConfigPath = $derived(
+    serviceStatus.data?.active_config ??
+      ((uciConfig.data?.config as Record<string, string> | undefined)?.config_path ?? null)
+  )
+  const activeConfigName = $derived(
+    activeConfigPath ? activeConfigPath.split('/').pop()?.replace(/\.ya?ml$/i, '') ?? activeConfigPath : null
+  )
 
-  // Show empty state when UCI config has loaded but no config is set
-  const isEmpty = $derived(uciConfig.isSuccess && !configPath)
+  const runMode = $derived(serviceStatus.data?.run_mode ?? null)
+  const proxyMode = $derived(serviceStatus.data?.proxy_mode ?? null)
+  const coreType = $derived(serviceStatus.data?.core_type ?? null)
 
-  // Info cards — fetch continuously, fail silently when Clash is stopped
-  const connections = useConnections({ refetchInterval: 5000, retry: false } as never)
-  const geoIp = useExternalIp({ retry: false } as never)
+  const canStart = $derived(serviceStatus.data?.can_start ?? true)
+  const isBlocked = $derived(serviceStatus.data?.blocked ?? false)
+  const blockedReason = $derived(serviceStatus.data?.blocked_reason ?? null)
+  const openclashInstalled = $derived(serviceStatus.data?.openclash_installed ?? false)
+  const openclashActive = $derived(serviceStatus.data?.openclash_active ?? false)
+  const coreRunning = $derived(serviceStatus.data?.core_running ?? isRunning)
+  const watchdogRunning = $derived(serviceStatus.data?.watchdog_running ?? false)
 
-  function formatOperationMode(mode: string): string {
+  const isEmpty = $derived(uciConfig.isSuccess && !activeConfigPath)
+
+  const proxyGroupCount = $derived(proxyGroups.data?.length ?? 0)
+  const ruleProviderCount = $derived(ruleProviders.data?.length ?? 0)
+  const customProxyCount = $derived(customProxies.data?.length ?? 0)
+  const customRuleCount = $derived(customRules.data?.length ?? 0)
+  const hasOverwrite = $derived(Boolean(configOverwrite.data?.content?.trim()))
+
+  const stateLabel = $derived(
+    isBlocked && !isRunning ? 'Blocked' : isRunning ? 'Running' : 'Stopped'
+  )
+  const stateToneClass = $derived(
+    isBlocked && !isRunning
+      ? 'bg-amber-500'
+      : isRunning
+        ? 'bg-green-500'
+        : 'bg-slate-400'
+  )
+  const stateMessage = $derived.by(() => {
+    if (isBlocked && !isRunning) {
+      return blockedReasonMessage(blockedReason)
+    }
+    if (isRunning && !coreRunning) {
+      return 'Clash Nivo service is up, but the core does not appear healthy.'
+    }
+    if (isRunning) {
+      return 'Clash Nivo is active and owns the runtime.'
+    }
+    return 'Clash Nivo is installed but not currently running.'
+  })
+
+  const nextActionLabel = $derived.by(() => {
+    if (isBlocked && !isRunning) return 'Stop OpenClash, then start Clash Nivo.'
+    if (!activeConfigPath) return 'Add a source to create your first active config.'
+    if (!isRunning && canStart) return 'Start Clash Nivo to apply the active generated config.'
+    return 'Use Compose to preview, validate, and activate changes before restarting.'
+  })
+
+  function blockedReasonMessage(reason: string | null): string {
+    if (reason === 'openclash_active') {
+      return 'OpenClash is active. Clash Nivo cannot take runtime ownership until OpenClash is stopped.'
+    }
+    if (reason) {
+      return `Clash Nivo start is blocked: ${reason}.`
+    }
+    return 'Clash Nivo start is currently blocked.'
+  }
+
+  function formatRunMode(mode: string): string {
     if (mode === 'fake-ip') return 'Fake-IP'
     if (mode === 'redir-host') return 'Redir-Host'
     if (mode === 'tun') return 'TUN'
@@ -80,13 +147,11 @@
     try {
       await subscriptionAdd.mutateAsync({ url: subscriptionUrl.trim() })
 
-      // Poll uciConfig every 2s until the config_path appears (download complete)
       const interval = setInterval(async () => {
         await queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
-        if (configPath) clearInterval(interval)
+        if (activeConfigPath) clearInterval(interval)
       }, 2000)
 
-      // Safety: stop polling after 2 minutes regardless
       setTimeout(() => clearInterval(interval), 120_000)
     } catch {
       // Error toast handled by mutation onError
@@ -121,20 +186,24 @@
   }
 </script>
 
-<div class="space-y-10">
-  <h1 class="text-2xl font-semibold tracking-tight">Status</h1>
+<div class="space-y-8">
+  <div class="space-y-1">
+    <h1 class="text-2xl font-semibold tracking-tight">Status</h1>
+    <p class="text-sm text-muted-foreground">
+      Runtime health, active source state, and the next meaningful action.
+    </p>
+  </div>
 
   {#if isEmpty}
-    <!-- Empty state — no subscription configured yet -->
-    <div class="flex flex-col items-start gap-4 py-4">
+    <div class="flex flex-col items-start gap-4 py-2">
       <div class="space-y-1">
-        <p class="text-lg font-medium">Add your first subscription</p>
+        <p class="text-lg font-medium">Add your first source</p>
         <p class="text-sm text-muted-foreground">
-          Paste a Clash subscription URL to get started. Your config will be downloaded and Clash will start automatically.
+          Paste a Clash subscription URL to create your first source config. Source management continues in Sources and Compose.
         </p>
       </div>
 
-      <div class="flex w-full max-w-md flex-col gap-2">
+      <div class="flex w-full max-w-xl flex-col gap-2">
         <div class="flex gap-2">
           <Input
             type="url"
@@ -150,143 +219,174 @@
             onclick={handleGetStarted}
           >
             {#if subscriptionAdd.isPending}
-              Setting up…
+              Creating source...
             {:else}
-              Get Started
+              Add Source
             {/if}
           </Button>
         </div>
         {#if urlError}
           <p class="text-sm text-destructive">{urlError}</p>
         {/if}
-      </div>
-    </div>
-
-  {:else}
-    <!-- Normal status view -->
-
-    <!-- Status indicator -->
-    <div class="flex flex-col items-start gap-6">
-      <div class="flex items-center gap-4">
-        <span
-          class="flex h-4 w-4 rounded-full {isRunning ? 'bg-green-500' : 'bg-red-500'}"
-          aria-hidden="true"
-        ></span>
-        <span class="text-xl font-medium">
-          {isRunning ? 'Running' : 'Stopped'}
-        </span>
-      </div>
-
-      <!-- Info row -->
-      {#if configName || operationMode || proxyMode}
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          {#if configName}
-            <span>{configName}</span>
-          {/if}
-          {#if operationMode}
-            <span>{formatOperationMode(operationMode)}</span>
-          {/if}
-          {#if proxyMode}
-            <span>{formatProxyMode(proxyMode)}</span>
-          {/if}
+        <div class="flex gap-3 text-sm">
+          <a href="#/sources" class="text-foreground underline underline-offset-4">Open Sources</a>
+          <a href="#/compose" class="text-muted-foreground underline underline-offset-4">Open Compose</a>
         </div>
-      {/if}
+      </div>
     </div>
-
-    <!-- Service controls -->
-    <div class="flex flex-wrap items-center gap-3">
-      <Button
-        variant="default"
-        disabled={isBusy || isRunning}
-        onclick={handleStart}
-      >
-        Start
-      </Button>
-      <Button
-        variant="outline"
-        disabled={isBusy || !isRunning}
-        onclick={handleStop}
-      >
-        Stop
-      </Button>
-      <Button
-        variant="outline"
-        disabled={isBusy}
-        onclick={handleRestart}
-      >
-        Restart
-      </Button>
-    </div>
-
-    <!-- Dashboard link -->
-    <div>
-      <a
-        href={dashboardUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        class="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-      >
-        Open Dashboard
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M7 7h10v10"/><path d="M7 17 17 7"/>
-        </svg>
-      </a>
-    </div>
-
-    <!-- Info cards -->
-    <div class="grid gap-4 sm:grid-cols-3">
-      <!-- External IP card -->
+  {:else}
+    <div class="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
       <Card>
-        <CardHeader>External IP</CardHeader>
-        <CardContent>
-          {#if geoIp.data}
-            <p class="text-lg font-semibold tabular-nums">{geoIp.data.ip}</p>
-            {#if geoIp.data.city || geoIp.data.country}
-              <p class="mt-0.5 text-sm text-muted-foreground">
-                {[geoIp.data.city, geoIp.data.country].filter(Boolean).join(', ')}
-              </p>
-            {/if}
-          {:else}
-            <p class="text-lg font-semibold text-muted-foreground">—</p>
-          {/if}
-        </CardContent>
-      </Card>
-
-      <!-- Traffic card -->
-      <Card>
-        <CardHeader>Traffic</CardHeader>
-        <CardContent>
-          {#if connections.data}
-            <div class="space-y-1">
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-muted-foreground">↑ Up</span>
-                <span class="font-medium tabular-nums">{formatBytes(connections.data.uploadTotal)}</span>
+        <CardHeader class="space-y-4">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="space-y-2">
+              <div class="flex items-center gap-3">
+                <span
+                  class="flex h-3.5 w-3.5 rounded-full {stateToneClass}"
+                  aria-hidden="true"
+                ></span>
+                <span class="text-xl font-semibold">{stateLabel}</span>
               </div>
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-muted-foreground">↓ Down</span>
-                <span class="font-medium tabular-nums">{formatBytes(connections.data.downloadTotal)}</span>
-              </div>
+              <p class="max-w-2xl text-sm text-muted-foreground">{stateMessage}</p>
             </div>
-          {:else}
-            <p class="text-lg font-semibold text-muted-foreground">—</p>
-          {/if}
+
+            <div class="flex flex-wrap gap-2">
+              <Button
+                variant="default"
+                disabled={isBusy || isRunning || !canStart}
+                onclick={handleStart}
+              >
+                Start
+              </Button>
+              <Button
+                variant="outline"
+                disabled={isBusy || !isRunning}
+                onclick={handleStop}
+              >
+                Stop
+              </Button>
+              <Button
+                variant="outline"
+                disabled={isBusy || !isRunning}
+                onclick={handleRestart}
+              >
+                Restart
+              </Button>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            {#if activeConfigName}
+              <span class="rounded-full border border-border px-2 py-1">Source: {activeConfigName}</span>
+            {/if}
+            {#if runMode}
+              <span class="rounded-full border border-border px-2 py-1">Run mode: {formatRunMode(runMode)}</span>
+            {/if}
+            {#if proxyMode}
+              <span class="rounded-full border border-border px-2 py-1">Proxy mode: {formatProxyMode(proxyMode)}</span>
+            {/if}
+            {#if coreType}
+              <span class="rounded-full border border-border px-2 py-1">Core: {coreType}</span>
+            {/if}
+            {#if watchdogRunning}
+              <span class="rounded-full border border-border px-2 py-1">Watchdog active</span>
+            {/if}
+          </div>
+        </CardHeader>
+
+        <CardContent class="space-y-4">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div class="rounded-md border border-border p-3">
+              <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Next action</p>
+              <p class="mt-1 text-sm">{nextActionLabel}</p>
+            </div>
+
+            <div class="rounded-md border border-border p-3">
+              <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">OpenClash guard</p>
+              <p class="mt-1 text-sm">
+                {#if openclashActive}
+                  OpenClash is active and currently blocks Clash Nivo startup.
+                {:else if openclashInstalled}
+                  OpenClash is installed but not currently blocking Clash Nivo.
+                {:else}
+                  No OpenClash runtime conflict is currently detected.
+                {/if}
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-3 text-sm">
+            <a href="#/compose" class="font-medium text-foreground underline underline-offset-4">
+              Open Compose
+            </a>
+            <a href="#/system" class="font-medium text-foreground underline underline-offset-4">
+              View logs and diagnostics
+            </a>
+            <a
+              href={dashboardUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-muted-foreground underline underline-offset-4"
+            >
+              Open dashboard
+            </a>
+          </div>
         </CardContent>
       </Card>
 
-      <!-- Core version card -->
-      <Card>
-        <CardHeader>Core Version</CardHeader>
-        <CardContent>
-          {#if clashVersion.data}
-            <p class="text-lg font-semibold tabular-nums">{clashVersion.data.version}</p>
-            {#if clashVersion.data.meta}
-              <p class="mt-0.5 text-sm text-muted-foreground">Mihomo</p>
-            {/if}
-          {:else}
-            <p class="text-lg font-semibold text-muted-foreground">—</p>
-          {/if}
-        </CardContent>
-      </Card>
+      <div class="grid gap-4">
+        <Card>
+          <CardHeader>
+            <p class="text-sm font-semibold">Active runtime summary</p>
+          </CardHeader>
+          <CardContent class="space-y-3 text-sm">
+            <div class="flex items-start justify-between gap-4">
+              <span class="text-muted-foreground">Selected source</span>
+              <span class="text-right font-medium">{activeConfigName ?? 'None selected'}</span>
+            </div>
+            <div class="flex items-start justify-between gap-4">
+              <span class="text-muted-foreground">Service</span>
+              <span class="text-right font-medium">{isRunning ? 'Running' : 'Stopped'}</span>
+            </div>
+            <div class="flex items-start justify-between gap-4">
+              <span class="text-muted-foreground">Core</span>
+              <span class="text-right font-medium">{coreRunning ? 'Healthy' : 'Not running'}</span>
+            </div>
+            <div class="flex items-start justify-between gap-4">
+              <span class="text-muted-foreground">Activation</span>
+              <span class="text-right font-medium">{isBlocked && !isRunning ? 'Blocked' : 'Available'}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <p class="text-sm font-semibold">Custom layers</p>
+          </CardHeader>
+          <CardContent class="space-y-3 text-sm">
+            <div class="flex items-start justify-between gap-4">
+              <span class="text-muted-foreground">Custom proxies</span>
+              <span class="font-medium">{customProxyCount}</span>
+            </div>
+            <div class="flex items-start justify-between gap-4">
+              <span class="text-muted-foreground">Rule providers</span>
+              <span class="font-medium">{ruleProviderCount}</span>
+            </div>
+            <div class="flex items-start justify-between gap-4">
+              <span class="text-muted-foreground">Proxy groups</span>
+              <span class="font-medium">{proxyGroupCount}</span>
+            </div>
+            <div class="flex items-start justify-between gap-4">
+              <span class="text-muted-foreground">Custom rules</span>
+              <span class="font-medium">{customRuleCount}</span>
+            </div>
+            <div class="flex items-start justify-between gap-4">
+              <span class="text-muted-foreground">Overwrite</span>
+              <span class="font-medium">{hasOverwrite ? 'Enabled' : 'Not set'}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   {/if}
 </div>

@@ -36,6 +36,25 @@ export type ServiceAction = 'start' | 'stop' | 'restart'
 export interface ServiceStatusResult {
   running: boolean
   pid?: number
+  enabled?: boolean
+  service_running?: boolean
+  core_running?: boolean
+  watchdog_running?: boolean
+  openclash_installed?: boolean
+  openclash_enabled?: boolean
+  openclash_service_running?: boolean
+  openclash_watchdog_running?: boolean
+  openclash_core_running?: boolean
+  openclash_core_pid?: number
+  openclash_active?: boolean
+  blocked?: boolean
+  blocked_reason?: string
+  can_start?: boolean
+  core_pid?: number
+  active_config?: string
+  core_type?: string
+  proxy_mode?: string
+  run_mode?: string
 }
 
 // ---------------------------------------------------------------------------
