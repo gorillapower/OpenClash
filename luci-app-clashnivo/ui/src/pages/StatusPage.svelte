@@ -17,6 +17,7 @@
   import Button from '$lib/components/ui/button/button.svelte'
   import { Input } from '$lib/components/ui/input/index'
   import { Card, CardHeader, CardContent } from '$lib/components/ui/card/index'
+  import PageIntro from '$lib/components/PageIntro.svelte'
 
   const queryClient = useQueryClient()
 
@@ -187,12 +188,11 @@
 </script>
 
 <div class="space-y-8">
-  <div class="space-y-1">
-    <h1 class="text-2xl font-semibold tracking-tight">Status</h1>
-    <p class="text-sm text-muted-foreground">
-      Runtime health, active source state, and the next meaningful action.
-    </p>
-  </div>
+  <PageIntro
+    eyebrow="Operations"
+    title="Status"
+    description="Runtime health, active source state, and the next meaningful action."
+  />
 
   {#if isEmpty}
     <div class="flex flex-col items-start gap-4 py-2">
@@ -235,8 +235,8 @@
       </div>
     </div>
   {:else}
-    <div class="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-      <Card>
+    <div class="grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <Card class="h-full">
         <CardHeader class="space-y-4">
           <div class="flex flex-wrap items-start justify-between gap-4">
             <div class="space-y-2">
@@ -335,7 +335,7 @@
       </Card>
 
       <div class="grid gap-4">
-        <Card>
+        <Card class="h-full">
           <CardHeader>
             <p class="text-sm font-semibold">Active runtime summary</p>
           </CardHeader>
@@ -359,7 +359,7 @@
           </CardContent>
         </Card>
 
-        <Card>
+        <Card class="h-full">
           <CardHeader>
             <p class="text-sm font-semibold">Custom layers</p>
           </CardHeader>

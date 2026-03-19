@@ -13,6 +13,9 @@
   } from '$lib/queries/luci'
   import Button from '$lib/components/ui/button/button.svelte'
   import { Card, CardHeader, CardContent, CardTitle } from '$lib/components/ui/card/index'
+  import PageIntro from '$lib/components/PageIntro.svelte'
+  import SectionHeader from '$lib/components/SectionHeader.svelte'
+  import SummaryStatCard from '$lib/components/SummaryStatCard.svelte'
   import ClashConfigTab from './settings/ClashConfigTab.svelte'
 
   const configs = useConfigs()
@@ -75,13 +78,11 @@
 </script>
 
 <div class="space-y-8">
-  <div class="space-y-1">
-    <h1 class="text-2xl font-semibold tracking-tight">Compose</h1>
-    <p class="text-sm text-muted-foreground">
-      Build the generated Clash Nivo runtime from the selected source, validate it, then make it
-      live.
-    </p>
-  </div>
+  <PageIntro
+    eyebrow="Composition"
+    title="Compose"
+    description="Build the generated Clash Nivo runtime from the selected source, validate it, then make it live."
+  />
 
   <div class="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
     <Card>
@@ -123,38 +124,32 @@
         {/if}
 
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <div class="rounded-lg border border-border bg-card px-4 py-3">
-            <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Custom Proxies
-            </p>
-            <p class="mt-2 text-2xl font-semibold text-foreground">{customProxyCount}</p>
-          </div>
-          <div class="rounded-lg border border-border bg-card px-4 py-3">
-            <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Rule Providers
-            </p>
-            <p class="mt-2 text-2xl font-semibold text-foreground">{ruleProviderCount}</p>
-          </div>
-          <div class="rounded-lg border border-border bg-card px-4 py-3">
-            <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Proxy Groups
-            </p>
-            <p class="mt-2 text-2xl font-semibold text-foreground">{proxyGroupCount}</p>
-          </div>
-          <div class="rounded-lg border border-border bg-card px-4 py-3">
-            <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Custom Rules
-            </p>
-            <p class="mt-2 text-2xl font-semibold text-foreground">{customRuleCount}</p>
-          </div>
-          <div class="rounded-lg border border-border bg-card px-4 py-3 sm:col-span-2 xl:col-span-1">
-            <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Overwrite
-            </p>
-            <p class="mt-2 text-sm font-medium text-foreground">
-              {#if hasOverwrite}Configured{:else}Not configured{/if}
-            </p>
-          </div>
+          <SummaryStatCard
+            label="Custom Proxies"
+            value={customProxyCount}
+            detail="Clash Nivo-owned proxies appended during composition."
+          />
+          <SummaryStatCard
+            label="Rule Providers"
+            value={ruleProviderCount}
+            detail="Structured external rule sources available to the generated config."
+          />
+          <SummaryStatCard
+            label="Proxy Groups"
+            value={proxyGroupCount}
+            detail="Custom routing buckets layered on top of the selected source."
+          />
+          <SummaryStatCard
+            label="Custom Rules"
+            value={customRuleCount}
+            detail="Rules prepended before the selected source ruleset."
+          />
+          <SummaryStatCard
+            label="Overwrite"
+            value={hasOverwrite ? 'Configured' : 'Not configured'}
+            valueClass="text-sm"
+            detail="Highest-precedence escape hatch applied only to the generated config."
+          />
         </div>
       </CardContent>
     </Card>
@@ -262,13 +257,10 @@
   {/if}
 
   <div class="space-y-4">
-    <div class="space-y-1">
-      <h2 class="text-lg font-semibold tracking-tight">Custom layers</h2>
-      <p class="text-sm text-muted-foreground">
-        Structured Clash Nivo-owned inputs. Out-of-scope customizations are ignored for the
-        currently selected source.
-      </p>
-    </div>
+    <SectionHeader
+      title="Custom layers"
+      description="Structured Clash Nivo-owned inputs. Out-of-scope customizations are ignored for the currently selected source."
+    />
 
     <ClashConfigTab />
   </div>

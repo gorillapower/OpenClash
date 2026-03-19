@@ -7,6 +7,9 @@
   import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card'
   import SubscriptionCard from '$lib/components/SubscriptionCard.svelte'
   import YamlEditor from '$lib/components/YamlEditor.svelte'
+  import PageIntro from '$lib/components/PageIntro.svelte'
+  import SectionHeader from '$lib/components/SectionHeader.svelte'
+  import SummaryStatCard from '$lib/components/SummaryStatCard.svelte'
   import {
     useSubscriptions,
     useSubscriptionAdd,
@@ -236,45 +239,30 @@
   }
 </script>
 
-<div class="space-y-6">
-  <div class="space-y-2">
-    <h1 class="text-2xl font-semibold tracking-tight">Sources</h1>
-    <p class="max-w-3xl text-sm text-muted-foreground">
-      Manage subscription sources and uploaded YAML sources. Refresh source material, select the
-      active source, and keep composition work separate from source inventory.
-    </p>
-  </div>
+<div class="space-y-8">
+  <PageIntro
+    eyebrow="Inventory"
+    title="Sources"
+    description="Manage subscription sources and uploaded YAML sources. Refresh source material, select the active source, and keep composition work separate from source inventory."
+  />
 
   <div class="grid gap-4 md:grid-cols-3">
-    <Card>
-      <CardHeader class="pb-2">
-        <p class="text-sm text-muted-foreground">Subscriptions</p>
-        <CardTitle class="text-2xl">{subscriptionCount}</CardTitle>
-      </CardHeader>
-      <CardContent class="text-sm text-muted-foreground">
-        Remote sources that can be refreshed in place without changing your Clash Nivo custom layers.
-      </CardContent>
-    </Card>
-
-    <Card>
-      <CardHeader class="pb-2">
-        <p class="text-sm text-muted-foreground">Uploaded sources</p>
-        <CardTitle class="text-2xl">{configCount}</CardTitle>
-      </CardHeader>
-      <CardContent class="text-sm text-muted-foreground">
-        YAML files stored locally and available for direct source selection.
-      </CardContent>
-    </Card>
-
-    <Card>
-      <CardHeader class="pb-2">
-        <p class="text-sm text-muted-foreground">Selected source</p>
-        <CardTitle class="truncate text-lg">{activeSource?.name ?? 'None selected'}</CardTitle>
-      </CardHeader>
-      <CardContent class="text-sm text-muted-foreground">
-        Clash Nivo composes from one selected source at a time, then generates the active runtime config.
-      </CardContent>
-    </Card>
+    <SummaryStatCard
+      label="Subscriptions"
+      value={subscriptionCount}
+      detail="Remote sources that can be refreshed in place without changing your Clash Nivo custom layers."
+    />
+    <SummaryStatCard
+      label="Uploaded sources"
+      value={configCount}
+      detail="YAML files stored locally and available for direct source selection."
+    />
+    <SummaryStatCard
+      label="Selected source"
+      value={activeSource?.name ?? 'None selected'}
+      valueClass="truncate text-lg"
+      detail="Clash Nivo composes from one selected source at a time, then generates the active runtime config."
+    />
   </div>
 
   <Card>
@@ -294,14 +282,11 @@
   </Card>
 
   <section class="space-y-4" aria-labelledby="sources-subscriptions-heading">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div class="space-y-1">
-        <h2 id="sources-subscriptions-heading" class="text-lg font-semibold">Subscriptions</h2>
-        <p class="text-sm text-muted-foreground">
-          Add, refresh, and maintain remote source feeds. Refresh changes source material only.
-        </p>
-      </div>
-      <div class="flex gap-2">
+    <SectionHeader
+      title="Subscriptions"
+      description="Add, refresh, and maintain remote source feeds. Refresh changes source material only."
+    >
+      {#snippet actions()}
         <Button
           variant="outline"
           size="sm"
@@ -311,8 +296,8 @@
           {subscriptionUpdateAll.isPending ? 'Refreshing all…' : 'Refresh all'}
         </Button>
         <Button size="sm" onclick={openAdd}>Add subscription</Button>
-      </div>
-    </div>
+      {/snippet}
+    </SectionHeader>
 
     {#if subscriptions.isPending}
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -344,15 +329,14 @@
   </section>
 
   <section class="space-y-4" aria-labelledby="sources-configs-heading">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div class="space-y-1">
-        <h2 id="sources-configs-heading" class="text-lg font-semibold">Uploaded sources</h2>
-        <p class="text-sm text-muted-foreground">
-          Select the active source config, inspect basic file metadata, and use advanced YAML editing only when needed.
-        </p>
-      </div>
-      <Button size="sm" onclick={openUploadConfig}>Upload config</Button>
-    </div>
+    <SectionHeader
+      title="Uploaded sources"
+      description="Select the active source config, inspect basic file metadata, and use advanced YAML editing only when needed."
+    >
+      {#snippet actions()}
+        <Button size="sm" onclick={openUploadConfig}>Upload config</Button>
+      {/snippet}
+    </SectionHeader>
 
     {#if configs.isPending}
       <div class="space-y-2">

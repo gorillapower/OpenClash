@@ -12,8 +12,8 @@
   ]
 </script>
 
-<nav class="sticky top-0 z-10 border-b border-border bg-background">
-  <div class="mx-auto flex h-14 max-w-5xl items-center gap-6 px-6">
+<nav class="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">
+  <div class="mx-auto flex h-14 max-w-6xl items-center gap-6 px-6">
     <span class="text-sm font-semibold tracking-tight">Clash Nivo</span>
 
     <div class="flex items-center gap-1">

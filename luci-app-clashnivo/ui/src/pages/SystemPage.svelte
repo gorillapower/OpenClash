@@ -16,6 +16,7 @@
   import AutoUpdatesCard from '$lib/components/AutoUpdatesCard.svelte'
   import LogsViewer from '$lib/components/LogsViewer.svelte'
   import SystemAdvancedSettings from '$lib/components/SystemAdvancedSettings.svelte'
+  import PageIntro from '$lib/components/PageIntro.svelte'
 
   const config = useUciConfig('clashnivo')
 
@@ -90,13 +91,12 @@
   }
 </script>
 
-<div class="space-y-6">
-  <div>
-    <h1 class="text-2xl font-semibold tracking-tight">System</h1>
-    <p class="mt-1 text-sm text-muted-foreground">
-      Updates, schedules, logs, diagnostics, and dashboard access.
-    </p>
-  </div>
+<div class="space-y-8">
+  <PageIntro
+    eyebrow="Maintenance"
+    title="System"
+    description="Updates, schedules, logs, diagnostics, and dashboard access."
+  />
 
   <div class="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
     <div class="space-y-6">
