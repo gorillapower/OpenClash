@@ -4,6 +4,7 @@
 . /usr/share/clashnivo/uci.sh
 . /usr/share/clashnivo/openclash_curl.sh
 . /usr/share/clashnivo/openclash_ps.sh
+. /usr/share/clashnivo/core_source.sh
 
 set_lock() {
    exec 872>"/tmp/lock/clashnivo_core.lock" 2>/dev/null
@@ -79,14 +80,12 @@ fi
 if [ "$CORE_CV" != "$CORE_LV" ] || [ -z "$CORE_CV" ]; then
    if [ "$CPU_MODEL" != 0 ]; then
       LOG_TIP "【$CORE_TYPE】Core Downloading, Please Try to Download and Upload Manually If Fails"
-      if [ "$github_address_mod" != "0" ]; then
-         if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
-            DOWNLOAD_URL="${github_address_mod}gh/vernesong/OpenClash@core/${CORE_URL_PATH}/clash-${CPU_MODEL}.tar.gz"
-         else
-            DOWNLOAD_URL="${github_address_mod}https://raw.githubusercontent.com/vernesong/OpenClash/core/${CORE_URL_PATH}/clash-${CPU_MODEL}.tar.gz"
-         fi
-      else
-         DOWNLOAD_URL="https://raw.githubusercontent.com/vernesong/OpenClash/core/${CORE_URL_PATH}/clash-${CPU_MODEL}.tar.gz"
+      DOWNLOAD_URL="$(clashnivo_core_source_artifact_url "$CORE_URL_PATH" "$CPU_MODEL" "$github_address_mod")"
+      if [ $? -ne 0 ] || [ -z "$DOWNLOAD_URL" ]; then
+         LOG_ERROR "【$CORE_TYPE】Core Source Policy Is Invalid, Please Check Core Source Settings!"
+         SLOG_CLEAN
+         del_lock
+         exit 0
       fi
 
       retry_count=0

@@ -1,6 +1,7 @@
 #!/bin/bash
 . /usr/share/clashnivo/openclash_curl.sh
 . /usr/share/clashnivo/uci.sh
+. /usr/share/clashnivo/core_source.sh
 
 set_lock() {
    exec 884>"/tmp/lock/clashnivo_clash_version.lock" 2>/dev/null
@@ -21,15 +22,10 @@ if [ -n "$1" ]; then
    github_address_mod="$1"
 fi
 
-if [ "$github_address_mod" != "0" ]; then
-   if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
-      DOWNLOAD_URL="${github_address_mod}gh/vernesong/OpenClash@core/${RELEASE_BRANCH}/core_version"
-   else
-      DOWNLOAD_URL="${github_address_mod}https://raw.githubusercontent.com/vernesong/OpenClash/core/${RELEASE_BRANCH}/core_version"
-   fi
-else
-   DOWNLOAD_URL="https://raw.githubusercontent.com/vernesong/OpenClash/core/${RELEASE_BRANCH}/core_version"
-fi
+DOWNLOAD_URL="$(clashnivo_core_source_version_url "$github_address_mod")" || {
+   del_lock
+   exit 1
+}
 
 DOWNLOAD_FILE_CURL "$DOWNLOAD_URL" "$DOWNLOAD_FILE" "$DOWNLOAD_FILE"
 del_lock

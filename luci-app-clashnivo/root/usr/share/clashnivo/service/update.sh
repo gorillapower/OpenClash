@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. /usr/share/clashnivo/core_source.sh
+
 clashnivo_service_update_init() {
    CLASHNIVO_UPDATE_PACKAGE_SCRIPT="/usr/share/clashnivo/openclash_update.sh"
    CLASHNIVO_UPDATE_PACKAGE_VERSION_SCRIPT="/usr/share/clashnivo/openclash_version.sh"
@@ -10,6 +12,28 @@ clashnivo_service_update_init() {
    CLASHNIVO_UPDATE_GEOSITE_SCRIPT="/usr/share/clashnivo/openclash_geosite.sh"
    CLASHNIVO_UPDATE_GEOASN_SCRIPT="/usr/share/clashnivo/openclash_geoasn.sh"
    CLASHNIVO_UPDATE_CHNROUTE_SCRIPT="/usr/share/clashnivo/openclash_chnroute.sh"
+}
+
+clashnivo_service_core_source_mode() {
+   clashnivo_core_source_mode
+}
+
+clashnivo_service_core_source_branch() {
+   clashnivo_core_source_branch
+}
+
+clashnivo_service_core_source_base_url() {
+   local mode
+
+   mode="$(clashnivo_service_core_source_mode)"
+   case "$mode" in
+      custom)
+         clashnivo_core_source_custom_base_url
+      ;;
+      openclash|clashnivo)
+         printf 'https://raw.githubusercontent.com/%s/core' "$(clashnivo_core_source_repo "$mode")"
+      ;;
+   esac
 }
 
 clashnivo_service_update_status_file() {
@@ -175,7 +199,7 @@ clashnivo_service_update_package_command() {
 }
 
 clashnivo_service_update_core_latest_command() {
-   local github_address_mod latest_version core_type line_number
+   local github_address_mod latest_version core_type line_number source_mode source_base source_branch
 
    github_address_mod="$(uci_get_config "github_address_mod" || echo 0)"
    if [ "$github_address_mod" != "0" ]; then
@@ -191,21 +215,29 @@ clashnivo_service_update_core_latest_command() {
    line_number=1
    [ "$core_type" = "Smart" ] && line_number=2
    latest_version="$(sed -n "${line_number}p" /tmp/clash_last_version 2>/dev/null | tr -d '\n')"
+   source_mode="$(clashnivo_service_core_source_mode)"
+   source_base="$(clashnivo_service_core_source_base_url)"
+   source_branch="$(clashnivo_service_core_source_branch)"
 
    printf '{'
    printf '"kind":"core",'
    printf '"version":%s,' "$(clashnivo_service_json_string "$latest_version")"
    printf '"core_type":%s,' "$(clashnivo_service_json_string "$core_type")"
-   printf '"source_policy":"delegated-to-legacy-core-version-script"'
+   printf '"source_policy":%s,' "$(clashnivo_service_json_string "$source_mode")"
+   printf '"source_branch":%s,' "$(clashnivo_service_json_string "$source_branch")"
+   printf '"source_base":%s' "$(clashnivo_service_json_string "$source_base")"
    printf '}\n'
 }
 
 clashnivo_service_update_core_command() {
-   local core_type
+   local core_type source_mode source_base source_branch
 
    core_type="$(uci_get_config "core_type")"
    [ "$(uci_get_config "smart_enable" || echo 0)" = "1" ] && core_type="Smart"
    [ -z "$core_type" ] && core_type="Meta"
+   source_mode="$(clashnivo_service_core_source_mode)"
+   source_base="$(clashnivo_service_core_source_base_url)"
+   source_branch="$(clashnivo_service_core_source_branch)"
 
    clashnivo_service_update_run_async \
       core \
@@ -219,6 +251,9 @@ clashnivo_service_update_core_command() {
    printf '"target":%s,' "$(clashnivo_service_json_string "$core_type")"
    printf '"async":true,'
    printf '"status":"accepted",'
+   printf '"source_policy":%s,' "$(clashnivo_service_json_string "$source_mode")"
+   printf '"source_branch":%s,' "$(clashnivo_service_json_string "$source_branch")"
+   printf '"source_base":%s,' "$(clashnivo_service_json_string "$source_base")"
    printf '"status_path":%s,' "$(clashnivo_service_json_string "$CLASHNIVO_CORE_UPDATE_STATUS_FILE")"
    printf '"log_path":%s' "$(clashnivo_service_json_string "$CLASHNIVO_CORE_UPDATE_LOG_FILE")"
    printf '}\n'

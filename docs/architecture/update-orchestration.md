@@ -37,13 +37,23 @@ That delegation is intentional for this ticket. `#63` does not redesign those up
 
 ## Core Source Policy
 
-This ticket does not decide the core artifact source policy.
+Core artifact source policy is now explicit and centralized by follow-up issue `#47`.
 
-The service boundary exposes core latest-version and update commands, but the actual source selection remains delegated to the inherited scripts until follow-up issue `#47` settles:
+Supported modes:
 
 - `openclash`
 - `clashnivo`
 - `custom`
+
+The service boundary exposes that policy through the core latest-version and update responses:
+
+- source policy
+- source branch
+- source base
+
+Core version lookup and core archive download now resolve through one shared source contract instead of hardcoded upstream URLs.
+
+Package and asset update sources remain separate concerns.
 
 ## Status Surface
 

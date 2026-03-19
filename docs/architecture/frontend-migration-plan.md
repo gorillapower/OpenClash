@@ -315,16 +315,14 @@ Recommended order:
 2. `#84` Status Surface Reset
 3. `#85` Sources Surface Reset
 4. `#86` Compose Workflow Reset
-5. `#47` Core Artifact Source Policy And Abstraction
-6. `#87` System Maintenance Surface Baseline
-7. `#82` Advanced Settings And Feature Catalogue
-8. `#88` System Advanced Settings Integration
-9. `#89` UI Reset Cleanup And Smoke Validation
+5. `#87` System Maintenance Surface Baseline
+6. `#82` Advanced Settings And Feature Catalogue
+7. `#88` System Advanced Settings Integration
+8. `#89` UI Reset Cleanup And Smoke Validation
 
 Why this order:
 - cut over the app shell first so later UI work is not built on the old `Profiles / Settings` model
 - land `Status`, `Sources`, and `Compose` before `System` because those are the primary product surfaces
-- insert `#47` before the maintenance/update UI so the core-source policy is settled before update UX is finalized
 - insert `#82` between the baseline `System` page and advanced settings implementation so obscure inherited controls are catalogued before they are surfaced
 - leave cleanup and smoke validation last so they verify the final reset routes and flows rather than a transitional midpoint
 

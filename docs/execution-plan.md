@@ -132,14 +132,12 @@ Current recommended order:
 2. `#84`
 3. `#85`
 4. `#86`
-5. `#47`
-6. `#87`
-7. `#82`
-8. `#88`
-9. `#89`
+5. `#87`
+6. `#82`
+7. `#88`
+8. `#89`
 
 Placement notes:
-- `#47` belongs before the reset `System` maintenance surface because core artifact source policy should be settled before update UX is finalized.
 - `#82` belongs between the baseline `System` page and advanced settings implementation so obscure inherited settings are catalogued before they are exposed in the UI.
 
 ### Epic 6: Built-In OpenClash Import
