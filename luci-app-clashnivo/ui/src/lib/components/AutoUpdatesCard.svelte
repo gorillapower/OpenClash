@@ -264,7 +264,7 @@
 
       <!-- Restart notice -->
       <p class="text-xs text-muted-foreground">
-        Changes take effect after OpenClash restarts.
+        Changes take effect after Clash Nivo restarts.
       </p>
 
     </div>

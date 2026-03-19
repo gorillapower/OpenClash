@@ -211,7 +211,7 @@ describe('AutoUpdatesCard — rendering', () => {
     setupMocks()
     render(AutoUpdatesCard)
 
-    expect(screen.getByText(/changes take effect after openclash restarts/i)).toBeInTheDocument()
+    expect(screen.getByText(/changes take effect after clash nivo restarts/i)).toBeInTheDocument()
   })
 })
 

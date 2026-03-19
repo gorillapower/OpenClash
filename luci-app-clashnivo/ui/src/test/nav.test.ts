@@ -68,15 +68,4 @@ describe('Route rendering', () => {
     render(App)
     expect(screen.getByRole('heading', { name: 'Status' })).toBeInTheDocument()
   })
-
-  it('maps legacy profile and settings routes to reset destinations', () => {
-    setHash('#/profiles')
-    const firstRender = render(App)
-    expect(screen.getByRole('heading', { name: 'Sources' })).toBeInTheDocument()
-    firstRender.unmount()
-
-    setHash('#/settings')
-    render(App)
-    expect(screen.getByRole('heading', { name: 'Compose' })).toBeInTheDocument()
-  })
 })

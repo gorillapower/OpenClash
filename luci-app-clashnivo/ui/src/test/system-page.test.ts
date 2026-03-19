@@ -25,6 +25,9 @@ vi.mock('$lib/queries/luci', () => ({
   useUciConfig: vi.fn(),
   useSetUciConfig: vi.fn(),
   useSetUciConfigBatch: vi.fn(),
+  useFlushDnsCache: vi.fn(),
+  useFirewallRules: vi.fn(),
+  useSetFirewallRules: vi.fn(),
   useCoreLatestVersion: vi.fn(),
   useCoreUpdateStatus: vi.fn(),
   useCoreUpdate: vi.fn(),
@@ -55,6 +58,9 @@ import {
   usePackageLatestVersion,
   usePackageUpdate,
   usePackageUpdateStatus,
+  useFlushDnsCache,
+  useFirewallRules,
+  useSetFirewallRules,
   useSetUciConfig,
   useSetUciConfigBatch,
   useUciConfig
@@ -91,6 +97,15 @@ function setupMocks({
   )
   vi.mocked(useSetUciConfigBatch).mockReturnValue(
     makeMutationResult() as CreateMutationResult<void, unknown, { option: string; value: string | string[] }[], unknown>
+  )
+  vi.mocked(useFlushDnsCache).mockReturnValue(
+    makeMutationResult() as CreateMutationResult<void, unknown, void, unknown>
+  )
+  vi.mocked(useFirewallRules).mockReturnValue(
+    makeQueryResult({ content: '# existing rules' }) as CreateQueryResult<{ content: string }>
+  )
+  vi.mocked(useSetFirewallRules).mockReturnValue(
+    makeMutationResult() as CreateMutationResult<void, unknown, string, unknown>
   )
   vi.mocked(useClashVersion).mockReturnValue(
     makeQueryResult(currentVersion) as CreateQueryResult<ClashVersion>
@@ -133,6 +148,8 @@ describe('SystemPage', () => {
     expect(screen.getByText('Package update')).toBeInTheDocument()
     expect(screen.getByText('Asset maintenance')).toBeInTheDocument()
     expect(screen.getByText('Dashboard access')).toBeInTheDocument()
+    expect(screen.getAllByText('Advanced settings').length).toBeGreaterThan(0)
+    expect(screen.getByText('Traffic mode')).toBeInTheDocument()
   })
 
   it('shows read-only core source policy context', () => {
@@ -148,6 +165,7 @@ describe('SystemPage', () => {
 
     expect(screen.getAllByText('Clash Nivo').length).toBeGreaterThan(0)
     expect(screen.getByText(/core source mode is informational here/i)).toBeInTheDocument()
+    expect(screen.getByText(/grouped runtime and maintenance controls are available below/i)).toBeInTheDocument()
   })
 
   it('shows current and latest core versions', () => {
@@ -200,6 +218,34 @@ describe('SystemPage', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: /update all assets/i }))
     expect(assetsUpdateMutate).toHaveBeenCalledOnce()
+  })
+
+  it('updates dashboard transport from the advanced settings section', async () => {
+    const dashboardSslMutate = vi.fn().mockResolvedValue(undefined)
+    setupMocks()
+    vi.mocked(useSetUciConfig).mockImplementation((pkg, section, option) => {
+      const mutate =
+        option === 'dashboard_forward_ssl'
+          ? dashboardSslMutate
+          : vi.fn().mockResolvedValue(undefined)
+      return makeMutationResult(mutate) as CreateMutationResult<void, unknown, string | string[], unknown>
+    })
+    render(SystemPage)
+
+    await fireEvent.click(screen.getByRole('switch', { name: /dashboard forwarding ssl/i }))
+    expect(dashboardSslMutate).toHaveBeenCalledWith('1')
+  })
+
+  it('flushes DNS cache from the advanced settings section', async () => {
+    const flushMutate = vi.fn().mockResolvedValue(undefined)
+    setupMocks()
+    vi.mocked(useFlushDnsCache).mockReturnValue(
+      makeMutationResult(flushMutate) as CreateMutationResult<void, unknown, void, unknown>
+    )
+    render(SystemPage)
+
+    await fireEvent.click(screen.getByRole('button', { name: /^flush$/i }))
+    expect(flushMutate).toHaveBeenCalledOnce()
   })
 
   it('shows running state labels when updates are active', async () => {

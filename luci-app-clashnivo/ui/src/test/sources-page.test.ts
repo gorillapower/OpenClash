@@ -18,10 +18,6 @@ function makeMutation(mutateAsync = vi.fn().mockResolvedValue(undefined), isPend
   } as unknown as CreateMutationResult<unknown, unknown, unknown>
 }
 
-vi.mock('../pages/ProfilesPage.svelte', () => ({
-  default: {}
-}))
-
 vi.mock('$lib/components/YamlEditor.svelte', () => ({
   default: {}
 }))

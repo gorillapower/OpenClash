@@ -15,6 +15,7 @@
   import { Card, CardHeader, CardContent } from '$lib/components/ui/card/index'
   import AutoUpdatesCard from '$lib/components/AutoUpdatesCard.svelte'
   import LogsViewer from '$lib/components/LogsViewer.svelte'
+  import SystemAdvancedSettings from '$lib/components/SystemAdvancedSettings.svelte'
 
   const config = useUciConfig('clashnivo')
 
@@ -271,6 +272,20 @@
       <Card>
         <CardHeader>
           <div>
+            <h2 class="text-sm font-semibold">Advanced settings</h2>
+            <p class="mt-1 text-sm text-muted-foreground">
+              Advanced runtime, DNS, LAN policy, port, mirror, and diagnostic controls grouped by operator intent.
+            </p>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <SystemAdvancedSettings />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div>
             <h2 class="text-sm font-semibold">Logs and diagnostics</h2>
             <p class="mt-1 text-sm text-muted-foreground">
               Service and core logs for immediate troubleshooting.
@@ -309,9 +324,7 @@
             </div>
             <div>
               <dt class="text-muted-foreground">Advanced settings</dt>
-              <dd class="mt-1 text-muted-foreground">
-                Deferred until the advanced-settings catalogue in `#82` is complete.
-              </dd>
+              <dd class="mt-1 text-muted-foreground">Grouped runtime and maintenance controls are available below.</dd>
             </div>
           </dl>
         </CardContent>
