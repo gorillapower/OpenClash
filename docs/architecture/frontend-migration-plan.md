@@ -305,13 +305,22 @@ The point of the reset is to stop reinforcing the old model.
 Epic 5 should be regenerated against this migration plan instead of resumed from the earlier batch unchanged.
 
 Recommended order:
-1. replace navigation and route structure
-2. convert `Profiles` into `Sources`
-3. introduce `Compose` as the canonical composition workflow page
-4. split old `Settings` responsibilities between `Compose` and `System`
-5. revise `Status` to the new high-signal operational role
-6. revise `System` around updates, schedules, logs, diagnostics, and advanced settings
-7. clean up legacy page/components/tests and add smoke coverage
+1. `#83` Navigation Shell And Route Cutover
+2. `#84` Status Surface Reset
+3. `#85` Sources Surface Reset
+4. `#86` Compose Workflow Reset
+5. `#47` Core Artifact Source Policy And Abstraction
+6. `#87` System Maintenance Surface Baseline
+7. `#82` Advanced Settings And Feature Catalogue
+8. `#88` System Advanced Settings Integration
+9. `#89` UI Reset Cleanup And Smoke Validation
+
+Why this order:
+- cut over the app shell first so later UI work is not built on the old `Profiles / Settings` model
+- land `Status`, `Sources`, and `Compose` before `System` because those are the primary product surfaces
+- insert `#47` before the maintenance/update UI so the core-source policy is settled before update UX is finalized
+- insert `#82` between the baseline `System` page and advanced settings implementation so obscure inherited controls are catalogued before they are surfaced
+- leave cleanup and smoke validation last so they verify the final reset routes and flows rather than a transitional midpoint
 
 ## Acceptance Criteria For Completion
 

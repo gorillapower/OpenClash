@@ -104,11 +104,43 @@ Outputs:
 ### Epic 5: UI Integration
 
 Goal:
-- point the UI at the new backend contract only
+- implement the reset frontend against the accepted backend and frontend product contracts
 
 Outputs:
-- status/profiles/settings/system pages backed by the new runtime
+- reset navigation and route model:
+  - `Status`
+  - `Sources`
+  - `Compose`
+  - `System`
+- `Status` as the operational homepage
+- `Sources` as the source inventory/import surface
+- `Compose` as the preview/validate/activate workflow surface
+- `System` as the maintenance/update/logs/diagnostics surface
 - no UI dependence on legacy OpenClash internals
+
+Current regenerated batch:
+- `#83` Navigation Shell And Route Cutover
+- `#84` Status Surface Reset
+- `#85` Sources Surface Reset
+- `#86` Compose Workflow Reset
+- `#87` System Maintenance Surface Baseline
+- `#88` System Advanced Settings Integration
+- `#89` UI Reset Cleanup And Smoke Validation
+
+Current recommended order:
+1. `#83`
+2. `#84`
+3. `#85`
+4. `#86`
+5. `#47`
+6. `#87`
+7. `#82`
+8. `#88`
+9. `#89`
+
+Placement notes:
+- `#47` belongs before the reset `System` maintenance surface because core artifact source policy should be settled before update UX is finalized.
+- `#82` belongs between the baseline `System` page and advanced settings implementation so obscure inherited settings are catalogued before they are exposed in the UI.
 
 ### Epic 6: Built-In OpenClash Import
 
