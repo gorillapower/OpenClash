@@ -169,20 +169,20 @@
             onclick={handlePreview}
             disabled={!hasSelectedSource || previewMutation.isPending}
           >
-            {previewMutation.isPending ? 'Generating preview...' : 'Preview generated config'}
+            {previewMutation.isPending ? 'Generating preview…' : 'Preview generated config'}
           </Button>
           <Button
             variant="outline"
             onclick={handleValidate}
             disabled={!hasSelectedSource || validateMutation.isPending}
           >
-            {validateMutation.isPending ? 'Validating...' : 'Validate generated config'}
+            {validateMutation.isPending ? 'Validating generated config…' : 'Validate generated config'}
           </Button>
           <Button
             onclick={handleActivate}
             disabled={!hasSelectedSource || !workflowReady || restartMutation.isPending}
           >
-            {restartMutation.isPending ? 'Activating...' : 'Activate configuration'}
+            {restartMutation.isPending ? 'Activating generated config…' : 'Activate generated config'}
           </Button>
         </div>
 

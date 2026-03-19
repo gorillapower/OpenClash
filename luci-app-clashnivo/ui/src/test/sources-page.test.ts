@@ -215,26 +215,40 @@ describe('SourcesPage', () => {
     expect(screen.getByRole('button', { name: /select source/i })).toBeInTheDocument()
   })
 
-  it('select source calls the config switch mutation', async () => {
+  it('confirms source selection before mutating', async () => {
     const configSetActiveMutateAsync = vi.fn().mockResolvedValue(undefined)
     setupMocks({ configSetActiveMutateAsync })
     render(SourcesPage)
+
     await fireEvent.click(screen.getByRole('button', { name: /select source/i }))
+    expect(screen.getByText(/use this as the selected source/i)).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: /^select$/i }))
     await waitFor(() => expect(configSetActiveMutateAsync).toHaveBeenCalledWith('backup.yaml'))
   })
 
   it('opens the advanced YAML editor from uploaded sources', async () => {
     setupMocks()
     render(SourcesPage)
-    await fireEvent.click(screen.getAllByRole('button', { name: /edit yaml/i })[0])
+    await fireEvent.click(screen.getAllByRole('button', { name: /advanced yaml edit/i })[0])
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText(/advanced edit changes the stored source file directly/i)).toBeInTheDocument()
+  })
+
+  it('confirms source deletion before mutating', async () => {
+    const configDeleteMutateAsync = vi.fn().mockResolvedValue(undefined)
+    setupMocks({ configDeleteMutateAsync })
+    render(SourcesPage)
+
+    await fireEvent.click(screen.getAllByRole('button', { name: /delete source/i })[0])
+    expect(screen.getByText(/delete this stored source file/i)).toBeInTheDocument()
+    await fireEvent.click(screen.getAllByRole('button', { name: /^delete$/i })[0])
+    await waitFor(() => expect(configDeleteMutateAsync).toHaveBeenCalledWith('config.yaml'))
   })
 
   it('upload form rejects empty name', async () => {
     setupMocks()
     render(SourcesPage)
-    await fireEvent.click(screen.getByRole('button', { name: /upload config/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /upload config|upload source/i }))
     const form = screen.getByRole('dialog').querySelector('form')!
     await fireEvent.submit(form)
     expect(screen.getByText(/name is required/i)).toBeInTheDocument()

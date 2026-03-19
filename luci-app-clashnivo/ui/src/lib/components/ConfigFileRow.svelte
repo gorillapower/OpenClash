@@ -3,16 +3,16 @@
 
   type Props = {
     config: ConfigFile
-    onSwitch?: (name: string) => void
+    onSelect?: (name: string) => void
     onEdit?: (config: ConfigFile) => void
     onDownload?: (name: string) => void
     onDelete?: (name: string) => void
-    switching?: boolean
+    selecting?: boolean
   }
 
-  let { config, onSwitch, onEdit, onDownload, onDelete, switching = false }: Props = $props()
+  let { config, onSelect, onEdit, onDownload, onDelete, selecting = false }: Props = $props()
 
-  let confirmingSwitch = $state(false)
+  let confirmingSelect = $state(false)
   let confirmingDelete = $state(false)
 
   function formatSize(bytes: number): string {
@@ -25,14 +25,14 @@
     return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
   }
 
-  function handleSwitch() {
+  function handleSelect() {
     if (config.active) return
-    confirmingSwitch = true
+    confirmingSelect = true
   }
 
-  function confirmSwitch() {
-    confirmingSwitch = false
-    onSwitch?.(config.name)
+  function confirmSelect() {
+    confirmingSelect = false
+    onSelect?.(config.name)
   }
 </script>
 
@@ -68,24 +68,24 @@
 
   <!-- Actions -->
   <div class="flex shrink-0 items-center gap-1">
-    {#if confirmingSwitch}
-      <!-- Switch confirmation -->
+    {#if confirmingSelect}
+      <!-- Select confirmation -->
       <span class="flex items-center gap-1.5 text-xs">
-        <span class="text-muted-foreground">Restarts Clash.</span>
+        <span class="text-muted-foreground">Use this as the selected source.</span>
         <button
           class="rounded px-1.5 py-0.5 font-medium text-primary transition-colors hover:bg-primary/10"
-          onclick={confirmSwitch}
+          onclick={confirmSelect}
           type="button"
-          aria-label="Confirm switch to {config.name}"
-          disabled={switching}
+          aria-label="Confirm select {config.name}"
+          disabled={selecting}
         >
-          Confirm
+          Select
         </button>
         <button
           class="rounded px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted"
-          onclick={() => (confirmingSwitch = false)}
+          onclick={() => (confirmingSelect = false)}
           type="button"
-          aria-label="Cancel switch"
+          aria-label="Cancel source selection"
         >
           Cancel
         </button>
@@ -111,15 +111,15 @@
         </button>
       </span>
     {:else}
-      <!-- Switch -->
+      <!-- Select -->
       {#if !config.active}
         <button
           class="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-          onclick={handleSwitch}
-          disabled={switching}
-          title="Switch to this config"
+          onclick={handleSelect}
+          disabled={selecting}
+          title="Select source"
           type="button"
-          aria-label="Switch to {config.name}"
+          aria-label="Select source {config.name}"
         >
           <!-- Check/arrow icon -->
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

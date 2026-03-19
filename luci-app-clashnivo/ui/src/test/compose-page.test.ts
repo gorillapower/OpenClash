@@ -187,7 +187,7 @@ describe('ComposePage', () => {
 
     render(ComposePage)
 
-    const activateButton = screen.getByRole('button', { name: /activate configuration/i })
+    const activateButton = screen.getByRole('button', { name: /activate generated config/i })
     expect(activateButton).toBeDisabled()
 
     await fireEvent.click(screen.getByRole('button', { name: /validate generated config/i }))

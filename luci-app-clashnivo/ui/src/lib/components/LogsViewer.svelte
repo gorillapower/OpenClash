@@ -98,7 +98,7 @@
         </select>
 
         <Button variant="ghost" size="sm" onclick={refresh} class="h-7 px-2 text-xs">
-          Refresh
+          Refresh logs
         </Button>
 
         <Button
@@ -107,7 +107,7 @@
           onclick={() => (paused = !paused)}
           class="h-7 px-2 text-xs"
         >
-          {paused ? 'Resume' : 'Pause'}
+          {paused ? 'Resume live updates' : 'Pause live updates'}
         </Button>
       </div>
     </div>

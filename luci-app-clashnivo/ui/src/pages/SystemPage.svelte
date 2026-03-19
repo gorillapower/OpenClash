@@ -173,9 +173,9 @@
                 onclick={() => coreUpdate.mutateAsync()}
               >
                 {#if coreBusy}
-                  Updating core…
+                  Updating core runtime…
                 {:else}
-                  Update core
+                  Update core runtime
                 {/if}
               </Button>
               <p class="text-xs text-muted-foreground">
@@ -257,9 +257,9 @@
 
               <Button variant="default" disabled={assetsBusy} onclick={() => assetsUpdate.mutateAsync()}>
                 {#if assetsBusy}
-                  Updating assets…
+                  Refreshing assets…
                 {:else}
-                  Update all assets
+                  Refresh all assets
                 {/if}
               </Button>
             </div>

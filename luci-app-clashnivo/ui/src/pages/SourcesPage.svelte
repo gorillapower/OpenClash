@@ -64,6 +64,8 @@
   let updatingNames = $state(new Set<string>())
   let selectingNames = $state(new Set<string>())
   let deletingConfigNames = $state(new Set<string>())
+  let confirmSelectName = $state<string | null>(null)
+  let confirmDeleteName = $state<string | null>(null)
 
   function validateUrl(value: string): string {
     if (!value.trim()) return 'URL is required'
@@ -139,6 +141,7 @@
     selectingNames = new Set([...selectingNames, name])
     try {
       await configSetActive.mutateAsync(name)
+      confirmSelectName = null
     } finally {
       selectingNames = new Set([...selectingNames].filter((value) => value !== name))
     }
@@ -148,6 +151,7 @@
     deletingConfigNames = new Set([...deletingConfigNames, name])
     try {
       await configDelete.mutateAsync(name)
+      confirmDeleteName = null
     } finally {
       deletingConfigNames = new Set([...deletingConfigNames].filter((value) => value !== name))
     }
@@ -350,7 +354,7 @@
         <p class="mt-1 text-sm text-muted-foreground">
           Upload a YAML source file to make it available for selection.
         </p>
-        <Button class="mt-4" size="sm" onclick={openUploadConfig}>Upload your first config</Button>
+        <Button class="mt-4" size="sm" onclick={openUploadConfig}>Upload your first source</Button>
       </div>
     {:else}
       <div class="space-y-3">
@@ -375,11 +379,31 @@
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
-                  {#if !config.active}
+                  {#if !config.active && confirmSelectName === config.name}
+                    <span class="text-xs text-muted-foreground">Use this as the selected source.</span>
                     <Button
                       size="sm"
                       variant="outline"
                       onclick={() => handleSelectSource(config.name)}
+                      disabled={selectingNames.has(config.name)}
+                    >
+                      {selectingNames.has(config.name) ? 'Selecting…' : 'Select'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onclick={() => (confirmSelectName = null)}
+                    >
+                      Cancel
+                    </Button>
+                  {:else if !config.active}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onclick={() => {
+                        confirmSelectName = config.name
+                        if (confirmDeleteName === config.name) confirmDeleteName = null
+                      }}
                       disabled={selectingNames.has(config.name)}
                     >
                       {selectingNames.has(config.name) ? 'Selecting…' : 'Select source'}
@@ -402,16 +426,38 @@
                   variant="ghost"
                   onclick={() => openEditConfig(config)}
                 >
-                  Edit YAML
+                  Advanced YAML edit
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onclick={() => handleDeleteConfig(config.name)}
-                  disabled={deletingConfigNames.has(config.name)}
-                >
-                  {deletingConfigNames.has(config.name) ? 'Deleting…' : 'Delete'}
-                </Button>
+                {#if confirmDeleteName === config.name}
+                  <span class="text-xs text-muted-foreground">Delete this stored source file?</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onclick={() => handleDeleteConfig(config.name)}
+                    disabled={deletingConfigNames.has(config.name)}
+                  >
+                    {deletingConfigNames.has(config.name) ? 'Deleting…' : 'Delete'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onclick={() => (confirmDeleteName = null)}
+                  >
+                    Cancel
+                  </Button>
+                {:else}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onclick={() => {
+                      confirmDeleteName = config.name
+                      if (confirmSelectName === config.name) confirmSelectName = null
+                    }}
+                    disabled={deletingConfigNames.has(config.name)}
+                  >
+                    Delete source
+                  </Button>
+                {/if}
               </div>
             </CardContent>
           </Card>
@@ -447,7 +493,7 @@
     </div>
 
     <Button type="submit" class="w-full" disabled={subscriptionAdd.isPending}>
-      {subscriptionAdd.isPending ? 'Adding…' : 'Add subscription'}
+      {subscriptionAdd.isPending ? 'Adding source…' : 'Add subscription'}
     </Button>
   </form>
 </Sheet>
@@ -491,7 +537,7 @@
       </div>
 
       <Button type="submit" class="w-full" disabled={subscriptionEdit.isPending}>
-        {subscriptionEdit.isPending ? 'Saving…' : 'Save changes'}
+        {subscriptionEdit.isPending ? 'Saving subscription…' : 'Save subscription'}
       </Button>
     </form>
   {/if}
@@ -526,10 +572,10 @@
   </div>
 </Sheet>
 
-<Sheet open={uploadConfigOpen} onClose={() => (uploadConfigOpen = false)} title="Upload config">
+<Sheet open={uploadConfigOpen} onClose={() => (uploadConfigOpen = false)} title="Upload source">
   <form class="space-y-4" onsubmit={(event) => { event.preventDefault(); handleUploadConfig() }}>
     <div class="space-y-1.5">
-      <label for="upload-name" class="text-sm font-medium">Config name</label>
+      <label for="upload-name" class="text-sm font-medium">Source file name</label>
       <Input
         id="upload-name"
         type="text"
@@ -556,7 +602,7 @@
     </div>
 
     <Button type="submit" class="w-full" disabled={configWrite.isPending || !uploadConfigContent}>
-      {configWrite.isPending ? 'Uploading…' : 'Upload config'}
+      {configWrite.isPending ? 'Uploading source…' : 'Upload source'}
     </Button>
   </form>
 </Sheet>

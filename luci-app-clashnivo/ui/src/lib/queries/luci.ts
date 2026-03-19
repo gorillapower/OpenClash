@@ -59,6 +59,11 @@ function onMutationError(err: unknown) {
   toasts.error(message)
 }
 
+function titleCaseService(name: string): string {
+  if (name.toLowerCase() === 'clashnivo') return 'Clash Nivo'
+  return name.charAt(0).toUpperCase() + name.slice(1)
+}
+
 // ---------------------------------------------------------------------------
 // Queries
 // v6 requires a getter function: createQuery(() => ({ ... }))
@@ -101,7 +106,7 @@ export function useServiceStart(
     mutationFn: () => luciRpc.serviceStart(name) as Promise<void>,
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
-      toasts.success(`${name} started`)
+      toasts.success(`${titleCaseService(name)} started`)
     },
     onError: onMutationError,
     ...opts
@@ -117,7 +122,7 @@ export function useServiceStop(
     mutationFn: () => luciRpc.serviceStop(name) as Promise<void>,
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
-      toasts.success(`${name} stopped`)
+      toasts.success(`${titleCaseService(name)} stopped`)
     },
     onError: onMutationError,
     ...opts
@@ -133,7 +138,7 @@ export function useServiceRestart(
     mutationFn: () => luciRpc.serviceRestart(name) as Promise<void>,
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
-      toasts.success(`${name} restarted`)
+      toasts.success(`${titleCaseService(name)} restarted`)
     },
     onError: onMutationError,
     ...opts
@@ -193,6 +198,7 @@ export function useSubscriptionAdd(
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+      toasts.success('Source added')
     },
     onError: onMutationError,
     ...opts
@@ -216,6 +222,7 @@ export function useSubscriptionDelete(
     mutationFn: (name: string) => luciRpc.subscriptionDelete(name),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+      toasts.success('Subscription removed')
     },
     onError: onMutationError,
     ...opts
@@ -230,7 +237,7 @@ export function useSubscriptionUpdate(
     mutationFn: (name: string) => luciRpc.subscriptionUpdate(name),
     onSuccess(_, name) {
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
-      toasts.success(`${name} updated`)
+      toasts.success(`Source refreshed: ${name}`)
     },
     onError: onMutationError,
     ...opts
@@ -245,7 +252,7 @@ export function useSubscriptionUpdateAll(
     mutationFn: () => luciRpc.subscriptionUpdateAll(),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
-      toasts.success('All subscriptions updated')
+      toasts.success('All sources refreshed')
     },
     onError: onMutationError,
     ...opts
@@ -262,6 +269,7 @@ export function useSubscriptionEdit(
     mutationFn: ({ name, data }) => luciRpc.subscriptionEdit(name, data),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+      toasts.success('Subscription saved')
     },
     onError: onMutationError,
     ...opts
@@ -288,7 +296,7 @@ export function useConfigSetActive(
     mutationFn: (name: string) => luciRpc.configSetActive(name),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.configs })
-      toasts.success('Config switched — Clash is restarting')
+      toasts.success('Source selected')
     },
     onError: onMutationError,
     ...opts
@@ -303,6 +311,7 @@ export function useConfigDelete(
     mutationFn: (name: string) => luciRpc.configDelete(name),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.configs })
+      toasts.success('Source file removed')
     },
     onError: onMutationError,
     ...opts
@@ -317,7 +326,7 @@ export function useConfigWrite(
     mutationFn: ({ name, content }) => luciRpc.configWrite(name, content),
     onSuccess(_, { name }) {
       queryClient.invalidateQueries({ queryKey: luciKeys.configs })
-      toasts.success(`${name} saved`)
+      toasts.success(`Source file saved: ${name}`)
     },
     onError: onMutationError,
     ...opts
@@ -887,10 +896,15 @@ export function useCoreUpdate(
   const queryClient = useQueryClient()
   return createMutation<UpdateStatusResult, unknown, void>(() => ({
     mutationFn: () => luciRpc.coreUpdate(),
-    onSuccess() {
+    onSuccess(result) {
       // Invalidate both so version + status refresh after update completes
       queryClient.invalidateQueries({ queryKey: luciKeys.coreLatestVersion })
       queryClient.invalidateQueries({ queryKey: luciKeys.coreUpdateStatus })
+      toasts.success(
+        result.status === 'accepted' || result.status === 'running'
+          ? 'Core update started'
+          : 'Core update requested'
+      )
     },
     onError: onMutationError,
     ...opts
@@ -924,9 +938,14 @@ export function usePackageUpdate(
   const queryClient = useQueryClient()
   return createMutation<UpdateStatusResult, unknown, void>(() => ({
     mutationFn: () => luciRpc.packageUpdate(),
-    onSuccess() {
+    onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.packageLatestVersion })
       queryClient.invalidateQueries({ queryKey: luciKeys.packageUpdateStatus })
+      toasts.success(
+        result.status === 'accepted' || result.status === 'running'
+          ? 'Package update started'
+          : 'Package update requested'
+      )
     },
     onError: onMutationError,
     ...opts
@@ -952,8 +971,13 @@ export function useAssetsUpdate(
   const queryClient = useQueryClient()
   return createMutation<UpdateStatusResult, unknown, void>(() => ({
     mutationFn: () => luciRpc.assetsUpdate(target),
-    onSuccess() {
+    onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.assetsUpdateStatus(target) })
+      toasts.success(
+        result.status === 'accepted' || result.status === 'running'
+          ? (target === 'all' ? 'Asset refresh started' : `Asset refresh started: ${target}`)
+          : (target === 'all' ? 'Asset refresh requested' : `Asset refresh requested: ${target}`)
+      )
     },
     onError: onMutationError,
     ...opts

@@ -198,7 +198,7 @@ describe('SystemPage', () => {
     setupMocks({ coreUpdateMutate })
     render(SystemPage)
 
-    await fireEvent.click(screen.getByRole('button', { name: /update core/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /update core runtime/i }))
     expect(coreUpdateMutate).toHaveBeenCalledOnce()
   })
 
@@ -216,7 +216,7 @@ describe('SystemPage', () => {
     setupMocks({ assetsUpdateMutate })
     render(SystemPage)
 
-    await fireEvent.click(screen.getByRole('button', { name: /update all assets/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /refresh all assets/i }))
     expect(assetsUpdateMutate).toHaveBeenCalledOnce()
   })
 
@@ -257,9 +257,9 @@ describe('SystemPage', () => {
     render(SystemPage)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /updating core/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /updating core runtime/i })).toBeDisabled()
       expect(screen.getByRole('button', { name: /updating package/i })).toBeDisabled()
-      expect(screen.getByRole('button', { name: /updating assets/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /refreshing assets/i })).toBeDisabled()
     })
   })
 

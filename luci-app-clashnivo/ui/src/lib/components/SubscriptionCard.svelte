@@ -62,14 +62,14 @@
       <div class="flex items-start justify-between gap-2">
         <p class="text-sm font-medium leading-snug">{subscription.name}</p>
         <div class="flex shrink-0 items-center gap-1">
-          <!-- Update -->
+          <!-- Refresh -->
           <button
             class="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
             onclick={() => onUpdate?.(subscription.name)}
             disabled={updating}
-            title="Update subscription"
+            title="Refresh source"
             type="button"
-            aria-label="Update {subscription.name}"
+            aria-label="Refresh {subscription.name}"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
