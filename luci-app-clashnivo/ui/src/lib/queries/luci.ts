@@ -289,16 +289,29 @@ export function useConfigs(opts?: Partial<CreateQueryOptions<ConfigFile[]>>) {
 }
 
 export function useConfigSetActive(
-  opts?: Partial<CreateMutationOptions<void, unknown, string>>
+  opts?: Partial<CreateMutationOptions<void, unknown, string, { previous?: ConfigFile[] }>>
 ) {
   const queryClient = useQueryClient()
-  return createMutation<void, unknown, string>(() => ({
+  return createMutation<void, unknown, string, { previous?: ConfigFile[] }>(() => ({
+    async onMutate(name): Promise<{ previous?: ConfigFile[] }> {
+      await queryClient.cancelQueries({ queryKey: luciKeys.configs })
+      const previous = queryClient.getQueryData<ConfigFile[]>(luciKeys.configs)
+      queryClient.setQueryData<ConfigFile[]>(luciKeys.configs, (old) =>
+        old?.map((config) => ({ ...config, active: config.name === name })) ?? []
+      )
+      return { previous }
+    },
     mutationFn: (name: string) => luciRpc.configSetActive(name),
+    onError(err, _vars, context) {
+      if (context?.previous) {
+        queryClient.setQueryData(luciKeys.configs, context.previous)
+      }
+      onMutationError(err)
+    },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.configs })
       toasts.success('Source selected')
     },
-    onError: onMutationError,
     ...opts
   }))
 }

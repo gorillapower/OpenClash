@@ -23,6 +23,7 @@ function makeMutation<TData = unknown, TVars = unknown>(
 
 vi.mock('$lib/queries/luci', () => ({
   useConfigs: vi.fn(),
+  useConfigSetActive: vi.fn(),
   useConfigPreview: vi.fn(),
   useConfigValidate: vi.fn(),
   useServiceRestart: vi.fn(),
@@ -51,6 +52,7 @@ vi.mock('$lib/queries/luci', () => ({
 
 import {
   useConfigs,
+  useConfigSetActive,
   useConfigPreview,
   useConfigValidate,
   useServiceRestart,
@@ -111,6 +113,7 @@ function setupMocks({
   overwrite?: FileReadResult
 } = {}) {
   vi.mocked(useConfigs).mockReturnValue(makeQuery(configs) as never)
+  vi.mocked(useConfigSetActive).mockReturnValue(makeMutation(vi.fn().mockResolvedValue(undefined)) as never)
   vi.mocked(useConfigPreview).mockReturnValue(makeMutation(vi.fn().mockResolvedValue(preview)) as never)
   vi.mocked(useConfigValidate).mockReturnValue(makeMutation(vi.fn().mockResolvedValue(validation)) as never)
   vi.mocked(useServiceRestart).mockReturnValue(makeMutation(vi.fn().mockResolvedValue(undefined)) as never)
@@ -147,6 +150,7 @@ describe('ComposePage', () => {
     expect(screen.getByRole('heading', { name: 'Compose' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /how this works/i })).toBeInTheDocument()
     expect(screen.getByText('alpha')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /switch selected source/i })).toBeInTheDocument()
     expect(screen.getAllByText('1. Custom Proxies').length).toBeGreaterThan(0)
     expect(screen.getAllByText('2. Rule Providers').length).toBeGreaterThan(0)
     expect(screen.getAllByText('3. Proxy Groups').length).toBeGreaterThan(0)
@@ -179,6 +183,20 @@ describe('ComposePage', () => {
       expect(screen.getByText('Preview')).toBeInTheDocument()
       expect(screen.getByText(/proxies:/i)).toBeInTheDocument()
     })
+  })
+
+  it('allows quick source switching from the pipeline summary', async () => {
+    const setActiveMutate = vi.fn().mockResolvedValue(undefined)
+    setupMocks({ configs: [{ name: 'alpha', active: true }, { name: 'beta.yaml', active: false }] })
+    vi.mocked(useConfigSetActive).mockReturnValue(makeMutation(setActiveMutate) as never)
+
+    render(ComposePage)
+
+    await fireEvent.change(screen.getByRole('combobox', { name: /switch selected source/i }), {
+      target: { value: 'beta.yaml' }
+    })
+
+    await waitFor(() => expect(setActiveMutate).toHaveBeenCalledWith('beta.yaml'))
   })
 
   it('requires successful validation before activation is enabled', async () => {

@@ -9,7 +9,6 @@
   import YamlEditor from '$lib/components/YamlEditor.svelte'
   import PageIntro from '$lib/components/PageIntro.svelte'
   import SectionHeader from '$lib/components/SectionHeader.svelte'
-  import SummaryStatCard from '$lib/components/SummaryStatCard.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
   import ExplainerSheet from '$lib/components/ExplainerSheet.svelte'
   import {
@@ -38,8 +37,6 @@
   const configWrite = useConfigWrite()
 
   const activeSource = $derived(configs.data?.find((config) => config.active) ?? null)
-  const subscriptionCount = $derived(subscriptions.data?.length ?? 0)
-  const configCount = $derived(configs.data?.length ?? 0)
 
   let addOpen = $state(false)
   let addUrl = $state('')
@@ -258,40 +255,34 @@
     {/snippet}
   </PageIntro>
 
-  <div class="grid gap-4 md:grid-cols-3">
-    <SummaryStatCard
-      label="Subscriptions"
-      value={subscriptionCount}
-      detail="Remote sources that can be refreshed in place without changing your Clash Nivo custom layers."
-    />
-    <SummaryStatCard
-      label="Uploaded sources"
-      value={configCount}
-      detail="YAML files stored locally and available for direct source selection."
-    />
-    <SummaryStatCard
-      label="Selected source"
-      value={activeSource?.name ?? 'None selected'}
-      valueClass="truncate text-lg"
-      detail="Clash Nivo composes from one selected source at a time, then generates the active runtime config."
-    />
-  </div>
+  <section class="space-y-4" aria-labelledby="sources-selected-heading">
+    <SectionHeader title="Selected source" />
 
-  <Card>
-    <CardHeader>
-      <CardTitle>OpenClash import</CardTitle>
-      <p class="text-sm text-muted-foreground">
-        Import belongs here because it is a source and migration action, not a system update task.
-      </p>
-    </CardHeader>
-    <CardContent class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <p class="max-w-2xl text-sm text-muted-foreground">
-        Guided import UI has not been wired yet. When it lands, this page will be the entrypoint for
-        importing OpenClash-owned source material into Clash Nivo.
-      </p>
-      <Button variant="outline" disabled>Import from OpenClash</Button>
-    </CardContent>
-  </Card>
+    <Card>
+      <CardContent class="pt-5">
+        <select
+          class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm"
+          value={activeSource?.name ?? ''}
+          disabled={!configs.data?.length || configSetActive.isPending}
+          aria-label="Quick source switch"
+          onchange={(event) => {
+            const value = (event.target as HTMLSelectElement).value
+            if (value && value !== activeSource?.name) {
+              handleSelectSource(value)
+            }
+          }}
+        >
+          {#if !configs.data?.length}
+            <option value="">No sources available</option>
+          {:else}
+            {#each configs.data as config (config.name)}
+              <option value={config.name}>{config.name}</option>
+            {/each}
+          {/if}
+        </select>
+      </CardContent>
+    </Card>
+  </section>
 
   <section class="space-y-4" aria-labelledby="sources-subscriptions-heading">
     <SectionHeader title="Subscriptions">
@@ -304,7 +295,7 @@
         >
           {subscriptionUpdateAll.isPending ? 'Refreshing all…' : 'Refresh all'}
         </Button>
-        <Button size="sm" onclick={openAdd}>Add subscription</Button>
+        <Button variant="outline" size="sm" onclick={openAdd}>Add subscription</Button>
       {/snippet}
     </SectionHeader>
 
@@ -338,7 +329,7 @@
   <section class="space-y-4" aria-labelledby="sources-configs-heading">
     <SectionHeader title="Uploaded sources">
       {#snippet actions()}
-        <Button size="sm" onclick={openUploadConfig}>Upload config</Button>
+        <Button variant="outline" size="sm" onclick={openUploadConfig}>Upload config</Button>
       {/snippet}
     </SectionHeader>
 
@@ -358,15 +349,10 @@
         {#each configs.data as config (config.name)}
           <Card>
             <CardContent class="space-y-4 pt-5">
-              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                 <div class="min-w-0 space-y-1">
                   <div class="flex flex-wrap items-center gap-2">
                     <p class="truncate text-sm font-medium">{config.name}</p>
-                    {#if config.active}
-                      <span class="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
-                        Selected source
-                      </span>
-                    {/if}
                   </div>
                   <p class="text-xs text-muted-foreground">
                     {#if config.size !== undefined}{formatSize(config.size)}{/if}
@@ -375,7 +361,7 @@
                   </p>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-2">
+                <div class="flex flex-wrap items-center justify-end gap-2 sm:justify-self-end">
                   {#if !config.active && confirmSelectName === config.name}
                     <span class="text-xs text-muted-foreground">Use this as the selected source.</span>
                     <Button
@@ -417,13 +403,12 @@
               </div>
 
               <div class="flex flex-wrap items-center gap-2 border-t border-border pt-3">
-                <span class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Advanced</span>
                 <Button
                   size="sm"
                   variant="ghost"
                   onclick={() => openEditConfig(config)}
                 >
-                  Advanced YAML edit
+                  Edit
                 </Button>
                 {#if confirmDeleteName === config.name}
                   <span class="text-xs text-muted-foreground">Delete this stored source file?</span>
@@ -452,7 +437,7 @@
                     }}
                     disabled={deletingConfigNames.has(config.name)}
                   >
-                    Delete source
+                    Delete
                   </Button>
                 {/if}
               </div>
@@ -461,6 +446,17 @@
         {/each}
       </div>
     {/if}
+  </section>
+
+  <section class="space-y-4" aria-labelledby="sources-import-heading">
+    <SectionHeader title="OpenClash import" />
+
+    <Card>
+      <CardContent class="flex flex-col gap-3 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-sm text-muted-foreground">Not available yet.</p>
+        <Button variant="outline" disabled>Import from OpenClash</Button>
+      </CardContent>
+    </Card>
   </section>
 </div>
 

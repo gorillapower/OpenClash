@@ -133,27 +133,28 @@ function setupMocks({
 describe('SourcesPage', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('renders the Sources heading and inventory framing', () => {
+  it('renders the Sources heading and selected source framing', () => {
     setupMocks()
     render(SourcesPage)
     expect(screen.getByRole('heading', { name: 'Sources' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /how this works/i })).toBeInTheDocument()
-    expect(screen.getAllByText('Selected source').length).toBeGreaterThan(0)
+    expect(screen.getByRole('heading', { name: 'Selected source' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /quick source switch/i })).toBeInTheDocument()
   })
 
-  it('shows subscription, uploaded source, and selected source summaries', () => {
+  it('shows the selected source without redundant inventory summaries', () => {
     setupMocks()
     render(SourcesPage)
-    expect(screen.getAllByText('2').length).toBeGreaterThanOrEqual(2)
     expect(screen.getAllByText('config.yaml').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByText(/clash nivo composes from one selected source at a time/i)).toBeInTheDocument()
+    expect(screen.queryByText(/clash nivo composes from one selected source at a time/i)).not.toBeInTheDocument()
   })
 
-  it('shows the import placeholder on Sources', () => {
+  it('shows the import placeholder in a quiet bottom section', () => {
     setupMocks()
     render(SourcesPage)
     expect(screen.getByText(/openclash import/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /import from openclash/i })).toBeDisabled()
+    expect(screen.getByText(/not available yet/i)).toBeInTheDocument()
   })
 
   it('renders subscriptions and uploaded sources sections without profile tabs', () => {
@@ -209,9 +210,21 @@ describe('SourcesPage', () => {
   it('shows uploaded sources and marks the selected source', () => {
     setupMocks()
     render(SourcesPage)
-    expect(screen.getByText('backup.yaml')).toBeInTheDocument()
-    expect(screen.getAllByText(/selected source/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText('backup.yaml').length).toBeGreaterThanOrEqual(2)
+    expect(screen.queryAllByText(/selected source/i).length).toBe(1)
     expect(screen.getByRole('button', { name: /select source/i })).toBeInTheDocument()
+  })
+
+  it('allows quick source switching from the selected source section', async () => {
+    const configSetActiveMutateAsync = vi.fn().mockResolvedValue(undefined)
+    setupMocks({ configSetActiveMutateAsync })
+    render(SourcesPage)
+
+    await fireEvent.change(screen.getByRole('combobox', { name: /quick source switch/i }), {
+      target: { value: 'backup.yaml' }
+    })
+
+    await waitFor(() => expect(configSetActiveMutateAsync).toHaveBeenCalledWith('backup.yaml'))
   })
 
   it('confirms source selection before mutating', async () => {
@@ -228,7 +241,7 @@ describe('SourcesPage', () => {
   it('opens the advanced YAML editor from uploaded sources', async () => {
     setupMocks()
     render(SourcesPage)
-    await fireEvent.click(screen.getAllByRole('button', { name: /advanced yaml edit/i })[0])
+    await fireEvent.click(screen.getAllByRole('button', { name: /^edit$/i })[0])
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText(/advanced edit changes the stored source file directly/i)).toBeInTheDocument()
   })
@@ -238,7 +251,7 @@ describe('SourcesPage', () => {
     setupMocks({ configDeleteMutateAsync })
     render(SourcesPage)
 
-    await fireEvent.click(screen.getAllByRole('button', { name: /delete source/i })[0])
+    await fireEvent.click(screen.getAllByRole('button', { name: /^delete$/i })[0])
     expect(screen.getByText(/delete this stored source file/i)).toBeInTheDocument()
     await fireEvent.click(screen.getAllByRole('button', { name: /^delete$/i })[0])
     await waitFor(() => expect(configDeleteMutateAsync).toHaveBeenCalledWith('config.yaml'))

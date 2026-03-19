@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     useConfigs,
+    useConfigSetActive,
     useConfigPreview,
     useConfigValidate,
     useServiceRestart,
@@ -20,6 +21,7 @@
   import ClashConfigTab from './settings/ClashConfigTab.svelte'
 
   const configs = useConfigs()
+  const configSetActive = useConfigSetActive()
   const previewMutation = useConfigPreview()
   const validateMutation = useConfigValidate()
   const restartMutation = useServiceRestart('clashnivo')
@@ -77,6 +79,13 @@
   async function handleActivate() {
     await restartMutation.mutateAsync()
   }
+
+  async function handleSourceSwitch(name: string) {
+    if (!name || name === selectedSource?.name) return
+    await configSetActive.mutateAsync(name)
+    previewResult = null
+    validateResult = null
+  }
 </script>
 
 <div class="space-y-8">
@@ -98,9 +107,21 @@
       </CardHeader>
       <CardContent class="space-y-4">
         {#if hasSelectedSource}
-          <div class="rounded-lg border border-border bg-card px-4 py-3">
-            <p class="text-sm font-medium text-foreground">{selectedSource?.name}</p>
-          </div>
+          <select
+            class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm"
+            value={selectedSource?.name ?? ''}
+            disabled={!configs.data?.length || configSetActive.isPending}
+            aria-label="Switch selected source"
+            onchange={(event) => handleSourceSwitch((event.target as HTMLSelectElement).value)}
+          >
+            {#if !configs.data?.length}
+              <option value="">No sources available</option>
+            {:else}
+              {#each configs.data as config (config.name)}
+                <option value={config.name}>{config.name}</option>
+              {/each}
+            {/if}
+          </select>
         {:else}
           <EmptyState
             compact
