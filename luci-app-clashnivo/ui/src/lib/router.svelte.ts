@@ -1,10 +1,15 @@
-export type Route = '/' | '/profiles' | '/settings' | '/system'
+export type Route = '/' | '/sources' | '/compose' | '/system'
 
-const VALID_ROUTES: readonly string[] = ['/', '/profiles', '/settings', '/system']
+const VALID_ROUTES: readonly Route[] = ['/', '/sources', '/compose', '/system']
+const LEGACY_ROUTE_ALIASES: Record<string, Route> = {
+  '/profiles': '/sources',
+  '/settings': '/compose'
+}
 
 function parseHash(): Route {
   const path = window.location.hash.replace(/^#/, '') || '/'
-  return VALID_ROUTES.includes(path) ? (path as Route) : '/'
+  const normalizedPath = LEGACY_ROUTE_ALIASES[path] ?? path
+  return VALID_ROUTES.includes(normalizedPath as Route) ? (normalizedPath as Route) : '/'
 }
 
 let current = $state<Route>(parseHash())

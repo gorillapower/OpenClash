@@ -38,8 +38,8 @@ test('unauthenticated RPC call returns 401 or error', async ({ request }) => {
 
 test('nav links are all visible after login', async ({ appPage: page }) => {
   await expect(page.getByRole('link', { name: 'Status' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Profiles' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Sources' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Compose' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'System' })).toBeVisible()
 })
 

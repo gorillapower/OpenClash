@@ -3,8 +3,8 @@
   import { router } from '$lib/router.svelte'
   import Layout from '$lib/components/Layout.svelte'
   import StatusPage from './pages/StatusPage.svelte'
-  import ProfilesPage from './pages/ProfilesPage.svelte'
-  import SettingsPage from './pages/SettingsPage.svelte'
+  import SourcesPage from './pages/SourcesPage.svelte'
+  import ComposePage from './pages/ComposePage.svelte'
   import SystemPage from './pages/SystemPage.svelte'
 
   const queryClient = new QueryClient({
@@ -21,10 +21,10 @@
   <Layout>
     {#if router.current === '/'}
       <StatusPage />
-    {:else if router.current === '/profiles'}
-      <ProfilesPage />
-    {:else if router.current === '/settings'}
-      <SettingsPage />
+    {:else if router.current === '/sources'}
+      <SourcesPage />
+    {:else if router.current === '/compose'}
+      <ComposePage />
     {:else if router.current === '/system'}
       <SystemPage />
     {/if}

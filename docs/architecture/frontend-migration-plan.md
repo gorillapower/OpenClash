@@ -80,6 +80,12 @@ The regenerated frontend should expose:
 - `/compose` -> `Compose`
 - `/system` -> `System`
 
+During the reset, temporary hash aliases may exist for legacy routes:
+- `/profiles` -> `/sources`
+- `/settings` -> `/compose`
+
+Those aliases are transitional compatibility only and should be removed once regenerated Epic 5 work no longer depends on them.
+
 ### Current-To-Target Mapping
 
 #### StatusPage

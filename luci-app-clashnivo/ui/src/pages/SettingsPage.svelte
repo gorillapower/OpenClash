@@ -2,19 +2,33 @@
   import NetworkTab from './settings/NetworkTab.svelte'
   import ClashConfigTab from './settings/ClashConfigTab.svelte'
 
+  let {
+    heading = 'Settings',
+    description = 'Network and Clash configuration.',
+    sectionsAriaLabel = 'Settings sections',
+    clashTabLabel = 'Clash',
+    networkTabLabel = 'Router'
+  }: {
+    heading?: string
+    description?: string
+    sectionsAriaLabel?: string
+    clashTabLabel?: string
+    networkTabLabel?: string
+  } = $props()
+
   type Tab = 'clash-config' | 'network'
   let activeTab = $state<Tab>('clash-config')
 </script>
 
 <div class="space-y-6">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight">Settings</h1>
-    <p class="mt-1 text-sm text-muted-foreground">Network and Clash configuration.</p>
+    <h1 class="text-2xl font-semibold tracking-tight">{heading}</h1>
+    <p class="mt-1 text-sm text-muted-foreground">{description}</p>
   </div>
 
   <!-- Tab navigation -->
   <div class="border-b border-border">
-    <nav class="-mb-px flex gap-6" aria-label="Settings sections">
+    <nav class="-mb-px flex gap-6" aria-label={sectionsAriaLabel}>
       <button
         class="border-b-2 pb-3 text-sm font-medium transition-colors"
         class:border-primary={activeTab === 'clash-config'}
@@ -25,7 +39,7 @@
         type="button"
         aria-current={activeTab === 'clash-config' ? 'page' : undefined}
       >
-        Clash
+        {clashTabLabel}
       </button>
       <button
         class="border-b-2 pb-3 text-sm font-medium transition-colors"
@@ -37,7 +51,7 @@
         type="button"
         aria-current={activeTab === 'network' ? 'page' : undefined}
       >
-        Router
+        {networkTabLabel}
       </button>
     </nav>
   </div>

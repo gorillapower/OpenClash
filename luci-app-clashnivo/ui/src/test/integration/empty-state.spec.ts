@@ -37,13 +37,13 @@ test.describe('Empty state onboarding', () => {
   })
 
   test('empty state UI is shown when there are no subscriptions', async ({ appPage: page }) => {
-    await gotoApp(page, '#/profiles')
+    await gotoApp(page, '#/sources')
     await page.waitForLoadState('networkidle')
     await expect(page.getByText(/no subscriptions yet/i)).toBeVisible({ timeout: 10_000 })
   })
 
   test('"Add your first subscription" CTA is visible in empty state', async ({ appPage: page }) => {
-    await gotoApp(page, '#/profiles')
+    await gotoApp(page, '#/sources')
     await page.waitForLoadState('networkidle')
     await expect(
       page.getByRole('button', { name: /add your first subscription/i })
@@ -51,7 +51,7 @@ test.describe('Empty state onboarding', () => {
   })
 
   test('adding a subscription from empty state dismisses empty UI and shows card', async ({ appPage: page }) => {
-    await gotoApp(page, '#/profiles')
+    await gotoApp(page, '#/sources')
     await page.waitForLoadState('networkidle')
 
     await page.getByRole('button', { name: /add your first subscription/i }).click()

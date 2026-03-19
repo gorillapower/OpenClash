@@ -32,7 +32,7 @@ test.describe('Config file switch', () => {
     const inactive = configs.find((c) => !c.active)
     test.skip(!inactive, 'Only one config file on this router — cannot test switch')
 
-    await gotoApp(page, '#/profiles')
+    await gotoApp(page, '#/sources')
     await page.getByRole('button', { name: 'Config Files' }).click()
     await page.waitForLoadState('networkidle')
 

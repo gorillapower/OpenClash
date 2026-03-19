@@ -1,7 +1,7 @@
 /**
  * subscriptions.spec.ts — Subscription add / update / delete lifecycle
  *
- * Uses the Profiles page UI to exercise the full subscription lifecycle
+ * Uses the Sources page UI to exercise the full subscription lifecycle
  * on the real router. Creates a test subscription with a recognisable name,
  * exercises edit, then cleans up by deleting it.
  */
@@ -9,7 +9,7 @@ import { test, expect, gotoApp } from './helpers/auth'
 
 const TEST_SUB_URL  = 'https://example.com/integration-test-sub'
 const TEST_SUB_NAME = `IntegrationTest-${Date.now()}`
-const BASE = '#/profiles'
+const BASE = '#/sources'
 
 test.describe('Subscription lifecycle', () => {
   test('add a new subscription', async ({ appPage: page }) => {

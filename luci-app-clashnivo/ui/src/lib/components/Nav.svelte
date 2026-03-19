@@ -6,8 +6,8 @@
 
   const navItems: { label: string; path: Route }[] = [
     { label: 'Status', path: '/' },
-    { label: 'Profiles', path: '/profiles' },
-    { label: 'Settings', path: '/settings' },
+    { label: 'Sources', path: '/sources' },
+    { label: 'Compose', path: '/compose' },
     { label: 'System', path: '/system' }
   ]
 </script>

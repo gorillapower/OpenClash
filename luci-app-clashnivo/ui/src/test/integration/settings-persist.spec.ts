@@ -1,5 +1,5 @@
 /**
- * settings-persist.spec.ts — Settings changes persist across page reloads
+ * settings-persist.spec.ts — Compose changes persist across page reloads
  *
  * Changes a safe, easily reversible UCI setting (dns_redirect), saves it,
  * reloads the page, and asserts the value was persisted.
@@ -17,7 +17,7 @@ async function rpc(page: import('@playwright/test').Page, method: string, params
   return body.result
 }
 
-test.describe('Settings persistence', () => {
+test.describe('Compose persistence', () => {
   let originalMode: string | null = null
 
   test.beforeEach(async ({ page }) => {
@@ -27,7 +27,7 @@ test.describe('Settings persistence', () => {
   })
 
   test('operation mode change persists after page reload', async ({ appPage: page }) => {
-    await gotoApp(page, '#/settings')
+    await gotoApp(page, '#/compose')
     await page.waitForLoadState('networkidle')
 
     // Find the operation mode selector — label text may vary, use a broad selector

@@ -20,6 +20,16 @@
     useConfigWrite
   } from '$lib/queries/luci'
 
+  let {
+    heading = 'Profiles',
+    description = 'Subscriptions and config files.',
+    sectionsAriaLabel = 'Profile sections'
+  }: {
+    heading?: string
+    description?: string
+    sectionsAriaLabel?: string
+  } = $props()
+
   // ---------------------------------------------------------------------------
   // Tab state
   // ---------------------------------------------------------------------------
@@ -283,13 +293,13 @@
 <div class="space-y-6">
   <!-- Page header -->
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight">Profiles</h1>
-    <p class="mt-1 text-sm text-muted-foreground">Subscriptions and config files.</p>
+    <h1 class="text-2xl font-semibold tracking-tight">{heading}</h1>
+    <p class="mt-1 text-sm text-muted-foreground">{description}</p>
   </div>
 
   <!-- Tabs -->
   <div class="border-b border-border">
-    <nav class="-mb-px flex gap-6" aria-label="Profile sections">
+    <nav class="-mb-px flex gap-6" aria-label={sectionsAriaLabel}>
       <button
         class="border-b-2 pb-3 text-sm font-medium transition-colors"
         class:border-primary={activeTab === 'subscriptions'}

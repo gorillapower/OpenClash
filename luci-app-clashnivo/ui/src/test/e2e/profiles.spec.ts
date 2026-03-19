@@ -141,32 +141,32 @@ function makeFullRpcHandler(initialSubs: Sub[] = [], initialConfigs: ConfigF[] =
   }
 }
 
-test.describe('Profiles page', () => {
-  test('navigate to Profiles and see heading', async ({ page }) => {
-    await page.goto(`${BASE}#/profiles`)
-    await expect(page.getByRole('heading', { name: 'Profiles' })).toBeVisible()
+test.describe('Sources page', () => {
+  test('navigate to Sources and see heading', async ({ page }) => {
+    await page.goto(`${BASE}#/sources`)
+    await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible()
   })
 
   test('shows Subscriptions and Config Files tabs', async ({ page }) => {
-    await page.goto(`${BASE}#/profiles`)
+    await page.goto(`${BASE}#/sources`)
     await expect(page.getByRole('button', { name: 'Subscriptions' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Config Files' })).toBeVisible()
   })
 
   test('Subscriptions tab is active by default', async ({ page }) => {
-    await page.goto(`${BASE}#/profiles`)
+    await page.goto(`${BASE}#/sources`)
     const subscriptionsTab = page.getByRole('button', { name: 'Subscriptions' })
     await expect(subscriptionsTab).toHaveAttribute('aria-current', 'page')
   })
 
   test('Config Files tab switch shows stub content', async ({ page }) => {
-    await page.goto(`${BASE}#/profiles`)
+    await page.goto(`${BASE}#/sources`)
     await page.getByRole('button', { name: 'Config Files' }).click()
     await expect(page.getByText(/config files coming soon/i)).toBeVisible()
   })
 
   test('"Add Subscription" button opens slide-over', async ({ page }) => {
-    await page.goto(`${BASE}#/profiles`)
+    await page.goto(`${BASE}#/sources`)
     // Wait for page to settle (empty state or cards)
     await page.waitForLoadState('networkidle')
     const addBtn = page.getByRole('button', { name: 'Add Subscription' }).first()
@@ -176,7 +176,7 @@ test.describe('Profiles page', () => {
   })
 
   test('slide-over closes via X button', async ({ page }) => {
-    await page.goto(`${BASE}#/profiles`)
+    await page.goto(`${BASE}#/sources`)
     await page.waitForLoadState('networkidle')
     const addBtn = page.getByRole('button', { name: 'Add Subscription' }).first()
     await addBtn.click()
@@ -186,7 +186,7 @@ test.describe('Profiles page', () => {
   })
 
   test('slide-over closes via Escape key', async ({ page }) => {
-    await page.goto(`${BASE}#/profiles`)
+    await page.goto(`${BASE}#/sources`)
     await page.waitForLoadState('networkidle')
     const addBtn = page.getByRole('button', { name: 'Add Subscription' }).first()
     await addBtn.click()
@@ -196,7 +196,7 @@ test.describe('Profiles page', () => {
   })
 
   test('add form shows URL validation error on empty submit', async ({ page }) => {
-    await page.goto(`${BASE}#/profiles`)
+    await page.goto(`${BASE}#/sources`)
     await page.waitForLoadState('networkidle')
     const addBtn = page.getByRole('button', { name: 'Add Subscription' }).first()
     await addBtn.click()
@@ -208,7 +208,7 @@ test.describe('Profiles page', () => {
 
   test('mobile: slide-over is full-width at 375px viewport', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 })
-    await page.goto(`${BASE}#/profiles`)
+    await page.goto(`${BASE}#/sources`)
     await page.waitForLoadState('networkidle')
     const addBtn = page.getByRole('button', { name: 'Add Subscription' }).first()
     await addBtn.click()
@@ -227,7 +227,7 @@ test.describe('Subscriptions lifecycle', () => {
   test('full add → display → edit → delete lifecycle', async ({ page }) => {
     await page.route(RPC_URL, makeRpcHandler())
 
-    await page.goto(`${BASE}#/profiles`)
+    await page.goto(`${BASE}#/sources`)
     await page.waitForLoadState('networkidle')
 
     // 1. Empty state shown initially
@@ -281,7 +281,7 @@ test.describe('Config Files lifecycle', () => {
 
   async function goToConfigs(page: Parameters<Parameters<typeof test>[1]>[0]) {
     await page.route(RPC_URL, makeFullRpcHandler([], initialConfigs))
-    await page.goto(`${BASE}#/profiles`)
+    await page.goto(`${BASE}#/sources`)
     await page.waitForLoadState('networkidle')
     await page.getByRole('button', { name: 'Config Files' }).click()
   }
@@ -334,7 +334,7 @@ test.describe('Config Files lifecycle', () => {
 
   test('upload config flow: file appears in list', async ({ page }) => {
     await page.route(RPC_URL, makeFullRpcHandler())
-    await page.goto(`${BASE}#/profiles`)
+    await page.goto(`${BASE}#/sources`)
     await page.waitForLoadState('networkidle')
     await page.getByRole('button', { name: 'Config Files' }).click()
 

@@ -14,8 +14,8 @@ describe('Nav component', () => {
   it('renders 4 nav links', () => {
     render(Nav)
     expect(screen.getByRole('link', { name: 'Status' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Profiles' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Sources' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Compose' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'System' })).toBeInTheDocument()
   })
 
@@ -29,8 +29,8 @@ describe('Nav component', () => {
   it('marks the active link with aria-current="page"', () => {
     render(Nav)
     expect(screen.getByRole('link', { name: 'Status' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Profiles' })).not.toHaveAttribute('aria-current')
-    expect(screen.getByRole('link', { name: 'Settings' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: 'Sources' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: 'Compose' })).not.toHaveAttribute('aria-current')
     expect(screen.getByRole('link', { name: 'System' })).not.toHaveAttribute('aria-current')
   })
 })
@@ -42,17 +42,17 @@ describe('Route rendering', () => {
     expect(screen.getByRole('heading', { name: 'Status' })).toBeInTheDocument()
   })
 
-  it('shows Profiles page at #/profiles', () => {
-    setHash('#/profiles')
+  it('shows Sources page at #/sources', () => {
+    setHash('#/sources')
     const { unmount } = render(App)
-    expect(screen.getByRole('heading', { name: 'Profiles' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Sources' })).toBeInTheDocument()
     unmount()
   })
 
-  it('shows Settings page at #/settings', () => {
-    setHash('#/settings')
+  it('shows Compose page at #/compose', () => {
+    setHash('#/compose')
     const { unmount } = render(App)
-    expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Compose' })).toBeInTheDocument()
     unmount()
   })
 
@@ -67,5 +67,16 @@ describe('Route rendering', () => {
     setHash('#/unknown')
     render(App)
     expect(screen.getByRole('heading', { name: 'Status' })).toBeInTheDocument()
+  })
+
+  it('maps legacy profile and settings routes to reset destinations', () => {
+    setHash('#/profiles')
+    const firstRender = render(App)
+    expect(screen.getByRole('heading', { name: 'Sources' })).toBeInTheDocument()
+    firstRender.unmount()
+
+    setHash('#/settings')
+    render(App)
+    expect(screen.getByRole('heading', { name: 'Compose' })).toBeInTheDocument()
   })
 })

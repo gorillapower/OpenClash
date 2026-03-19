@@ -2,9 +2,9 @@ import { test, expect } from '@playwright/test'
 
 const BASE = '/luci-static/clash-nivo/'
 
-/** Navigate to Profiles and open the Add Subscription sheet. */
+/** Navigate to Sources and open the Add Subscription sheet. */
 async function openSheet(page: Parameters<Parameters<typeof test>[1]>[0]) {
-  await page.goto(`${BASE}#/profiles`)
+  await page.goto(`${BASE}#/sources`)
   await page.waitForLoadState('networkidle')
   await page.getByRole('button', { name: 'Add Subscription' }).first().click()
   await expect(page.getByRole('dialog')).toBeVisible()
