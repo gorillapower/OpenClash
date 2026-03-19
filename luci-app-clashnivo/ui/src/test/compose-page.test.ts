@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte'
 import type { CreateQueryResult, CreateMutationResult } from '@tanstack/svelte-query'
 import type { ConfigCompositionResult, FileReadResult } from '$lib/api/luci'
 import ComposePage from '../pages/ComposePage.svelte'
@@ -145,12 +145,13 @@ describe('ComposePage', () => {
     render(ComposePage)
 
     expect(screen.getByRole('heading', { name: 'Compose' })).toBeInTheDocument()
-    expect(screen.getByText(/compose follows one order/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /how this works/i })).toBeInTheDocument()
     expect(screen.getByText('alpha')).toBeInTheDocument()
-    expect(screen.getAllByText('Custom Proxies').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Rule Providers').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Proxy Groups').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Custom Rules').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('1. Custom Proxies').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('2. Rule Providers').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('3. Proxy Groups').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('4. Custom Rules').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('5. Overwrite').length).toBeGreaterThan(0)
     expect(screen.getByText('Configured')).toBeInTheDocument()
   })
 
@@ -207,10 +208,31 @@ describe('ComposePage', () => {
     })
   })
 
-  it('explains activation semantics clearly', () => {
+  it('explains activation semantics clearly in the page explainer', async () => {
     setupMocks()
     render(ComposePage)
 
-    expect(screen.getByText(/activation makes the current validated generated config live/i)).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: /how this works/i }))
+
+    expect(
+      screen.getByText(/activate makes the current validated generated config live by restarting clash nivo with it/i)
+    ).toBeInTheDocument()
+  })
+
+  it('opens the page explainer with the composition flow', async () => {
+    setupMocks()
+    render(ComposePage)
+
+    await fireEvent.click(screen.getByRole('button', { name: /how this works/i }))
+
+    const dialog = screen.getByRole('dialog', { name: 'Compose' })
+    expect(dialog).toBeInTheDocument()
+
+    const scoped = within(dialog)
+    expect(scoped.getAllByText('Selected source').length).toBeGreaterThan(0)
+    expect(scoped.getAllByText('Customizations').length).toBeGreaterThan(0)
+    expect(scoped.getAllByText('Preview').length).toBeGreaterThan(0)
+    expect(scoped.getAllByText('Validate').length).toBeGreaterThan(0)
+    expect(scoped.getAllByText('Activate').length).toBeGreaterThan(0)
   })
 })

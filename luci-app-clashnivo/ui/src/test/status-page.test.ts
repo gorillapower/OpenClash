@@ -98,8 +98,7 @@ describe('StatusPage reset', () => {
     render(StatusPage)
 
     expect(screen.getByRole('heading', { name: 'Status' })).toBeInTheDocument()
-    expect(screen.getByText(/runtime health, active source state, and the next meaningful action/i)).toBeInTheDocument()
-    expect(screen.getByText(/status is the operational homepage/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /how this works/i })).not.toBeInTheDocument()
   })
 
   it('shows the running state, source summary, and runtime chips', () => {

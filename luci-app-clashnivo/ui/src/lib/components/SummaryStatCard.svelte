@@ -4,7 +4,7 @@
   type Props = {
     label: string
     value: string | number
-    detail: string
+    detail?: string
     valueClass?: string
   }
 
@@ -16,7 +16,9 @@
     <p class="text-sm text-muted-foreground">{label}</p>
     <CardTitle class={valueClass}>{value}</CardTitle>
   </CardHeader>
-  <CardContent class="text-sm leading-6 text-muted-foreground">
-    {detail}
-  </CardContent>
+  {#if detail}
+    <CardContent class="pt-0 text-sm leading-6 text-muted-foreground">
+      {detail}
+    </CardContent>
+  {/if}
 </Card>

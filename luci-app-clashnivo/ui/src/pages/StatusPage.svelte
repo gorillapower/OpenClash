@@ -18,7 +18,6 @@
   import { Input } from '$lib/components/ui/input/index'
   import { Card, CardHeader, CardContent } from '$lib/components/ui/card/index'
   import PageIntro from '$lib/components/PageIntro.svelte'
-  import ContextNote from '$lib/components/ContextNote.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
 
   const queryClient = useQueryClient()
@@ -190,17 +189,7 @@
 </script>
 
 <div class="space-y-8">
-  <PageIntro
-    eyebrow="Operations"
-    title="Status"
-    description="Runtime health, active source state, and the next meaningful action."
-  />
-
-  <ContextNote
-    id="status-how-it-works"
-    title="How to use this page"
-    body="Status is the operational homepage. It tells you whether Clash Nivo currently owns the runtime, which source is selected, and what action should happen next. Use Sources to change source material, Compose to build the generated config, and System for logs and maintenance."
-  />
+  <PageIntro eyebrow="Operations" title="Status" />
 
   {#if isEmpty}
     <div class="space-y-5 py-2">

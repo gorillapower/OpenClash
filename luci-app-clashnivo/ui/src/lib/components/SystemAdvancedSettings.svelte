@@ -228,7 +228,7 @@
       <div class="divide-y divide-border rounded-lg border border-border bg-card px-4">
         <SettingRow
           label="Operation mode"
-          tooltip="How the router intercepts traffic. Fake-IP is the safest default for most installs."
+          tooltip="Changes how the router hands traffic to Clash Nivo. Fake-IP is the safest default for most installs; use Redir-Host or TUN only if you specifically need their behavior."
         >
           <select class={selectClass} value={operationMode} onchange={handleOperationModeChange} disabled={setOperationMode.isPending} aria-label="Operation mode">
             <option value="fake-ip">Fake-IP (recommended)</option>
@@ -239,7 +239,7 @@
 
         <SettingRow
           label="UDP proxy"
-          tooltip="Send UDP traffic such as gaming and voice traffic through Clash Nivo."
+          tooltip="Routes UDP traffic such as gaming or voice traffic through Clash Nivo. Leave it on only if you need UDP proxied and your setup handles it reliably."
         >
           <button type="button" role="switch" aria-checked={udpProxy} aria-label="UDP proxy" class={switchClasses(udpProxy)} onclick={() => setUdpProxy.mutateAsync(udpProxy ? '0' : '1')} disabled={setUdpProxy.isPending}>
             <span class={thumbClasses(udpProxy)}></span>
@@ -249,7 +249,7 @@
         {#if operationMode === 'tun'}
           <SettingRow
             label="TUN stack type"
-            tooltip="Choose the network stack for TUN mode. gVisor favors compatibility; system favors speed."
+            tooltip="Only applies in TUN mode. gVisor is the safer default for compatibility; System is faster but can be less forgiving."
           >
             <select class={selectClass} value={stackType} onchange={handleStackTypeChange} disabled={setStackType.isPending} aria-label="TUN stack type">
               <option value="gvisor">gVisor (recommended)</option>
@@ -289,7 +289,7 @@
 
         <SettingRow
           label="IPv6 proxy"
-          tooltip="Route IPv6 traffic through Clash Nivo. Requires the router to own IPv6 gateway and DNS duties."
+          tooltip="Routes IPv6 traffic through Clash Nivo instead of leaving it direct. Only enable this when the router is actually handling IPv6 gateway and DNS duties for your LAN."
         >
           <div class="flex items-center gap-2">
             {#if ipv6Enable}
@@ -310,15 +310,13 @@
 
     <div class="space-y-1">
       <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">DNS behavior</h3>
-      <p class="px-1 text-xs leading-5 text-muted-foreground">
-        DNS on the router has layers: clients usually talk to the router first, the router can forward
-        or redirect DNS into Clash Nivo, and the generated Clash config then decides how upstream DNS
-        is resolved. These controls affect router and runtime behavior, not just the source YAML.
-      </p>
+      <div class="px-1 text-xs text-muted-foreground">
+        These controls affect router and runtime DNS behavior, not just the source YAML.
+      </div>
       <div class="divide-y divide-border rounded-lg border border-border bg-card px-4">
         <SettingRow
           label="Redirect method"
-          tooltip="Choose how LAN DNS queries are captured. Dnsmasq is the safest default."
+          tooltip="Controls how LAN DNS reaches Clash Nivo. Dnsmasq is the safest default for most routers; Firewall is lower-level and should only be used if you know you need it."
         >
           <select class={selectClass} value={dnsRedirect} onchange={handleDnsRedirectChange} disabled={setDnsRedirect.isPending} aria-label="DNS redirect method">
             <option value="1">Dnsmasq (recommended)</option>
@@ -329,7 +327,7 @@
 
         <SettingRow
           label="IPv6 DNS fallback"
-          tooltip="Allow IPv6-aware DNS behavior when your upstream and LAN actually use IPv6."
+          tooltip="Allows IPv6-aware DNS behavior in Clash Nivo. Use it only when your upstream DNS and LAN clients actually rely on IPv6."
         >
           <button type="button" role="switch" aria-checked={ipv6Dns} aria-label="IPv6 DNS fallback" class={switchClasses(ipv6Dns)} onclick={() => setIpv6Dns.mutateAsync(ipv6Dns ? '0' : '1')} disabled={setIpv6Dns.isPending}>
             <span class={thumbClasses(ipv6Dns)}></span>
@@ -338,7 +336,7 @@
 
         <SettingRow
           label="Append default DNS"
-          tooltip="Keep the bundled DNS entries in the generated config alongside your selected DNS behavior."
+          tooltip="Keeps Clash Nivo's bundled DNS entries in the generated config alongside the DNS behavior coming from your source and runtime settings."
         >
           <button type="button" role="switch" aria-checked={appendDefaultDns} aria-label="Append default DNS" class={switchClasses(appendDefaultDns)} onclick={() => setAppendDefaultDns.mutateAsync(appendDefaultDns ? '0' : '1')} disabled={setAppendDefaultDns.isPending}>
             <span class={thumbClasses(appendDefaultDns)}></span>
@@ -347,7 +345,7 @@
 
         <SettingRow
           label="Append WAN DNS"
-          tooltip="Also include WAN-learned DNS servers in generated runtime DNS behavior."
+          tooltip="Adds the router's WAN-learned DNS servers to the generated runtime DNS list. Use this only if you want the router WAN resolvers available to Clash Nivo."
         >
           <button type="button" role="switch" aria-checked={appendWanDns} aria-label="Append WAN DNS" class={switchClasses(appendWanDns)} onclick={() => setAppendWanDns.mutateAsync(appendWanDns ? '0' : '1')} disabled={setAppendWanDns.isPending}>
             <span class={thumbClasses(appendWanDns)}></span>
@@ -356,7 +354,7 @@
 
         <SettingRow
           label="Flush DNS cache"
-          tooltip="Clear DNS and Fake-IP cache after DNS or routing changes."
+          tooltip="Clears cached DNS and Fake-IP state inside Clash Nivo. Useful after DNS, routing, or mode changes when old resolution data is getting in the way."
         >
           <Button variant="outline" size="sm" onclick={() => flushDns.mutateAsync()} disabled={flushDns.isPending}>
             {flushDns.isPending ? 'Flushing…' : 'Flush'}
@@ -370,7 +368,7 @@
       <div class="divide-y divide-border rounded-lg border border-border bg-card px-4">
         <SettingRow
           label="Device access mode"
-          tooltip="Choose whether all devices are proxied, or manage a blacklist or whitelist."
+          tooltip="Controls which LAN devices are sent through Clash Nivo. Use All devices as the normal default, or switch to a blacklist or whitelist when only some devices should be affected."
         >
           <select class={selectClass} value={deviceMode} onchange={handleDeviceModeChange} disabled={setDeviceMode.isPending} aria-label="Device access mode">
             <option value="all">All devices</option>
@@ -395,7 +393,7 @@
 
         <SettingRow
           label="Router self-proxy"
-          tooltip="Send the router's own traffic through Clash Nivo. Required for some unlock automation paths."
+          tooltip="Sends the router's own traffic through Clash Nivo instead of leaving it direct. Enable it only when router-originated traffic needs to follow the proxy path."
         >
           <button type="button" role="switch" aria-checked={routerSelfProxy} aria-label="Router self-proxy" class={switchClasses(routerSelfProxy)} onclick={() => setRouterSelfProxy.mutateAsync(routerSelfProxy ? '0' : '1')} disabled={setRouterSelfProxy.isPending}>
             <span class={thumbClasses(routerSelfProxy)}></span>
@@ -404,7 +402,7 @@
 
         <SettingRow
           label="Gateway compatible"
-          tooltip="Enable if Clash Nivo runs behind another gateway and devices lose connectivity in bypass mode."
+          tooltip="Use this when Clash Nivo sits behind another gateway and bypass traffic starts breaking or looping. Leave it off in a normal single-gateway setup."
         >
           <button type="button" role="switch" aria-checked={gatewayCompat} aria-label="Gateway compatible" class={switchClasses(gatewayCompat)} onclick={() => setGatewayCompat.mutateAsync(gatewayCompat ? '0' : '1')} disabled={setGatewayCompat.isPending}>
             <span class={thumbClasses(gatewayCompat)}></span>
@@ -413,7 +411,7 @@
 
         <SettingRow
           label="Custom firewall rules"
-          tooltip="Edit advanced firewall rules applied after Clash Nivo config is active."
+          tooltip="Advanced post-start firewall rules for edge cases. Leave this alone unless you know exactly which router rule you need to add."
         >
           <Button variant="outline" size="sm" onclick={() => (firewallSheetOpen = true)}>Edit</Button>
         </SettingRow>
@@ -425,7 +423,7 @@
       <div class="divide-y divide-border rounded-lg border border-border bg-card px-4">
         <SettingRow
           label="Interface binding"
-          tooltip="Bind Clash Nivo to a specific outbound interface. Leave blank to use the default route."
+          tooltip="Forces Clash Nivo to use a specific outbound interface. Leave it blank unless the default route is wrong for your setup."
         >
           <div class="flex items-center gap-2">
             <input class={inputClass} bind:value={localInterfaceName} aria-label="Interface binding" placeholder="wan" />
@@ -435,7 +433,7 @@
 
         <SettingRow
           label="TProxy port"
-          tooltip="Port used for transparent proxy interception. Change only if you know another service conflicts with it."
+          tooltip="The transparent proxy port Clash Nivo listens on. Change it only when another service is already using the default port."
         >
           <div class="flex items-center gap-2">
             <input class={inputClass} bind:value={localTproxyPort} aria-label="TProxy port" inputmode="numeric" />
@@ -445,7 +443,7 @@
 
         <SettingRow
           label="DNS port"
-          tooltip="Port used by Clash Nivo DNS handling. Clients and router internals expect this to stay aligned."
+          tooltip="The DNS port Clash Nivo listens on. Change it only if you also understand the router-side DNS wiring that depends on it."
         >
           <div class="flex items-center gap-2">
             <input class={inputClass} bind:value={localDnsPort} aria-label="DNS port" inputmode="numeric" />
@@ -460,7 +458,7 @@
       <div class="divide-y divide-border rounded-lg border border-border bg-card px-4">
         <SettingRow
           label="GitHub mirror modifier"
-          tooltip="Use the mirror rewrite path for downloads when direct GitHub access is unreliable."
+          tooltip="Rewrites download URLs through the configured mirror path. Use this when direct GitHub access is unreliable from your network."
         >
           <button type="button" role="switch" aria-checked={githubMirror} aria-label="GitHub mirror modifier" class={switchClasses(githubMirror)} onclick={() => setGithubMirror.mutateAsync(githubMirror ? '0' : '1')} disabled={setGithubMirror.isPending}>
             <span class={thumbClasses(githubMirror)}></span>
@@ -474,7 +472,7 @@
       <div class="divide-y divide-border rounded-lg border border-border bg-card px-4">
         <SettingRow
           label="Log level"
-          tooltip="Control how much runtime detail is written to logs. Higher levels are more verbose."
+          tooltip="Controls how much detail Clash Nivo writes to logs. Use a lower level for normal operation and a higher level only while troubleshooting."
         >
           <select class={selectClass} value={logLevel} onchange={(e) => setLogLevel.mutateAsync((e.target as HTMLSelectElement).value)} disabled={setLogLevel.isPending} aria-label="Log level">
             <option value="0">Silent / default</option>
@@ -487,7 +485,7 @@
 
         <SettingRow
           label="Log size"
-          tooltip="Maximum retained log size in KB before rotation. Higher values keep more history but use more storage."
+          tooltip="Maximum retained log size before rotation. Higher values keep more history, but use more storage on the router."
         >
           <div class="flex items-center gap-2">
             <input class={inputClass} bind:value={localLogSize} aria-label="Log size" inputmode="numeric" />

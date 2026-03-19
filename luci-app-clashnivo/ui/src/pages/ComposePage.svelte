@@ -15,9 +15,8 @@
   import { Card, CardHeader, CardContent, CardTitle } from '$lib/components/ui/card/index'
   import PageIntro from '$lib/components/PageIntro.svelte'
   import SectionHeader from '$lib/components/SectionHeader.svelte'
-  import SummaryStatCard from '$lib/components/SummaryStatCard.svelte'
-  import ContextNote from '$lib/components/ContextNote.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
+  import ExplainerSheet from '$lib/components/ExplainerSheet.svelte'
   import ClashConfigTab from './settings/ClashConfigTab.svelte'
 
   const configs = useConfigs()
@@ -33,6 +32,7 @@
 
   let previewResult = $state<ConfigCompositionResult | null>(null)
   let validateResult = $state<ConfigCompositionResult | null>(null)
+  let explainerOpen = $state(false)
 
   const selectedSource = $derived(configs.data?.find((config) => config.active) ?? null)
   const hasSelectedSource = $derived(Boolean(selectedSource))
@@ -83,38 +83,23 @@
   <PageIntro
     eyebrow="Composition"
     title="Compose"
-    description="Build the generated Clash Nivo runtime from the selected source, validate it, then make it live."
-  />
-
-  <ContextNote
-    id="compose-workflow"
-    title="Composition workflow"
-    body="Compose follows one order: selected source, Clash Nivo custom layers, preview, validation, then activation. Activation makes the current validated generated config live. Saving an editor form alone does not restart Clash Nivo."
-  />
+  >
+    {#snippet actions()}
+      <Button variant="outline" size="sm" onclick={() => (explainerOpen = true)}>
+        How this works
+      </Button>
+    {/snippet}
+  </PageIntro>
 
   <div class="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
     <Card>
       <CardHeader class="space-y-2">
-        <CardTitle>Current source</CardTitle>
-        <p class="text-sm text-muted-foreground">
-          Compose always runs against the selected source from Sources.
-        </p>
+        <CardTitle>Pipeline</CardTitle>
       </CardHeader>
       <CardContent class="space-y-4">
         {#if hasSelectedSource}
           <div class="rounded-lg border border-border bg-card px-4 py-3">
-            <div class="flex items-start justify-between gap-4">
-              <div class="space-y-1">
-                <p class="text-sm font-medium text-foreground">{selectedSource?.name}</p>
-                <p class="text-xs text-muted-foreground">
-                  Select a different source in Sources if you want these custom layers to apply to
-                  a different config.
-                </p>
-              </div>
-              <a href="#/sources" class="text-sm text-foreground underline underline-offset-4">
-                Open Sources
-              </a>
-            </div>
+            <p class="text-sm font-medium text-foreground">{selectedSource?.name}</p>
           </div>
         {:else}
           <EmptyState
@@ -131,33 +116,29 @@
           </EmptyState>
         {/if}
 
-        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <SummaryStatCard
-            label="Custom Proxies"
-            value={customProxyCount}
-            detail="Clash Nivo-owned proxies appended during composition."
-          />
-          <SummaryStatCard
-            label="Rule Providers"
-            value={ruleProviderCount}
-            detail="Structured external rule sources available to the generated config."
-          />
-          <SummaryStatCard
-            label="Proxy Groups"
-            value={proxyGroupCount}
-            detail="Custom routing buckets layered on top of the selected source."
-          />
-          <SummaryStatCard
-            label="Custom Rules"
-            value={customRuleCount}
-            detail="Rules prepended before the selected source ruleset."
-          />
-          <SummaryStatCard
-            label="Overwrite"
-            value={hasOverwrite ? 'Configured' : 'Not configured'}
-            valueClass="text-sm"
-            detail="Highest-precedence escape hatch applied only to the generated config."
-          />
+        <div class="space-y-2">
+          <div class="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
+            <p class="text-sm text-muted-foreground">1. Custom Proxies</p>
+            <p class="text-lg font-semibold text-foreground">{customProxyCount}</p>
+          </div>
+          <div class="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
+            <p class="text-sm text-muted-foreground">2. Rule Providers</p>
+            <p class="text-lg font-semibold text-foreground">{ruleProviderCount}</p>
+          </div>
+          <div class="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
+            <p class="text-sm text-muted-foreground">3. Proxy Groups</p>
+            <p class="text-lg font-semibold text-foreground">{proxyGroupCount}</p>
+          </div>
+          <div class="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
+            <p class="text-sm text-muted-foreground">4. Custom Rules</p>
+            <p class="text-lg font-semibold text-foreground">{customRuleCount}</p>
+          </div>
+          <div class="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
+            <p class="text-sm text-muted-foreground">5. Overwrite</p>
+            <p class="text-sm font-semibold uppercase tracking-wider text-foreground">
+              {hasOverwrite ? 'Configured' : 'Not configured'}
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -165,10 +146,6 @@
     <Card>
       <CardHeader class="space-y-2">
         <CardTitle>Workflow</CardTitle>
-        <p class="text-sm text-muted-foreground">
-          Preview and validate use the backend composition contract. Activation restarts Clash Nivo
-          with the current validated generated config.
-        </p>
       </CardHeader>
       <CardContent class="space-y-4">
         <div class="flex flex-wrap gap-2">
@@ -236,10 +213,6 @@
     <Card>
       <CardHeader class="space-y-2">
         <CardTitle>Preview</CardTitle>
-        <p class="text-sm text-muted-foreground">
-          The generated config preview reflects the current selected source plus Clash Nivo-owned
-          custom layers.
-        </p>
       </CardHeader>
       <CardContent class="space-y-3">
         <div class="flex flex-wrap gap-4 text-xs text-muted-foreground">
@@ -259,7 +232,7 @@
           <EmptyState
             compact
             title="No preview content returned"
-            body="The backend returned a preview result without generated YAML content. Validate the selected source and custom layers, then try again."
+            body="The backend returned a preview result without generated YAML content. Validate the selected source and customizations, then try again."
           />
         {/if}
       </CardContent>
@@ -267,11 +240,30 @@
   {/if}
 
   <div class="space-y-4">
-    <SectionHeader
-      title="Custom layers"
-      description="Structured Clash Nivo-owned inputs. Out-of-scope customizations are ignored for the currently selected source."
-    />
+    <SectionHeader title="Customizations" />
 
     <ClashConfigTab />
   </div>
 </div>
+
+<ExplainerSheet
+  open={explainerOpen}
+  onClose={() => (explainerOpen = false)}
+  title="Compose"
+  intro="Compose is the build pipeline for the live runtime config. It combines the selected source with Clash Nivo-owned customizations, then lets you preview, validate, and activate the result."
+  flow={['Selected source', 'Customizations', 'Preview', 'Validate', 'Activate']}
+  sections={[
+    {
+      title: 'What changes here',
+      body: 'This page changes the generated runtime config, not the stored source file. The selected source stays preserved while Clash Nivo layers your custom inputs on top.'
+    },
+    {
+      title: 'Customizations',
+      body: 'Custom proxies, rule providers, proxy groups, rules, and overwrite are applied during composition. They extend or shape the generated config without rewriting the source YAML directly.'
+    },
+    {
+      title: 'Preview, validate, activate',
+      body: 'Preview shows the generated output. Validate checks whether that output is safe to use. Activate makes the current validated generated config live by restarting Clash Nivo with it.'
+    }
+  ]}
+/>

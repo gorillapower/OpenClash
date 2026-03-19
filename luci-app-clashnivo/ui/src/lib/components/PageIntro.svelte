@@ -1,7 +1,7 @@
 <script lang="ts">
   type Props = {
     title: string
-    description: string
+    description?: string
     eyebrow?: string
     actions?: import('svelte').Snippet
   }
@@ -18,9 +18,11 @@
     {/if}
     <div class="space-y-1.5">
       <h1 class="text-2xl font-semibold tracking-tight">{title}</h1>
-      <p class="max-w-3xl text-sm leading-6 text-muted-foreground">
-        {description}
-      </p>
+      {#if description}
+        <p class="max-w-3xl text-sm leading-6 text-muted-foreground">
+          {description}
+        </p>
+      {/if}
     </div>
   </div>
 

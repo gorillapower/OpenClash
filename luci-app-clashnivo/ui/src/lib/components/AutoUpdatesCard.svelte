@@ -138,7 +138,10 @@
       <div>
         <h3 class="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">GEO Databases</h3>
         <div class="divide-y divide-border rounded-lg border border-border bg-card px-4">
-          <SettingRow label="Enable" tooltip="Automatically update GeoIP, GeoSite, and GeoASN databases.">
+          <SettingRow
+            label="Enable"
+            tooltip="Automatically refresh the GEO datasets used by Clash-style matching and routing. GeoIP maps IP ranges to countries or regions, GeoSite groups domains into categories, and GeoASN maps IP ranges to autonomous systems. These datasets are only used when your active config or runtime rules rely on them. This switch controls the scheduled refresh only."
+          >
             <button
               type="button"
               role="switch"
@@ -214,7 +217,10 @@
       <div>
         <h3 class="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Chnroute List</h3>
         <div class="divide-y divide-border rounded-lg border border-border bg-card px-4">
-          <SettingRow label="Enable" tooltip="Automatically update the China IP route list.">
+          <SettingRow
+            label="Enable"
+            tooltip="Automatically refresh the Chnroute list, a CIDR list of China IP ranges used by direct-routing and bypass logic. It matters when your active rules or runtime behavior use China-route matching. This switch controls the scheduled refresh only."
+          >
             <button
               type="button"
               role="switch"

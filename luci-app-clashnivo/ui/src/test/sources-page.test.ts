@@ -137,8 +137,7 @@ describe('SourcesPage', () => {
     setupMocks()
     render(SourcesPage)
     expect(screen.getByRole('heading', { name: 'Sources' })).toBeInTheDocument()
-    expect(screen.getByText(/manage subscription sources and uploaded yaml sources/i)).toBeInTheDocument()
-    expect(screen.getByText(/refreshing a source updates the stored source material only/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /how this works/i })).toBeInTheDocument()
     expect(screen.getAllByText('Selected source').length).toBeGreaterThan(0)
   })
 

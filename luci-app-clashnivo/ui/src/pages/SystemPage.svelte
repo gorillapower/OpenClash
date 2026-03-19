@@ -17,7 +17,7 @@
   import LogsViewer from '$lib/components/LogsViewer.svelte'
   import SystemAdvancedSettings from '$lib/components/SystemAdvancedSettings.svelte'
   import PageIntro from '$lib/components/PageIntro.svelte'
-  import ContextNote from '$lib/components/ContextNote.svelte'
+  import ExplainerSheet from '$lib/components/ExplainerSheet.svelte'
 
   const config = useUciConfig('clashnivo')
 
@@ -54,6 +54,7 @@
   const currentCoreType = $derived(currentCore.data?.meta ? 'Mihomo' : 'Clash')
   const latestCoreType = $derived(latestCore.data?.core_type ?? currentCoreType)
   const latestPackageVersion = $derived(latestPackage.data?.version ?? null)
+  let explainerOpen = $state(false)
 
   const coreBusy = $derived(isPendingState(coreUpdateStatus.data?.status) || coreUpdate.isPending)
   const packageBusy = $derived(
@@ -96,14 +97,13 @@
   <PageIntro
     eyebrow="Maintenance"
     title="System"
-    description="Updates, schedules, logs, diagnostics, and dashboard access."
-  />
-
-  <ContextNote
-    id="system-runtime-model"
-    title="Runtime model"
-    body="System owns router-facing behavior such as updates, schedules, logs, dashboards, DNS capture, and traffic handling. Source YAML can define DNS and routing preferences, but the router still applies dnsmasq wiring, firewall interception, and Clash Nivo runtime controls on top."
-  />
+  >
+    {#snippet actions()}
+      <Button variant="outline" size="sm" onclick={() => (explainerOpen = true)}>
+        How this works
+      </Button>
+    {/snippet}
+  </PageIntro>
 
   <div class="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
     <div class="space-y-6">
@@ -112,9 +112,6 @@
           <div class="flex items-center justify-between gap-3">
             <div>
               <h2 class="text-sm font-semibold">Core runtime</h2>
-              <p class="mt-1 text-sm text-muted-foreground">
-                Current and latest core information with explicit source policy context.
-              </p>
             </div>
             <span class="rounded-full border border-border px-2.5 py-1 text-xs font-medium">
               {titleCasePolicy(coreSourcePolicy)}
@@ -199,9 +196,6 @@
           <CardHeader>
             <div>
               <h2 class="text-sm font-semibold">Package update</h2>
-              <p class="mt-1 text-sm text-muted-foreground">
-                Update the installed LuCI package and supporting scripts.
-              </p>
             </div>
           </CardHeader>
           <CardContent>
@@ -240,9 +234,6 @@
           <CardHeader>
             <div>
               <h2 class="text-sm font-semibold">Asset maintenance</h2>
-              <p class="mt-1 text-sm text-muted-foreground">
-                Refresh IPDB, GeoIP, GeoSite, GeoASN, and Chnroute support assets.
-              </p>
             </div>
           </CardHeader>
           <CardContent>
@@ -280,9 +271,6 @@
         <CardHeader>
           <div>
             <h2 class="text-sm font-semibold">Advanced settings</h2>
-            <p class="mt-1 text-sm text-muted-foreground">
-              Advanced runtime, DNS, LAN policy, port, mirror, and diagnostic controls grouped by operator intent.
-            </p>
           </div>
         </CardHeader>
         <CardContent>
@@ -294,9 +282,6 @@
         <CardHeader>
           <div>
             <h2 class="text-sm font-semibold">Logs and diagnostics</h2>
-            <p class="mt-1 text-sm text-muted-foreground">
-              Service and core logs for immediate troubleshooting.
-            </p>
           </div>
         </CardHeader>
         <CardContent>
@@ -310,9 +295,6 @@
         <CardHeader>
           <div>
             <h2 class="text-sm font-semibold">Maintenance summary</h2>
-            <p class="mt-1 text-sm text-muted-foreground">
-              Quick read-only context for update and dashboard behavior.
-            </p>
           </div>
         </CardHeader>
         <CardContent>
@@ -365,3 +347,29 @@
     </div>
   </div>
 </div>
+
+<ExplainerSheet
+  open={explainerOpen}
+  onClose={() => (explainerOpen = false)}
+  title="System"
+  intro="System is where Clash Nivo stops being just a config composer and starts interacting with the router. These settings affect updates, DNS, traffic interception, logging, and runtime behavior."
+  flow={['Client', 'Router', 'dnsmasq / redirect', 'Clash Nivo', 'Upstream DNS']}
+  sections={[
+    {
+      title: 'What changes here',
+      body: 'These settings change the router environment around Clash Nivo: ports, DNS capture, traffic interception, schedules, update behavior, and diagnostics. They do not directly edit your source YAML.'
+    },
+    {
+      title: 'DNS layers',
+      body: 'LAN clients usually send DNS to the router first. The router can then forward or redirect those queries into Clash Nivo, and the generated Clash config decides which upstream DNS servers are used from there. That is why router DNS settings and source-config DNS are related but not the same thing.'
+    },
+    {
+      title: 'What the assets are',
+      body: 'Assets are supporting data files used by routing and matching logic. GeoIP and GeoSite describe IP and domain datasets, IPDB is an IP database, GeoASN maps IP ranges to autonomous systems, and Chnroute is a route list of China IP ranges used by direct-routing and bypass logic.'
+    },
+    {
+      title: 'How to read the page',
+      body: 'Use the upper sections for maintenance tasks like package, core, and asset updates. Use Advanced settings only when you need to change how the router captures traffic, handles DNS, or routes devices.'
+    }
+  ]}
+/>

@@ -515,31 +515,19 @@ describe('ClashConfigTab', () => {
   // Advanced section (collapsed by default)
   // --------------------------------------------------------------------------
 
-  describe('Advanced section', () => {
-    it('is collapsed by default — rule providers not visible', () => {
+  describe('Advanced YAML section', () => {
+    it('shows the Advanced YAML entrypoint by default', () => {
       setupMocks()
       render(ClashConfigTab)
 
-      expect(screen.queryByText('Azure_West_Europe')).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /add provider/i })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /edit yaml/i })).toBeInTheDocument()
     })
+  })
 
-    it('expands when the Advanced toggle is clicked', async () => {
+  describe('Rule Providers section', () => {
+    it('shows rule providers without using the Advanced toggle', async () => {
       setupMocks()
       render(ClashConfigTab)
-
-      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /add provider/i })).toBeInTheDocument()
-      })
-    })
-
-    it('shows rule providers list after expanding', async () => {
-      setupMocks()
-      render(ClashConfigTab)
-
-      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
 
       await waitFor(() => {
         expect(screen.getByText('Azure_West_Europe')).toBeInTheDocument()
@@ -551,8 +539,6 @@ describe('ClashConfigTab', () => {
       setupMocks({ providers: [] })
       render(ClashConfigTab)
 
-      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
-
       await waitFor(() => {
         expect(screen.getByText(/no rule providers yet/i)).toBeInTheDocument()
       })
@@ -562,7 +548,6 @@ describe('ClashConfigTab', () => {
       setupMocks()
       render(ClashConfigTab)
 
-      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
       await fireEvent.click(screen.getByRole('button', { name: /add provider/i }))
 
       await waitFor(() => {
@@ -574,8 +559,6 @@ describe('ClashConfigTab', () => {
     it('opens edit rule provider sheet when Edit is clicked', async () => {
       setupMocks()
       render(ClashConfigTab)
-
-      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
 
       const editBtn = await screen.findByRole('button', { name: /edit azure_west_europe/i })
       await fireEvent.click(editBtn)
@@ -592,8 +575,6 @@ describe('ClashConfigTab', () => {
       const deleteMock = makeMutation(deleteProviderMutateAsync)
       vi.mocked(useDeleteRuleProvider).mockReturnValue({ ...deleteMock, mutate: vi.fn() } as never)
       render(ClashConfigTab)
-
-      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
 
       const deleteBtn = await screen.findByRole('button', { name: /delete azure_west_europe/i })
       await fireEvent.click(deleteBtn)
@@ -615,8 +596,6 @@ describe('ClashConfigTab', () => {
       setupMocks()
       render(ClashConfigTab)
 
-      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
-
       const deleteBtn = await screen.findByRole('button', { name: /delete azure_west_europe/i })
       await fireEvent.click(deleteBtn)
 
@@ -632,11 +611,13 @@ describe('ClashConfigTab', () => {
       })
     })
 
+  })
+
+  describe('Advanced YAML sheet', () => {
     it('opens the Advanced YAML sheet when Edit YAML is clicked', async () => {
       setupMocks()
       render(ClashConfigTab)
 
-      await fireEvent.click(screen.getByRole('button', { name: /advanced/i }))
       await fireEvent.click(screen.getByRole('button', { name: /edit yaml/i }))
 
       await waitFor(() => {

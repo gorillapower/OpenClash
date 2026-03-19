@@ -253,7 +253,6 @@
   let ruleProviderSheetOpen = $state(false)
   let editingProvider = $state<RuleProvider | undefined>(undefined)
   let confirmDeleteProviderId = $state<string | undefined>(undefined)
-  let advancedOpen = $state(false)
   let advancedYamlSheetOpen = $state(false)
 
   function openAddProvider() {
@@ -276,111 +275,13 @@
 
 <div class="space-y-8">
   <!-- ============================================================
-       Section 1: Custom Proxy Groups
+       Section 1: Custom Proxies
   ============================================================ -->
   <div class="space-y-3">
     <div class="flex items-center justify-between">
-      <div>
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Custom Proxy Groups
-        </h2>
-        <p class="mt-0.5 text-xs text-muted-foreground">
-          Named groups injected into your Clash config at startup. Each group exposes a filtered
-          set of servers from your subscription — use them as routing targets in your rules.
-        </p>
-      </div>
-      <Button variant="outline" size="sm" onclick={openAddGroup}>Add group</Button>
-    </div>
-
-    {#if proxyGroups.isPending}
-      <div class="h-16 animate-pulse rounded-lg bg-muted"></div>
-    {:else if localGroups.length === 0}
-      <div
-        class="rounded-lg border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground"
-      >
-        No custom proxy groups yet. Add one to get started.
-      </div>
-    {:else}
-      <div class="divide-y divide-border rounded-lg border border-border bg-card">
-        {#each localGroups as group (group.id)}
-          {@const enabled = getEnabled(group)}
-          <div class="flex items-center gap-3 px-4 py-3">
-            <!-- Enable/disable toggle -->
-            <button
-              role="switch"
-              aria-checked={enabled}
-              aria-label="{enabled ? 'Disable' : 'Enable'} {group.name}"
-              onclick={() => handleToggle(group)}
-              class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {enabled ? 'bg-primary' : 'bg-muted-foreground/30'}"
-            >
-              <span
-                class="inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform {enabled ? 'translate-x-4' : 'translate-x-0.5'}"
-              ></span>
-            </button>
-
-            <div class="min-w-0 flex-1 space-y-0.5 {enabled ? '' : 'opacity-50'}">
-              <p class="truncate text-sm font-medium text-foreground">{group.name}</p>
-              <p class="text-xs text-muted-foreground">
-                {group.type}{group.policyFilter ? ` · ${group.policyFilter}` : ''}
-              </p>
-            </div>
-            <div class="ml-2 flex shrink-0 gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onclick={() => openEditGroup(group)}
-                aria-label="Edit {group.name}"
-              >
-                Edit
-              </Button>
-              {#if confirmDeleteId === group.id}
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onclick={() => { deleteProxyGroup.mutate(group.id); confirmDeleteId = undefined }}
-                  disabled={deleteProxyGroup.isPending}
-                >
-                  Confirm
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onclick={() => (confirmDeleteId = undefined)}
-                >
-                  Cancel
-                </Button>
-              {:else}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onclick={() => (confirmDeleteId = group.id)}
-                  aria-label="Delete {group.name}"
-                  class="text-destructive hover:text-destructive"
-                >
-                  Delete
-                </Button>
-              {/if}
-            </div>
-          </div>
-        {/each}
-      </div>
-    {/if}
-  </div>
-
-  <!-- ============================================================
-       Section 2: Custom Proxies
-  ============================================================ -->
-  <div class="space-y-3">
-    <div class="flex items-center justify-between">
-      <div>
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Custom Proxies
-        </h2>
-        <p class="mt-0.5 text-xs text-muted-foreground">
-          Your own proxy servers (VPS, Trojan, etc.) injected alongside subscription proxies at
-          startup. Assign them to any proxy group in your config.
-        </p>
-      </div>
+      <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        1. Custom Proxies
+      </h2>
       <Button variant="outline" size="sm" onclick={openAddProxy}>Add proxy</Button>
     </div>
 
@@ -466,19 +367,187 @@
   </div>
 
   <!-- ============================================================
-       Section 3: Custom Rules
+       Section 2: Rule Providers
   ============================================================ -->
   <div class="space-y-3">
     <div class="flex items-center justify-between">
-      <div>
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Custom Rules
-        </h2>
-        <p class="mt-0.5 text-xs text-muted-foreground">
-          Prepended to your subscription rules at startup. Rules at the top of the list are
-          evaluated first.
-        </p>
+      <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        2. Rule Providers
+      </h2>
+      <Button variant="outline" size="sm" onclick={openAddProvider}>Add provider</Button>
+    </div>
+
+    {#if ruleProviders.isPending}
+      <div class="h-10 animate-pulse rounded-lg bg-muted"></div>
+    {:else if localProviders.length === 0}
+      <div
+        class="rounded-lg border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground"
+      >
+        No rule providers yet.
       </div>
+    {:else}
+      <div class="divide-y divide-border rounded-lg border border-border bg-card">
+        {#each localProviders as provider (provider.id)}
+          <div class="flex items-center gap-3 px-4 py-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={getProviderEnabled(provider)}
+              aria-label="Enable {provider.name}"
+              class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 {getProviderEnabled(provider) ? 'bg-primary' : 'bg-muted'}"
+              onclick={() => handleProviderToggle(provider)}
+            >
+              <span
+                class="pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform {getProviderEnabled(provider) ? 'translate-x-4' : 'translate-x-0'}"
+              ></span>
+            </button>
+
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium text-foreground">{provider.name}</p>
+              <p class="truncate text-xs text-muted-foreground">
+                {provider.behavior} · {provider.type}{provider.group ? ` → ${provider.group}` : ''}
+              </p>
+            </div>
+
+            {#if confirmDeleteProviderId === provider.id}
+              <div class="flex items-center gap-1.5">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onclick={() => {
+                    deleteRuleProvider.mutate(provider.id)
+                    confirmDeleteProviderId = undefined
+                  }}
+                >
+                  Confirm
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onclick={() => (confirmDeleteProviderId = undefined)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            {:else}
+              <div class="flex items-center gap-1.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Edit {provider.name}"
+                  onclick={() => openEditProvider(provider)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Delete {provider.name}"
+                  onclick={() => (confirmDeleteProviderId = provider.id)}
+                >
+                  Delete
+                </Button>
+              </div>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </div>
+
+  <!-- ============================================================
+       Section 3: Custom Proxy Groups
+  ============================================================ -->
+  <div class="space-y-3">
+    <div class="flex items-center justify-between">
+      <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        3. Custom Proxy Groups
+      </h2>
+      <Button variant="outline" size="sm" onclick={openAddGroup}>Add group</Button>
+    </div>
+
+    {#if proxyGroups.isPending}
+      <div class="h-16 animate-pulse rounded-lg bg-muted"></div>
+    {:else if localGroups.length === 0}
+      <div
+        class="rounded-lg border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground"
+      >
+        No custom proxy groups yet.
+      </div>
+    {:else}
+      <div class="divide-y divide-border rounded-lg border border-border bg-card">
+        {#each localGroups as group (group.id)}
+          {@const enabled = getEnabled(group)}
+          <div class="flex items-center gap-3 px-4 py-3">
+            <button
+              role="switch"
+              aria-checked={enabled}
+              aria-label="{enabled ? 'Disable' : 'Enable'} {group.name}"
+              onclick={() => handleToggle(group)}
+              class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {enabled ? 'bg-primary' : 'bg-muted-foreground/30'}"
+            >
+              <span
+                class="inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform {enabled ? 'translate-x-4' : 'translate-x-0.5'}"
+              ></span>
+            </button>
+
+            <div class="min-w-0 flex-1 space-y-0.5 {enabled ? '' : 'opacity-50'}">
+              <p class="truncate text-sm font-medium text-foreground">{group.name}</p>
+              <p class="text-xs text-muted-foreground">
+                {group.type}{group.policyFilter ? ` · ${group.policyFilter}` : ''}
+              </p>
+            </div>
+            <div class="ml-2 flex shrink-0 gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onclick={() => openEditGroup(group)}
+                aria-label="Edit {group.name}"
+              >
+                Edit
+              </Button>
+              {#if confirmDeleteId === group.id}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onclick={() => { deleteProxyGroup.mutate(group.id); confirmDeleteId = undefined }}
+                  disabled={deleteProxyGroup.isPending}
+                >
+                  Confirm
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onclick={() => (confirmDeleteId = undefined)}
+                >
+                  Cancel
+                </Button>
+              {:else}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onclick={() => (confirmDeleteId = group.id)}
+                  aria-label="Delete {group.name}"
+                  class="text-destructive hover:text-destructive"
+                >
+                  Delete
+                </Button>
+              {/if}
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </div>
+
+  <!-- ============================================================
+       Section 4: Custom Rules
+  ============================================================ -->
+  <div class="space-y-3">
+    <div class="flex items-center justify-between">
+      <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        4. Custom Rules
+      </h2>
       {#if rulesDirty}
         <Button
           size="sm"
@@ -593,19 +662,13 @@
   </div>
 
   <!-- ============================================================
-       Section 3: Config Overwrite
+       Section 5: Config Overwrite
   ============================================================ -->
   <div class="space-y-3">
     <div class="flex items-center justify-between">
-      <div>
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Config Overwrite
-        </h2>
-        <p class="mt-0.5 text-xs text-muted-foreground">
-          Shell script that runs at startup after the active config is loaded. Override any
-          YAML key without touching your subscription.
-        </p>
-      </div>
+      <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        5. Config Overwrite
+      </h2>
       <Button variant="outline" size="sm" onclick={() => (configOverwriteSheetOpen = true)}>
         Edit script
       </Button>
@@ -622,152 +685,17 @@
   </div>
 
   <!-- ============================================================
-       Section 4: Advanced (collapsed by default)
+       Section 6: Advanced YAML
   ============================================================ -->
-  <div class="space-y-1">
-    <button
-      type="button"
-      class="flex w-full items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
-      onclick={() => (advancedOpen = !advancedOpen)}
-      aria-expanded={advancedOpen}
-      aria-controls="clash-advanced-section"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        class="transition-transform duration-200 {advancedOpen ? 'rotate-180' : ''}"
-        aria-hidden="true"
-      >
-        <path d="m6 9 6 6 6-6" />
-      </svg>
-      Advanced
-    </button>
-
-    {#if advancedOpen}
-      <div id="clash-advanced-section" class="space-y-8 pt-4">
-        <!-- Rule Providers -->
-        <div class="space-y-3">
-          <div class="flex items-center justify-between">
-            <div>
-              <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Rule Providers
-              </h2>
-              <p class="mt-0.5 text-xs text-muted-foreground">
-                External rule files (URL or inline) merged into your Clash config at startup.
-                Each provider adds a <code class="font-mono">RULE-SET</code> entry routing matched
-                traffic to a target proxy group.
-              </p>
-            </div>
-            <Button variant="outline" size="sm" onclick={openAddProvider}>Add provider</Button>
-          </div>
-
-          {#if ruleProviders.isPending}
-            <div class="h-10 animate-pulse rounded-lg bg-muted"></div>
-          {:else if localProviders.length === 0}
-            <div
-              class="rounded-lg border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground"
-            >
-              No rule providers yet. Add one to pull in external rule lists.
-            </div>
-          {:else}
-            <div class="divide-y divide-border rounded-lg border border-border bg-card">
-              {#each localProviders as provider (provider.id)}
-                <div class="flex items-center gap-3 px-4 py-3">
-                  <!-- Enable toggle -->
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={getProviderEnabled(provider)}
-                    aria-label="Enable {provider.name}"
-                    class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 {getProviderEnabled(provider) ? 'bg-primary' : 'bg-muted'}"
-                    onclick={() => handleProviderToggle(provider)}
-                  >
-                    <span
-                      class="pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform {getProviderEnabled(provider) ? 'translate-x-4' : 'translate-x-0'}"
-                    ></span>
-                  </button>
-
-                  <!-- Info -->
-                  <div class="min-w-0 flex-1">
-                    <p class="truncate text-sm font-medium text-foreground">{provider.name}</p>
-                    <p class="truncate text-xs text-muted-foreground">
-                      {provider.behavior} · {provider.type}{provider.group ? ` → ${provider.group}` : ''}
-                    </p>
-                  </div>
-
-                  <!-- Actions -->
-                  {#if confirmDeleteProviderId === provider.id}
-                    <div class="flex items-center gap-1.5">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onclick={() => {
-                          deleteRuleProvider.mutate(provider.id)
-                          confirmDeleteProviderId = undefined
-                        }}
-                      >
-                        Confirm
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onclick={() => (confirmDeleteProviderId = undefined)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  {:else}
-                    <div class="flex items-center gap-1.5">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label="Edit {provider.name}"
-                        onclick={() => openEditProvider(provider)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label="Delete {provider.name}"
-                        onclick={() => (confirmDeleteProviderId = provider.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  {/if}
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-
-        <!-- Advanced YAML editor -->
-        <div class="space-y-3">
-          <div class="flex items-center justify-between">
-            <div>
-              <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Advanced YAML
-              </h2>
-              <p class="mt-0.5 text-xs text-muted-foreground">
-                Raw YAML proxy-group and rule definitions merged into the active config at startup.
-                Use this for complex setups that the simple forms can't express.
-              </p>
-            </div>
-            <Button variant="outline" size="sm" onclick={() => (advancedYamlSheetOpen = true)}>
-              Edit YAML
-            </Button>
-          </div>
-        </div>
-      </div>
-    {/if}
+  <div class="space-y-3">
+    <div class="flex items-center justify-between">
+      <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        6. Advanced YAML
+      </h2>
+      <Button variant="outline" size="sm" onclick={() => (advancedYamlSheetOpen = true)}>
+        Edit YAML
+      </Button>
+    </div>
   </div>
 </div>
 

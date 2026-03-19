@@ -10,8 +10,8 @@
   import PageIntro from '$lib/components/PageIntro.svelte'
   import SectionHeader from '$lib/components/SectionHeader.svelte'
   import SummaryStatCard from '$lib/components/SummaryStatCard.svelte'
-  import ContextNote from '$lib/components/ContextNote.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
+  import ExplainerSheet from '$lib/components/ExplainerSheet.svelte'
   import {
     useSubscriptions,
     useSubscriptionAdd,
@@ -68,6 +68,7 @@
   let deletingConfigNames = $state(new Set<string>())
   let confirmSelectName = $state<string | null>(null)
   let confirmDeleteName = $state<string | null>(null)
+  let explainerOpen = $state(false)
 
   function validateUrl(value: string): string {
     if (!value.trim()) return 'URL is required'
@@ -249,14 +250,13 @@
   <PageIntro
     eyebrow="Inventory"
     title="Sources"
-    description="Manage subscription sources and uploaded YAML sources. Refresh source material, select the active source, and keep composition work separate from source inventory."
-  />
-
-  <ContextNote
-    id="sources-refresh-behavior"
-    title="Source refresh behavior"
-    body="Refreshing a source updates the stored source material only. It does not remove Clash Nivo custom layers, generated previews, or runtime ownership. That separation is intentional so source management stays predictable."
-  />
+  >
+    {#snippet actions()}
+      <Button variant="outline" size="sm" onclick={() => (explainerOpen = true)}>
+        How this works
+      </Button>
+    {/snippet}
+  </PageIntro>
 
   <div class="grid gap-4 md:grid-cols-3">
     <SummaryStatCard
@@ -294,10 +294,7 @@
   </Card>
 
   <section class="space-y-4" aria-labelledby="sources-subscriptions-heading">
-    <SectionHeader
-      title="Subscriptions"
-      description="Add, refresh, and maintain remote source feeds. Refresh changes source material only."
-    >
+    <SectionHeader title="Subscriptions">
       {#snippet actions()}
         <Button
           variant="outline"
@@ -339,10 +336,7 @@
   </section>
 
   <section class="space-y-4" aria-labelledby="sources-configs-heading">
-    <SectionHeader
-      title="Uploaded sources"
-      description="Select the active source config, inspect basic file metadata, and use advanced YAML editing only when needed."
-    >
+    <SectionHeader title="Uploaded sources">
       {#snippet actions()}
         <Button size="sm" onclick={openUploadConfig}>Upload config</Button>
       {/snippet}
@@ -469,6 +463,27 @@
     {/if}
   </section>
 </div>
+
+<ExplainerSheet
+  open={explainerOpen}
+  onClose={() => (explainerOpen = false)}
+  title="Sources"
+  intro="Sources is where you manage the YAML inputs Clash Nivo can build from. It is separate from custom rules, groups, proxies, and overwrite."
+  sections={[
+    {
+      title: 'What belongs here',
+      body: 'Use subscriptions for remote feeds you want to refresh in place. Use uploaded sources for local YAML files you want to store and select directly.'
+    },
+    {
+      title: 'Refresh behavior',
+      body: 'Refresh updates the stored source file only. It does not remove custom layers, rebuild the generated config, or restart Clash Nivo by itself.'
+    },
+    {
+      title: 'Selected source',
+      body: 'Clash Nivo composes from one selected source at a time. Selecting a different source changes what Compose will build from next.'
+    }
+  ]}
+/>
 
 <Sheet open={addOpen} onClose={() => (addOpen = false)} title="Add subscription">
   <form class="space-y-4" onsubmit={(event) => { event.preventDefault(); handleAdd() }}>
