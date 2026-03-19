@@ -145,6 +145,7 @@ describe('ComposePage', () => {
     render(ComposePage)
 
     expect(screen.getByRole('heading', { name: 'Compose' })).toBeInTheDocument()
+    expect(screen.getByText(/compose follows one order/i)).toBeInTheDocument()
     expect(screen.getByText('alpha')).toBeInTheDocument()
     expect(screen.getAllByText('Custom Proxies').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Rule Providers').length).toBeGreaterThan(0)
@@ -203,5 +204,12 @@ describe('ComposePage', () => {
     await waitFor(() => {
       expect(restartMutate).toHaveBeenCalledOnce()
     })
+  })
+
+  it('explains activation semantics clearly', () => {
+    setupMocks()
+    render(ComposePage)
+
+    expect(screen.getByText(/activation makes the current validated generated config live/i)).toBeInTheDocument()
   })
 })

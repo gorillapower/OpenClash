@@ -17,6 +17,7 @@
   import LogsViewer from '$lib/components/LogsViewer.svelte'
   import SystemAdvancedSettings from '$lib/components/SystemAdvancedSettings.svelte'
   import PageIntro from '$lib/components/PageIntro.svelte'
+  import ContextNote from '$lib/components/ContextNote.svelte'
 
   const config = useUciConfig('clashnivo')
 
@@ -96,6 +97,12 @@
     eyebrow="Maintenance"
     title="System"
     description="Updates, schedules, logs, diagnostics, and dashboard access."
+  />
+
+  <ContextNote
+    id="system-runtime-model"
+    title="Runtime model"
+    body="System owns router-facing behavior such as updates, schedules, logs, dashboards, DNS capture, and traffic handling. Source YAML can define DNS and routing preferences, but the router still applies dnsmasq wiring, firewall interception, and Clash Nivo runtime controls on top."
   />
 
   <div class="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">

@@ -16,6 +16,7 @@
   import PageIntro from '$lib/components/PageIntro.svelte'
   import SectionHeader from '$lib/components/SectionHeader.svelte'
   import SummaryStatCard from '$lib/components/SummaryStatCard.svelte'
+  import ContextNote from '$lib/components/ContextNote.svelte'
   import ClashConfigTab from './settings/ClashConfigTab.svelte'
 
   const configs = useConfigs()
@@ -82,6 +83,12 @@
     eyebrow="Composition"
     title="Compose"
     description="Build the generated Clash Nivo runtime from the selected source, validate it, then make it live."
+  />
+
+  <ContextNote
+    id="compose-workflow"
+    title="Composition workflow"
+    body="Compose follows one order: selected source, Clash Nivo custom layers, preview, validation, then activation. Activation makes the current validated generated config live. Saving an editor form alone does not restart Clash Nivo."
   />
 
   <div class="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">

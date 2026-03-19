@@ -10,6 +10,7 @@
   import PageIntro from '$lib/components/PageIntro.svelte'
   import SectionHeader from '$lib/components/SectionHeader.svelte'
   import SummaryStatCard from '$lib/components/SummaryStatCard.svelte'
+  import ContextNote from '$lib/components/ContextNote.svelte'
   import {
     useSubscriptions,
     useSubscriptionAdd,
@@ -248,6 +249,12 @@
     eyebrow="Inventory"
     title="Sources"
     description="Manage subscription sources and uploaded YAML sources. Refresh source material, select the active source, and keep composition work separate from source inventory."
+  />
+
+  <ContextNote
+    id="sources-refresh-behavior"
+    title="Source refresh behavior"
+    body="Refreshing a source updates the stored source material only. It does not remove Clash Nivo custom layers, generated previews, or runtime ownership. That separation is intentional so source management stays predictable."
   />
 
   <div class="grid gap-4 md:grid-cols-3">

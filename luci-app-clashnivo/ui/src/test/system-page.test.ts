@@ -144,12 +144,14 @@ describe('SystemPage', () => {
     render(SystemPage)
 
     expect(screen.getByRole('heading', { name: 'System' })).toBeInTheDocument()
+    expect(screen.getByText(/system owns router-facing behavior such as updates, schedules, logs, dashboards, dns capture, and traffic handling/i)).toBeInTheDocument()
     expect(screen.getByText('Core runtime')).toBeInTheDocument()
     expect(screen.getByText('Package update')).toBeInTheDocument()
     expect(screen.getByText('Asset maintenance')).toBeInTheDocument()
     expect(screen.getByText('Dashboard access')).toBeInTheDocument()
     expect(screen.getAllByText('Advanced settings').length).toBeGreaterThan(0)
     expect(screen.getByText('Traffic mode')).toBeInTheDocument()
+    expect(screen.getByText(/dns on the router has layers/i)).toBeInTheDocument()
   })
 
   it('shows read-only core source policy context', () => {

@@ -310,6 +310,11 @@
 
     <div class="space-y-1">
       <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">DNS behavior</h3>
+      <p class="px-1 text-xs leading-5 text-muted-foreground">
+        DNS on the router has layers: clients usually talk to the router first, the router can forward
+        or redirect DNS into Clash Nivo, and the generated Clash config then decides how upstream DNS
+        is resolved. These controls affect router and runtime behavior, not just the source YAML.
+      </p>
       <div class="divide-y divide-border rounded-lg border border-border bg-card px-4">
         <SettingRow
           label="Redirect method"
