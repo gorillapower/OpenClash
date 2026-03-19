@@ -1,4 +1,4 @@
-name: Compile The New Version OpenClash
+name: Compile The New Version Clash Nivo
 
 on:
   push:
@@ -45,10 +45,17 @@ jobs:
           - { name: ipk, sdk_url: "https://mirrors.pku.edu.cn/openwrt/releases/22.03.0/targets/x86/64/openwrt-sdk-22.03.0-x86-64_gcc-11.2.0_musl.Linux-x86_64.tar.xz", sdk_tar: "SDK.tar.xz", sdk_backup_tar: "SDK.tar.bz2", sdk_dir: "SDK", artifact_pattern: "luci-app-clashnivo_*.ipk" }
           - { name: apk, sdk_url: "snapshot", sdk_tar: "SNAPSDK.tar.zst", sdk_backup_tar: "SNAPSDK.tar.zst", sdk_dir: "SNAPSDK", artifact_pattern: "luci-app-clashnivo-*.apk" }
     steps:
-      - name: Checkout OpenClash Source
+      - name: Checkout Clash Nivo Source
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: luci-app-clashnivo/ui/package-lock.json
 
       - name: Install Dependencies
         env:
@@ -56,6 +63,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get -y install curl git tar zstd python3 python3-pyelftools python3-setuptools
+
+      - name: Build Clash Nivo UI
+        run: |
+          cd luci-app-clashnivo/ui
+          npm ci
+          npm run build
 
       - name: Download SDK
         run: |
@@ -86,12 +99,7 @@ jobs:
             mv "$SDK_DIR" "${{ matrix.target.sdk_dir }}"
           fi
 
-      - name: Copy OpenClash Source Codes
-        run: |
-          mkdir -p tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo
-          cp -rf ./luci-app-clashnivo/. tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo/
-
-      - name: Copy OpenClash Source Codes
+      - name: Copy Clash Nivo Source Codes
         run: |
           mkdir -p tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo
           cp -rf ./luci-app-clashnivo/. tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo/
@@ -147,7 +155,7 @@ jobs:
           cd tmp/${{ matrix.target.sdk_dir }}/package/luci-app-clashnivo/tools/po2lmo
           make && sudo make install
 
-      - name: Compile OpenClash
+      - name: Compile Clash Nivo
         run: |
           cd tmp/${{ matrix.target.sdk_dir }}
           if [ -f ../${{ matrix.target.sdk_tar }} ]; then
@@ -158,7 +166,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: openclash-${{ matrix.target.name }}
+          name: clashnivo-${{ matrix.target.name }}
           path: tmp/${{ matrix.target.sdk_dir }}/bin/packages/x86_64/base/${{ matrix.target.artifact_pattern }}
 
   Post-Process:
@@ -173,13 +181,13 @@ jobs:
       - name: Download IPK Artifact
         uses: actions/download-artifact@v4
         with:
-          name: openclash-ipk
+          name: clashnivo-ipk
           path: ./
 
       - name: Download APK Artifact
         uses: actions/download-artifact@v4
         with:
-          name: openclash-apk
+          name: clashnivo-apk
           path: ./
 
       - name: Commit and Push New Version

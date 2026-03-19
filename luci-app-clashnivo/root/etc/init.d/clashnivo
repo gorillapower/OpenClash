@@ -106,7 +106,7 @@ del_cron()
    sed -i '/openclash_geoasn.sh/d' $CRON_FILE
    sed -i '/openclash_chnroute.sh/d' $CRON_FILE
    sed -i '/\/etc\/init.d\/clashnivo/d' $CRON_FILE
-   sed -i '/#openclash-overwrite-download/d' $CRON_FILE
+   sed -i '/#clashnivo-overwrite-download/d' $CRON_FILE
    /etc/init.d/cron restart
 } >/dev/null 2>&1
 
@@ -3260,7 +3260,7 @@ add_overwrite_cron()
    if [ "$restart_flag" = "1" ]; then
       cron_cmd="$cron_cmd && /etc/init.d/clashnivo restart"
    fi
-   cron_cmd="$cron_cmd #openclash-overwrite-download"
+   cron_cmd="$cron_cmd #clashnivo-overwrite-download"
 
    echo "0 $update_hour * * $update_days $cron_cmd" >> $CRON_FILE
 }
@@ -3402,9 +3402,9 @@ EOF
    allowed_keys_list=$(echo "$allowed_keys_types" | tr ' ' '\n' | cut -d: -f1)
    allowed_types_map=$(echo "$allowed_keys_types" | tr ' ' '\n')
 
-   uci -q add openclash overwrite >/dev/null 2>&1
+   uci -q add clashnivo overwrite >/dev/null 2>&1
 
-   overwrite_list=$(uci -q show openclash 2>/dev/null | grep "=config_overwrite" | awk -F'[.=]' '{print $2}' | while read -r sid; do
+   overwrite_list=$(uci -q show clashnivo 2>/dev/null | grep "=config_overwrite" | awk -F'[.=]' '{print $2}' | while read -r sid; do
       order=$(uci -q get clashnivo."$sid".order 2>/dev/null)
       [ -z "$order" ] && order=0
       name=$(uci -q get clashnivo."$sid".name 2>/dev/null)
@@ -3426,7 +3426,7 @@ EOF
       LOG_TIP "Processing Overwrite Module【$name】"
 
       echo "# --- overwrite source: ${name} (sid=${sid}) ---" >> "$overwrite_script"
-      echo "export OPENCLASH_OVERWRITE_SID='${sid}'" >> "$overwrite_script"
+      echo "export CLASHNIVO_OVERWRITE_SID='${sid}'" >> "$overwrite_script"
 
       param=$(uci -q get clashnivo."$sid".param 2>/dev/null || echo '')
       if [ -n "$param" ]; then
@@ -3525,7 +3525,7 @@ ${trimmed}"
                if [ "$restart" = "1" ] || [ "$restart" = "true" ]; then
                   cron_cmd="$cron_cmd && /etc/init.d/clashnivo restart"
                fi
-               cron_cmd="$cron_cmd #openclash-overwrite-download"
+               cron_cmd="$cron_cmd #clashnivo-overwrite-download"
                echo "$cron_cmd" >> $CRON_FILE
             fi
          fi
@@ -3564,7 +3564,7 @@ ${trimmed}"
                config_load "clashnivo"
                config_foreach sub_info_set "subscribe_info" "${cfg_name%.*}" "$url_key"
                if [ "$sub_info_setted" != "1" ]; then
-                  uci -q add openclash subscribe_info
+                  uci -q add clashnivo subscribe_info
                   uci -q set clashnivo.@subscribe_info[-1].name="${cfg_name%.*}"
                   uci -q add_list clashnivo.@subscribe_info[-1].url="$url_key"
                fi
@@ -3599,8 +3599,8 @@ ${trimmed}"
       done < "$file"
 
       cat >> "$overwrite_script" <<'EOF'
-if [ -f "/tmp/yaml_openclash_ruby_parts/$OPENCLASH_OVERWRITE_SID" ]; then
-   ruby_code=$(cat "/tmp/yaml_openclash_ruby_parts/$OPENCLASH_OVERWRITE_SID")
+if [ -f "/tmp/yaml_clashnivo_ruby_parts/$CLASHNIVO_OVERWRITE_SID" ]; then
+   ruby_code=$(cat "/tmp/yaml_clashnivo_ruby_parts/$CLASHNIVO_OVERWRITE_SID")
    ruby -ryaml -rYAML -I "/usr/share/clashnivo" -E UTF-8 -e "
       Value = YAML.load_file('$CONFIG_FILE');
       threads = []
@@ -3616,16 +3616,16 @@ EOF
       echo "" >> "$overwrite_script"
    done
 
-   if [ -n "$(uci -q show openclash.@overwrite[0] | grep -v '=overwrite$')" ]; then
-      eval "$(uci -q show openclash.@overwrite[0] | grep -v '=overwrite$' | sed 's/^openclash\.@overwrite\[0\]\.//g' | sed 's/=/="/;s/$/"/')"
+   if [ -n "$(uci -q show clashnivo.@overwrite[0] | grep -v '=overwrite$')" ]; then
+      eval "$(uci -q show clashnivo.@overwrite[0] | grep -v '=overwrite$' | sed 's/^clashnivo\.@overwrite\[0\]\.//g' | sed 's/=/="/;s/$/"/')"
       while IFS='=' read -r key value; do
          [ -z "$key" ] && continue
-         key_clean=$(echo "$key" | sed 's/^openclash\.[^.]*\.//')
+         key_clean=$(echo "$key" | sed 's/^clashnivo\.[^.]*\.//')
          value_clean=$(echo "$value" | sed "s/^'//;s/'$//")
          [ -z "$key_clean" ] && continue
          LOG_TIP "Load Overwrite Script【$key_clean => '$value_clean'】"
       done <<EOF
-$(uci -q show openclash.@overwrite[0] | grep -v '=overwrite$' | sed 's/^openclash\.@overwrite\[0\]\.//g')
+$(uci -q show clashnivo.@overwrite[0] | grep -v '=overwrite$' | sed 's/^clashnivo\.@overwrite\[0\]\.//g')
 EOF
    else
       clear_overwrite_set

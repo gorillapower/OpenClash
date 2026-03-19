@@ -249,16 +249,6 @@ end
 EOF
 fi
 
-#set uhttpd && HTTP_MAX_CONTENT for large file edit
-uci -q set uhttpd.main.max_requests=50
-uci -q set uhttpd.main.max_connections=100
-uci -q set uhttpd.main.script_timeout=3600
-uci -q commit uhttpd
-sed -i '/.*kB maximum content size*/c\HTTP_MAX_CONTENT = 1024*10240		-- 100 kB maximum content size' /usr/lib/lua/luci/http.lua >/dev/null 2>&1
-sed -i '/.*kB maximum content size*/c\export let HTTP_MAX_CONTENT = 1024*10240;		// 100 kB maximum content size' /usr/share/ucode/luci/http.uc >/dev/null 2>&1
-
-/etc/init.d/uhttpd restart >/dev/null 2>&1
-
 rm -f /tmp/luci-indexcache >/dev/null 2>&1
 rm -f /tmp/luci-indexcache.* >/dev/null 2>&1
 exit 0

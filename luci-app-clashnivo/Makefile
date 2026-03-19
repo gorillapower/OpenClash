@@ -99,12 +99,6 @@ endef
 
 define Package/$(PKG_NAME)/preinst
 #!/bin/sh
-	if [ -f "/etc/config/openclash" ] && [ ! -f "/tmp/openclash.bak" ]; then
-		cp -f "/etc/config/openclash" "/tmp/openclash.bak" >/dev/null 2>&1
-		cp -rf "/etc/clashnivo" "/tmp/openclash" >/dev/null 2>&1
-		cp -rf "/usr/share/clashnivo/ui" "/tmp/openclash_ui" >/dev/null 2>&1
-		cp -rf "/www/luci-static/resources/openclash/pac" "/tmp/pac" >/dev/null 2>&1
-	fi
 	exit 0
 endef
 
@@ -115,13 +109,7 @@ endef
 
 define Package/$(PKG_NAME)/prerm
 #!/bin/sh
-	[ -n "$(pidof clash)" ] && /etc/init.d/clashnivo stop 2>/dev/null
-	if [ -f "/etc/config/openclash" ] && [ ! -f "/tmp/openclash.bak" ]; then
-		cp -f "/etc/config/openclash" "/tmp/openclash.bak" >/dev/null 2>&1
-		cp -rf "/etc/clashnivo" "/tmp/openclash" >/dev/null 2>&1
-		cp -rf "/usr/share/clashnivo/ui" "/tmp/openclash_ui" >/dev/null 2>&1
-		cp -rf "/www/luci-static/resources/openclash/pac" "/tmp/pac" >/dev/null 2>&1
-	fi
+	[ -x "/etc/init.d/clashnivo" ] && /etc/init.d/clashnivo stop 2>/dev/null
 	exit 0
 endef
 
@@ -134,27 +122,19 @@ define Package/$(PKG_NAME)/postrm
 	   DNSMASQ_CONF_DIR="/tmp/dnsmasq.d"
 	fi
 	DNSMASQ_CONF_DIR=$${DNSMASQ_CONF_DIR%*/}
+	rm -rf /etc/config/clashnivo >/dev/null 2>&1
 	rm -rf /etc/clashnivo >/dev/null 2>&1
-	rm -rf /etc/config/openclash >/dev/null 2>&1
-	rm -rf /tmp/openclash.log >/dev/null 2>&1
-	rm -rf /tmp/openclash_start.log >/dev/null 2>&1
-	rm -rf /tmp/openclash_last_version >/dev/null 2>&1
-	rm -rf /tmp/openclash.change >/dev/null 2>&1
-	rm -rf /tmp/clash_last_version >/dev/null 2>&1
 	rm -rf /usr/share/clashnivo >/dev/null 2>&1
+	rm -rf /var/etc/clashnivo.include >/dev/null 2>&1
+	rm -rf /tmp/clashnivo* >/dev/null 2>&1
 	rm -rf ${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_custom_domain.conf >/dev/null 2>&1
-	rm -rf ${DNSMASQ_CONF_DIR}/dnsmasq_openclash_chnroute_pass.conf >/dev/null 2>&1
-	rm -rf ${DNSMASQ_CONF_DIR}/dnsmasq_openclash_chnroute6_pass.conf >/dev/null 2>&1
+	rm -rf ${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_chnroute_pass.conf >/dev/null 2>&1
+	rm -rf ${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_chnroute6_pass.conf >/dev/null 2>&1
 	rm -rf /tmp/etc/clashnivo >/dev/null 2>&1
-	rm -rf /tmp/openclash_announcement >/dev/null 2>&1
-	rm -rf /www/luci-static/resources/openclash >/dev/null 2>&1
-	sed -i '/OpenClash Append/,/OpenClash Append End/d' "/usr/lib/lua/luci/model/network.lua" >/dev/null 2>&1
-	sed -i '/.*kB maximum content size*/c\HTTP_MAX_CONTENT      = 1024*100		-- 100 kB maximum content size' /usr/lib/lua/luci/http.lua >/dev/null 2>&1
-	sed -i '/.*kB maximum content size*/c\export let HTTP_MAX_CONTENT = 1024*100;		// 100 kB maximum content size' /usr/share/ucode/luci/http.uc >/dev/null 2>&1
-	uci -q delete firewall.openclash
+	uci -q delete firewall.clashnivo
 	uci -q commit firewall
 	[ -f "/etc/config/ucitrack" ] && {
-	uci -q delete ucitrack.@openclash[-1]
+	uci -q delete ucitrack.@clashnivo[-1]
 	uci -q commit ucitrack
 	}
 	rm -rf /tmp/luci-*
