@@ -3,15 +3,15 @@
 . /usr/share/clashnivo/core_source.sh
 
 clashnivo_service_update_init() {
-   CLASHNIVO_UPDATE_PACKAGE_SCRIPT="/usr/share/clashnivo/openclash_update.sh"
-   CLASHNIVO_UPDATE_PACKAGE_VERSION_SCRIPT="/usr/share/clashnivo/openclash_version.sh"
-   CLASHNIVO_UPDATE_CORE_SCRIPT="/usr/share/clashnivo/openclash_core.sh"
+   CLASHNIVO_UPDATE_PACKAGE_SCRIPT="/usr/share/clashnivo/clashnivo_update.sh"
+   CLASHNIVO_UPDATE_PACKAGE_VERSION_SCRIPT="/usr/share/clashnivo/clashnivo_version.sh"
+   CLASHNIVO_UPDATE_CORE_SCRIPT="/usr/share/clashnivo/clashnivo_core.sh"
    CLASHNIVO_UPDATE_CORE_VERSION_SCRIPT="/usr/share/clashnivo/clash_version.sh"
-   CLASHNIVO_UPDATE_IPDB_SCRIPT="/usr/share/clashnivo/openclash_ipdb.sh"
-   CLASHNIVO_UPDATE_GEOIP_SCRIPT="/usr/share/clashnivo/openclash_geoip.sh"
-   CLASHNIVO_UPDATE_GEOSITE_SCRIPT="/usr/share/clashnivo/openclash_geosite.sh"
-   CLASHNIVO_UPDATE_GEOASN_SCRIPT="/usr/share/clashnivo/openclash_geoasn.sh"
-   CLASHNIVO_UPDATE_CHNROUTE_SCRIPT="/usr/share/clashnivo/openclash_chnroute.sh"
+   CLASHNIVO_UPDATE_IPDB_SCRIPT="/usr/share/clashnivo/clashnivo_ipdb.sh"
+   CLASHNIVO_UPDATE_GEOIP_SCRIPT="/usr/share/clashnivo/clashnivo_geoip.sh"
+   CLASHNIVO_UPDATE_GEOSITE_SCRIPT="/usr/share/clashnivo/clashnivo_geosite.sh"
+   CLASHNIVO_UPDATE_GEOASN_SCRIPT="/usr/share/clashnivo/clashnivo_geoasn.sh"
+   CLASHNIVO_UPDATE_CHNROUTE_SCRIPT="/usr/share/clashnivo/clashnivo_chnroute.sh"
 }
 
 clashnivo_service_core_source_mode() {

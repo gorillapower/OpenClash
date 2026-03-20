@@ -34,16 +34,27 @@ clashnivo_service_composition_apply_overwrite() {
    if [ -f "/tmp/yaml_overwrite.sh" ]; then
       chmod +x /tmp/yaml_overwrite.sh
       CONFIG_FILE="${TMP_CONFIG_FILE}" /tmp/yaml_overwrite.sh
-      rm -rf /tmp/yaml_openclash_ruby_parts
+      rm -rf /tmp/yaml_clashnivo_ruby_parts /tmp/yaml_openclash_ruby_parts
    fi
 
-   if [ -f "/etc/clashnivo/custom/openclash_custom_overwrite.sh" ]; then
-      chmod +x /etc/clashnivo/custom/openclash_custom_overwrite.sh
-      /etc/clashnivo/custom/openclash_custom_overwrite.sh "$TMP_CONFIG_FILE"
-      if [ -f "/tmp/yaml_openclash_ruby_parse" ]; then
-         sed -n "s/.*yaml_file_path=['\"]\([^'\"]*\)['\"].*/\1/p" /tmp/yaml_openclash_ruby_parse | sort | uniq | while read -r yaml_file; do
+   if [ -f "/etc/clashnivo/custom/clashnivo_custom_overwrite.sh" ] || [ -f "/etc/clashnivo/custom/openclash_custom_overwrite.sh" ]; then
+      overwrite_script="/etc/clashnivo/custom/clashnivo_custom_overwrite.sh"
+      [ -f "$overwrite_script" ] || overwrite_script="/etc/clashnivo/custom/openclash_custom_overwrite.sh"
+      chmod +x "$overwrite_script"
+      "$overwrite_script" "$TMP_CONFIG_FILE"
+
+      if [ -f "/tmp/yaml_clashnivo_ruby_parse" ]; then
+         ruby_parse_file="/tmp/yaml_clashnivo_ruby_parse"
+      elif [ -f "/tmp/yaml_openclash_ruby_parse" ]; then
+         ruby_parse_file="/tmp/yaml_openclash_ruby_parse"
+      else
+         ruby_parse_file=""
+      fi
+
+      if [ -n "$ruby_parse_file" ]; then
+         sed -n "s/.*yaml_file_path=['\"]\([^'\"]*\)['\"].*/\1/p" "$ruby_parse_file" | sort | uniq | while read -r yaml_file; do
             [ -z "$yaml_file" ] && continue
-            ruby_code=$(grep "yaml_file_path=['\"]$yaml_file['\"]" /tmp/yaml_openclash_ruby_parse | sed "s/^threads << Thread.new do //;s/ end$//")
+            ruby_code=$(grep "yaml_file_path=['\"]$yaml_file['\"]" "$ruby_parse_file" | sed "s/^threads << Thread.new do //;s/ end$//")
             [ -z "$ruby_code" ] && continue
             if [ -f "$yaml_file" ]; then
                (

@@ -11,22 +11,22 @@ clashnivo_service_stop_watchdog_instances() {
 clashnivo_service_start_watchdog() {
    clashnivo_service_stop_watchdog_instances
    procd_open_instance "${CLASHNIVO_WATCHDOG_SERVICE_NAME}"
-   procd_set_param command "/usr/share/clashnivo/openclash_watchdog.sh"
+   procd_set_param command "/usr/share/clashnivo/clashnivo_watchdog.sh"
    procd_close_instance
 }
 
 clashnivo_service_run_start() {
    enable=$(uci_get_config "enable")
-   [ "$enable" != "1" ] && LOG_WARN "OpenClash Now Disabled, Need Start From Luci Page, Exit..." && SLOG_CLEAN && exit 0
+   [ "$enable" != "1" ] && LOG_WARN "Clash Nivo is disabled. Start it from the LuCI page to continue." && SLOG_CLEAN && exit 0
 
    if clashnivo_service_running; then
-      LOG_TIP "OpenClash Already Running, Exit..."
+      LOG_TIP "Clash Nivo is already running. Exiting."
       exit 0
    fi
 
    clashnivo_service_require_guard_clear "start" || exit $?
 
-   LOG_TIP "OpenClash Start Running..."
+   LOG_TIP "Clash Nivo start requested."
 
    {
       LOG_OUT "Step 1: Get The Configuration..."
@@ -64,22 +64,22 @@ clashnivo_service_run_start() {
       rm -rf /tmp/yaml_*
    }
 
-   echo "OpenClash Already Start!"
+   echo "Clash Nivo already started!"
 }
 
 clashnivo_service_run_stop() {
    enable=$(uci_get_config "enable")
 
-   LOG_TIP "OpenClash Stoping..."
+   LOG_TIP "Clash Nivo stopping..."
    LOG_OUT "Step 1: Backup The Current Groups State..."
 
    {
-      /usr/share/clashnivo/openclash_history_get.sh
+      /usr/share/clashnivo/clashnivo_history_get.sh
 
-      LOG_OUT "Step 2: Delete OpenClash Firewall Rules..."
+      LOG_OUT "Step 2: Delete Clash Nivo firewall rules..."
       clashnivo_service_network_cleanup_runtime
 
-      LOG_OUT "Step 3: Close The OpenClash Services..."
+      LOG_OUT "Step 3: Stop Clash Nivo services..."
       for process in "openclash_streaming_unlock.lua"; do
          pids=$(unify_ps_pids "$process")
          if [ -n "$pids" ]; then
@@ -95,8 +95,8 @@ clashnivo_service_run_stop() {
       LOG_OUT "Step 4: Restart Dnsmasq..."
       clashnivo_service_network_restore_dns_runtime
 
-      LOG_OUT "Step 5: Delete OpenClash Residue File..."
-      LOG_TIP "OpenClash Already Stop!"
+      LOG_OUT "Step 5: Delete Clash Nivo runtime residue..."
+      LOG_TIP "Clash Nivo already stopped!"
 
       if [ "$enable" != "1" ]; then
          clashnivo_service_clear_disabled_runtime_state
@@ -109,12 +109,12 @@ clashnivo_service_run_stop() {
       rm -rf /tmp/yaml_*
    } >/dev/null 2>&1
 
-   echo "OpenClash Already Stop!"
+   echo "Clash Nivo already stopped!"
 }
 
 clashnivo_service_run_restart() {
-   echo "OpenClash Restart..."
-   LOG_TIP "OpenClash Restart..."
+   echo "Clash Nivo restart requested."
+   LOG_TIP "Clash Nivo restart requested."
    check_run_quick
    clashnivo_service_run_stop
    clashnivo_service_run_start
@@ -132,7 +132,7 @@ clashnivo_service_run_reload() {
       #sleep for avoiding system unready
       sleep 5
       NOW_TS=$(date +%s)
-      LAST_LINE=$(grep "Reload OpenClash Firewall Rules...$" "$LOG_FILE" | tail -n 1)
+      LAST_LINE=$(grep "Reload Clash Nivo firewall rules...$" "$LOG_FILE" | tail -n 1)
       LAST_TIME=$(echo "$LAST_LINE" | awk '{print $1" "$2}')
       LAST_TS=$(date -d "$LAST_TIME" +%s 2>/dev/null)
       CUR_RELOAD_NUM=$(echo "$LAST_LINE" | grep -oE '【[0-9]+/' | grep -oE '[0-9]+')
@@ -142,15 +142,15 @@ clashnivo_service_run_reload() {
       [ -z "$CUR_RELOAD_NUM" ] && CUR_RELOAD_NUM=0
       CUR_RELOAD_NUM=$((CUR_RELOAD_NUM+1))
       [ "$CUR_RELOAD_NUM" -gt "$MAX_RELOAD" ] && CUR_RELOAD_NUM=$MAX_RELOAD
-      RELOAD_COUNT=$(grep "Reload OpenClash Firewall Rules...$" "$LOG_FILE" | awk '{print $1" "$2}' | while read t; do
+      RELOAD_COUNT=$(grep "Reload Clash Nivo firewall rules...$" "$LOG_FILE" | awk '{print $1" "$2}' | while read t; do
          TS=$(date -d "$t" +%s 2>/dev/null)
          [ -n "$TS" ] && [ $((NOW_TS - TS)) -le 300 ] && echo 1
       done | wc -l)
       if [ "$RELOAD_COUNT" -ge "$MAX_RELOAD" ]; then
-         LOG_OUT "【${CUR_RELOAD_NUM}/$MAX_RELOAD】Skip Reload OpenClash Firewall Rules Until 5 Minutes Later..."
+         LOG_OUT "【${CUR_RELOAD_NUM}/$MAX_RELOAD】Skip reloading Clash Nivo firewall rules until 5 minutes later..."
          exit 0
       fi
-      LOG_OUT "【${CUR_RELOAD_NUM}/$MAX_RELOAD】Reload OpenClash Firewall Rules..."
+      LOG_OUT "【${CUR_RELOAD_NUM}/$MAX_RELOAD】Reload Clash Nivo firewall rules..."
       clashnivo_service_network_cleanup_firewall_only
       do_run_mode
       get_config
@@ -179,7 +179,7 @@ clashnivo_service_run_boot() {
 	delay_start=$(uci_get_config "delay_start" || echo 0)
 	enable=$(uci_get_config "enable")
 	if [ "$delay_start" -gt 0 ] && [ "$enable" == "1" ]; then
-		LOG_OUT "Enable Delay Start, OpenClash Will Start After【$delay_start】Seconds..."
+		LOG_OUT "Delay start enabled. Clash Nivo will start after【$delay_start】seconds."
 		sleep "$delay_start"
 	fi
 	clashnivo_service_run_restart
