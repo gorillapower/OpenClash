@@ -48,7 +48,7 @@ classify_path() {
   return 1
 }
 
-echo "OpenClash legacy reference classification"
+echo "Legacy OpenClash reference classification"
 echo "Repo: $REPO_ROOT"
 echo "Classification file: $CLASSIFICATION_FILE"
 echo
@@ -59,7 +59,7 @@ matches="$(cd "$REPO_ROOT" && rg -n "openclash|OpenClash" . \
   -g '!.git' || true)"
 
 if [[ -z "$matches" ]]; then
-  echo "PASS: no OpenClash legacy references found"
+  echo "PASS: no legacy OpenClash references found"
   exit 0
 fi
 
@@ -103,7 +103,7 @@ done
 
 echo
 if [[ "$unknown_count" -gt 0 ]]; then
-  echo "FAIL: found $unknown_count unclassified OpenClash reference(s)"
+  echo "FAIL: found $unknown_count unclassified legacy OpenClash reference(s)"
   echo
   cat "$unknown_file"
   echo
@@ -111,6 +111,6 @@ if [[ "$unknown_count" -gt 0 ]]; then
   exit 1
 fi
 
-echo "PASS: all OpenClash references are classified"
+echo "PASS: all legacy OpenClash references are classified"
 echo "Note: this validator does not claim the remaining references are acceptable."
 echo "It proves they are accounted for by the audit and classification file."

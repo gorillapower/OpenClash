@@ -1,4 +1,4 @@
-name: Validate Legacy OpenClash References
+name: Validate Legacy Reference Classification
 
 on:
   push:
@@ -22,5 +22,5 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Validate OpenClash Legacy Reference Classification
+      - name: Validate Legacy OpenClash Reference Classification
         run: bash luci-app-clashnivo/tools/validate-openclash-legacy.sh

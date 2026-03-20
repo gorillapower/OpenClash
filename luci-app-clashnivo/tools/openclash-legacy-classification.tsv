@@ -1,7 +1,7 @@
 # category<TAB>path regex<TAB>reason
 docs_migration_reference	^docs/	Documentation, migration notes, historical references, and accepted coexistence policy.
 docs_migration_reference	^README\.md$	Top-level project documentation may still refer to the upstream repo name.
-packaging_install_risk	^\.github/workflows/	Build and release automation still contains legacy OpenClash naming and package-branch references.
+packaging_install_risk	^\.github/workflows/	Build and release automation may still contain legacy OpenClash labels, upstream repo coordinates, or package-branch metadata references.
 docs_migration_reference	^\.github/ISSUE_TEMPLATE/	Issue templates still target the existing upstream-facing repository workflows.
 docs_migration_reference	^\.github/copilot-instructions\.md$	Repository guidance still documents upstream context.
 tooling_reference	^luci-app-clashnivo/tools/	Validation and helper tooling may intentionally mention legacy names while cleanup is ongoing.
