@@ -91,7 +91,7 @@ yml_other_rules_dl()
             puts false
          end
          ")" && [ -f "/usr/share/clashnivo/res/${rule_name}.yaml" ]; then
-         LOG_OUT "Error: Updated Others Rules【$rule_name】Has Incompatible Proxy-Group, Update Exit, Please Wait For OpenClash Update To Adapt..."
+         LOG_OUT "Error: Updated Others Rules【$rule_name】Has Incompatible Proxy-Group. Update aborted. Wait for Clash Nivo rule support to adapt, then try again."
          rm -rf /tmp/rules.yaml >/dev/null 2>&1
          SLOG_CLEAN
          del_lock

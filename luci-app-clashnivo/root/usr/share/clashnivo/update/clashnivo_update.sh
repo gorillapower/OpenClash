@@ -84,7 +84,7 @@ else
 fi
 
 if [ -n "$OP_CV" ] && [ -n "$OP_LV" ] && version_compare "$OP_CV" "$OP_LV" && [ -f "$LAST_OPVER" ]; then
-   LOG_TIP "Start downloading【OpenClash - v$LAST_VER】..."
+   LOG_TIP "Start downloading【Clash Nivo - v$LAST_VER】..."
    if [ "$github_address_mod" != "0" ]; then
       if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
          if [ -x "/bin/opkg" ]; then
@@ -123,13 +123,13 @@ if [ -n "$OP_CV" ] && [ -n "$OP_LV" ] && version_compare "$OP_CV" "$OP_LV" && [ 
          DOWNLOAD_RESULT=0
       else
          rm -rf "$DOWNLOAD_PATH" >/dev/null 2>&1
-         LOG_TIP "【$retry_count/$max_retries】【OpenClash - v$LAST_VER】Downloading..."
+         LOG_TIP "【$retry_count/$max_retries】【Clash Nivo - v$LAST_VER】Downloading..."
          SHOW_DOWNLOAD_PROGRESS=1 DOWNLOAD_FILE_CURL "$DOWNLOAD_URL" "$DOWNLOAD_PATH" "$DOWNLOAD_PATH"
          DOWNLOAD_RESULT=$?
       fi
 
       if [ "$DOWNLOAD_RESULT" -ne 1 ]; then
-         LOG_TIP "【$retry_count/$max_retries】【OpenClash - v$LAST_VER】Download successful, start pre update test..."
+         LOG_TIP "【$retry_count/$max_retries】【Clash Nivo - v$LAST_VER】Download successful, start pre update test..."
 
          pre_test_success=false
          pkg_update_success=true
@@ -162,18 +162,18 @@ if [ -n "$OP_CV" ] && [ -n "$OP_LV" ] && version_compare "$OP_CV" "$OP_LV" && [ 
          fi
 
          if [ "$pre_test_success" = "true" ]; then
-            LOG_TIP "【$retry_count/$max_retries】【OpenClash - v$LAST_VER】Pre update test passed, ready to update and please do not refresh the page and other operations..."
+            LOG_TIP "【$retry_count/$max_retries】【Clash Nivo - v$LAST_VER】Pre update test passed, ready to update and please do not refresh the page and other operations..."
             break
          else
             if [ "$retry_count" -lt "$max_retries" ]; then
-               LOG_ERROR "【$retry_count/$max_retries】【OpenClash - v$LAST_VER】Pre update test failed..."
+               LOG_ERROR "【$retry_count/$max_retries】【Clash Nivo - v$LAST_VER】Pre update test failed..."
                sleep 2
                continue
             else
                if [ -x "/bin/opkg" ]; then
-                  LOG_ERROR "【OpenClash - v$LAST_VER】Pre update test failed after 3 attempts, the file is saved in /tmp/clashnivo.ipk, please try to update manually with【opkg install /tmp/clashnivo.ipk】"
+                  LOG_ERROR "【Clash Nivo - v$LAST_VER】Pre update test failed after 3 attempts, the file is saved in /tmp/clashnivo.ipk, please try to update manually with【opkg install /tmp/clashnivo.ipk】"
                elif [ -x "/usr/bin/apk" ]; then
-                  LOG_ERROR "【OpenClash - v$LAST_VER】Pre update test failed after 3 attempts, the file is saved in /tmp/clashnivo.apk, please try to update manually with【apk add -q --force-overwrite --clean-protected --allow-untrusted /tmp/clashnivo.apk】"
+                  LOG_ERROR "【Clash Nivo - v$LAST_VER】Pre update test failed after 3 attempts, the file is saved in /tmp/clashnivo.apk, please try to update manually with【apk add -q --force-overwrite --clean-protected --allow-untrusted /tmp/clashnivo.apk】"
                fi
 
                SLOG_CLEAN
@@ -184,11 +184,11 @@ if [ -n "$OP_CV" ] && [ -n "$OP_LV" ] && version_compare "$OP_CV" "$OP_LV" && [ 
          fi
       else
          if [ "$retry_count" -lt "$max_retries" ]; then
-            LOG_ERROR "【$retry_count/$max_retries】【OpenClash - v$LAST_VER】Download failed..."
+            LOG_ERROR "【$retry_count/$max_retries】【Clash Nivo - v$LAST_VER】Download failed..."
             sleep 2
             continue
          else
-            LOG_ERROR "【OpenClash - v$LAST_VER】Download Failed after 3 attempts, please check the network or try again later!"
+            LOG_ERROR "【Clash Nivo - v$LAST_VER】Download Failed after 3 attempts, please check the network or try again later!"
             rm -rf /tmp/clashnivo.ipk >/dev/null 2>&1
             rm -rf /tmp/clashnivo.apk >/dev/null 2>&1
             SLOG_CLEAN
@@ -353,9 +353,9 @@ if [ "$install_success" = true ]; then
    fi
 else
    if [ -x "/bin/opkg" ]; then
-      LOG_ERROR "OpenClash update failed after 3 attempts, the file is saved in /tmp/clashnivo.ipk, please try to update manually with【opkg install /tmp/clashnivo.ipk】"
+      LOG_ERROR "Clash Nivo update failed after 3 attempts, the file is saved in /tmp/clashnivo.ipk, please try to update manually with【opkg install /tmp/clashnivo.ipk】"
    elif [ -x "/usr/bin/apk" ]; then
-      LOG_ERROR "OpenClash update failed after 3 attempts, the file is saved in /tmp/clashnivo.apk, please try to update manually with【apk add -q --force-overwrite --clean-protected --allow-untrusted /tmp/clashnivo.apk】"
+      LOG_ERROR "Clash Nivo update failed after 3 attempts, the file is saved in /tmp/clashnivo.apk, please try to update manually with【apk add -q --force-overwrite --clean-protected --allow-untrusted /tmp/clashnivo.apk】"
    fi
    SLOG_CLEAN
 fi
@@ -403,7 +403,7 @@ else
    if [ ! -f "$LAST_OPVER" ] || [ -z "$OP_CV" ] || [ -z "$OP_LV" ]; then
       LOG_ERROR "Failed to get version information, please try again later..."
    else
-      LOG_TIP "OpenClash has not been updated, stop continuing!"
+      LOG_TIP "Clash Nivo is already up to date, stop continuing!"
    fi
    SLOG_CLEAN
    dec_job_counter_and_restart "$restart"

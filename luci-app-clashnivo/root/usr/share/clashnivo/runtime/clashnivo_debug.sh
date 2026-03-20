@@ -103,7 +103,7 @@ dns_re()
    fi
 }
 
-echo "OpenClash 调试日志" > "$DEBUG_LOG"
+echo "Clash Nivo 调试日志" > "$DEBUG_LOG"
 cat >> "$DEBUG_LOG" <<-EOF
 
 生成时间: $LOGTIME
