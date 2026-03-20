@@ -160,6 +160,11 @@ Outputs:
 - integration coverage
 - real-router validation
 - release and migration docs
+- legacy OpenClash reference audit and cleanup
+
+Current hardening follow-ups:
+- `#90` Clash Nivo Core Publishing Workflow And Branch Contract
+- `#101` Full OpenClash Legacy Reference Audit And Cleanup
 
 ## Epic Completion Rule
 
