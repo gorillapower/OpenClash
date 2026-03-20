@@ -181,7 +181,7 @@ do
 done >/dev/null 2>&1
 
 #check the clash service status
-if ! ubus call service list '{"name":"openclash"}' 2>/dev/null | jsonfilter -e '@.openclash.instances.*.running' | grep -q 'true'; then
+if ! ubus call service list '{"name":"clashnivo"}' 2>/dev/null | jsonfilter -e '@.clashnivo.instances.*.running' | grep -q 'true'; then
    /etc/init.d/clashnivo stop >/dev/null 2>&1
    exit 0
 fi
@@ -201,13 +201,13 @@ fi
       if [ -z "$FW4" ]; then
          nat_last_line=$(iptables -t nat -nL PREROUTING --line-number 2>/dev/null | awk 'END {print $1}')
          man_last_line=$(iptables -t mangle -nL PREROUTING --line-number 2>/dev/null | awk 'END {print $1}')
-         nat_op_line=$(iptables -t nat -nL PREROUTING --line-number 2>/dev/null | grep -E "openclash|OpenClash" | grep -Ev "DNS|dns" | awk '{print $1}' | tail -1)
-         man_op_line=$(iptables -t mangle -nL PREROUTING --line-number 2>/dev/null | grep -E "openclash|OpenClash" | grep -Ev "DNS|dns" | awk '{print $1}' | tail -1)
+         nat_op_line=$(iptables -t nat -nL PREROUTING --line-number 2>/dev/null | grep -E "clashnivo|Clash Nivo" | grep -Ev "DNS|dns" | awk '{print $1}' | tail -1)
+         man_op_line=$(iptables -t mangle -nL PREROUTING --line-number 2>/dev/null | grep -E "clashnivo|Clash Nivo" | grep -Ev "DNS|dns" | awk '{print $1}' | tail -1)
       else
          nat_last_line=$(nft -a list chain inet fw4 dstnat 2>/dev/null | grep "# handle" | awk -F '# handle ' '{print $2}' | tail -1)
          man_last_line=$(nft -a list chain inet fw4 mangle_prerouting 2>/dev/null | grep "# handle" | awk -F '# handle ' '{print $2}' | tail -1)
-         nat_op_line=$(nft -a list chain inet fw4 dstnat 2>/dev/null | grep -E "openclash|OpenClash" | grep -Ev "DNS|dns" | grep "# handle" | awk -F '# handle ' '{print $2}' | tail -1)
-         man_op_line=$(nft -a list chain inet fw4 mangle_prerouting 2>/dev/null | grep -E "openclash|OpenClash" | grep -Ev "DNS|dns" | grep "# handle" | awk -F '# handle ' '{print $2}' | tail -1)
+         nat_op_line=$(nft -a list chain inet fw4 dstnat 2>/dev/null | grep -E "clashnivo|Clash Nivo" | grep -Ev "DNS|dns" | grep "# handle" | awk -F '# handle ' '{print $2}' | tail -1)
+         man_op_line=$(nft -a list chain inet fw4 mangle_prerouting 2>/dev/null | grep -E "clashnivo|Clash Nivo" | grep -Ev "DNS|dns" | grep "# handle" | awk -F '# handle ' '{print $2}' | tail -1)
       fi
 
       if ([ "$nat_last_line" != "$nat_op_line" ] && [ -n "$nat_op_line" ]) || ([ "$man_last_line" != "$man_op_line" ] && [ -n "$man_op_line" ]); then
