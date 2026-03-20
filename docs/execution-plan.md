@@ -166,6 +166,11 @@ Current hardening follow-ups:
 - `#90` Clash Nivo Core Publishing Workflow And Branch Contract
 - `#101` Full OpenClash Legacy Reference Audit And Cleanup
 
+Hardening execution rule:
+- assume fresh Clash Nivo install unless a ticket explicitly states otherwise
+- do not preserve legacy compatibility scaffolding by default
+- any compatibility exception must be justified explicitly in the ticket scope
+
 ## Epic Completion Rule
 
 An epic is only complete when:

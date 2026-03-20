@@ -101,12 +101,12 @@ yml_dns_custom()
 sys_dns_append()
 {
    if [ "$1" = 1 ]; then
-      wan_dns=$(/usr/share/clashnivo/openclash_get_network.lua "dns")
-      wan6_dns=$(/usr/share/clashnivo/openclash_get_network.lua "dns6")
-      wan_gate=$(/usr/share/clashnivo/openclash_get_network.lua "gateway")
-      wan6_gate=$(/usr/share/clashnivo/openclash_get_network.lua "gateway6")
-      dhcp_iface=$(/usr/share/clashnivo/openclash_get_network.lua "dhcp")
-      pppoe_iface=$(/usr/share/clashnivo/openclash_get_network.lua "pppoe")
+      wan_dns=$(/usr/share/clashnivo/clashnivo_get_network.lua "dns")
+      wan6_dns=$(/usr/share/clashnivo/clashnivo_get_network.lua "dns6")
+      wan_gate=$(/usr/share/clashnivo/clashnivo_get_network.lua "gateway")
+      wan6_gate=$(/usr/share/clashnivo/clashnivo_get_network.lua "gateway6")
+      dhcp_iface=$(/usr/share/clashnivo/clashnivo_get_network.lua "dhcp")
+      pppoe_iface=$(/usr/share/clashnivo/clashnivo_get_network.lua "pppoe")
       if [ -z "$dhcp_iface" ] && [ -z "$pppoe_iface" ]; then
          if [ -n "$wan_dns" ]; then
             for i in $wan_dns; do

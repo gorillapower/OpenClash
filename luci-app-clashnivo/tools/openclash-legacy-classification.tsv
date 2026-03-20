@@ -18,7 +18,7 @@ runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/lib/	Inherited 
 runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/import/	Import area may intentionally reference OpenClash as a migration source.
 runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/openclash[^/]*$	Top-level compatibility wrapper scripts and entrypoints.
 runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/clashnivo_(watchdog|history_get|update|version|core|ipdb|geoip|geosite|geoasn|chnroute|custom_domain_dns)\.sh$	Neutral wrapper entrypoints still bridge into inherited openclash_* helper implementations during staged cleanup.
-runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/clashnivo_get_network\.lua$	Neutral wrapper entrypoint still bridges into the inherited openclash_get_network.lua helper until the network.lua patch dependency is removed.
+runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/clashnivo_get_network\.lua$	Neutral wrapper entrypoint remains while the helper-tree cleanup is staged, but it now points at Clash Nivo-owned network discovery logic.
 runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/(yml_|cfg_|clash_version\.sh|core_source\.sh|ruby\.sh|log\.sh|uci\.sh)	Shared helper entrypoints in the inherited helper tree.
 docs_migration_reference	^luci-app-clashnivo/root/usr/share/clashnivo/res/	Resource lists may intentionally point at upstream or OpenClash-compatible ecosystems during transition.
 runtime_naming_debt	^luci-app-clashnivo/ui/src/lib/	Frontend code may still point at inherited Clash Nivo custom-file names during transition.

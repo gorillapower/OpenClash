@@ -226,10 +226,10 @@ fi
    fi
 
 ## Localnetwork 刷新
-   wan_ip4s=$(/usr/share/clashnivo/openclash_get_network.lua "wanip" 2>/dev/null)
+   wan_ip4s=$(/usr/share/clashnivo/clashnivo_get_network.lua "wanip" 2>/dev/null)
    wan_ip6s=$(ifconfig | grep 'inet6 addr' | awk '{print $3}' 2>/dev/null)
-   lan_ip4s=$(/usr/share/clashnivo/openclash_get_network.lua "lan_cidr" 2>/dev/null)
-   lan_ip6s=$(/usr/share/clashnivo/openclash_get_network.lua "lan_cidr6" 2>/dev/null)
+   lan_ip4s=$(/usr/share/clashnivo/clashnivo_get_network.lua "lan_cidr" 2>/dev/null)
+   lan_ip6s=$(/usr/share/clashnivo/clashnivo_get_network.lua "lan_cidr6" 2>/dev/null)
    if [ -n "$FW4" ]; then
       if [ -n "$wan_ip4s" ]; then
          for wan_ip4 in $wan_ip4s; do

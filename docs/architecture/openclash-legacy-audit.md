@@ -291,12 +291,24 @@ Priority work:
 ### Batch 3: Helper And Wrapper Rename Plan
 
 Target:
-- reduce Category C wrapper and helper debt without breaking compatibility
+- reduce Category C wrapper and helper debt under a fresh-install-only rule
 
 Priority work:
 - introduce `clashnivo_*` helper entrypoints
 - migrate service modules to the new names
-- leave thin compatibility wrappers only where required during transition
+- delete inherited compatibility wrappers instead of preserving them by default
+
+## Hardening Execution Rule
+
+Hardening work under epic `#102` assumes a fresh Clash Nivo install.
+
+That means:
+
+- do not preserve upgrade cleanup logic or compatibility wrappers by default
+- do not keep inherited OpenClash entrypoints "just in case"
+- do not add transitional install-time cleanup unless a specific ticket explicitly requires it
+
+If any cleanup batch needs compatibility behavior, that exception must be justified explicitly in the issue body and acceptance criteria.
 
 ### Batch 4: Log And Comment Cleanup
 
