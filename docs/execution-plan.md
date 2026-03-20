@@ -165,6 +165,10 @@ Outputs:
 Current hardening follow-ups:
 - `#90` Clash Nivo Core Publishing Workflow And Branch Contract
 - `#101` Full OpenClash Legacy Reference Audit And Cleanup
+- `#104` Ruby Composition Dependency Review
+
+Current hardening/runtime decision:
+- Ruby remains the explicit v1 YAML mutation engine for composition, overwrite, preview, refresh, and related inspection paths until a dedicated replacement effort proves full behavior parity.
 
 Hardening execution rule:
 - assume fresh Clash Nivo install unless a ticket explicitly states otherwise
