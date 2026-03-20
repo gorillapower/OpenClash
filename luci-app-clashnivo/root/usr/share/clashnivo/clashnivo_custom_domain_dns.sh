@@ -1,2 +1,2 @@
 #!/bin/sh
-exec /usr/share/clashnivo/runtime/openclash_custom_domain_dns.sh "$@"
+exec /usr/share/clashnivo/runtime/clashnivo_custom_domain_dns.sh "$@"

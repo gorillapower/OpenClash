@@ -80,7 +80,7 @@ clashnivo_service_run_stop() {
       clashnivo_service_network_cleanup_runtime
 
       LOG_OUT "Step 3: Stop Clash Nivo services..."
-      for process in "openclash_streaming_unlock.lua"; do
+      for process in "clashnivo_streaming_unlock.lua"; do
          pids=$(unify_ps_pids "$process")
          if [ -n "$pids" ]; then
             for pid in $pids; do

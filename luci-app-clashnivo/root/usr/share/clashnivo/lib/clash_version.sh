@@ -1,5 +1,5 @@
 #!/bin/bash
-. /usr/share/clashnivo/openclash_curl.sh
+. /usr/share/clashnivo/clashnivo_curl.sh
 . /usr/share/clashnivo/uci.sh
 . /usr/share/clashnivo/core_source.sh
 

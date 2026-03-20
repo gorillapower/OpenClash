@@ -1,2 +1,2 @@
 #!/bin/sh
-exec /usr/share/clashnivo/runtime/openclash_core.sh "$@"
+exec /usr/share/clashnivo/runtime/clashnivo_core.sh "$@"

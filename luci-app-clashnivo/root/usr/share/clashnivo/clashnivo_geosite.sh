@@ -1,2 +1,2 @@
 #!/bin/sh
-exec /usr/share/clashnivo/update/openclash_geosite.sh "$@"
+exec /usr/share/clashnivo/update/clashnivo_geosite.sh "$@"

@@ -16,7 +16,7 @@ clashnivo_service_init_env() {
    . "${ipkg_instroot}/usr/share/clashnivo/service/preview.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/service/subscription.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/service/update.sh"
-   . "${ipkg_instroot}/usr/share/clashnivo/openclash_ps.sh"
+   . "${ipkg_instroot}/usr/share/clashnivo/clashnivo_ps.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/ruby.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/log.sh"
    . "${ipkg_instroot}/usr/share/clashnivo/uci.sh"

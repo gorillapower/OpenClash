@@ -1,2 +1,2 @@
 #!/bin/sh
-exec /usr/share/clashnivo/runtime/openclash_history_get.sh "$@"
+exec /usr/share/clashnivo/runtime/clashnivo_history_get.sh "$@"

@@ -99,16 +99,10 @@ add_cron()
 del_cron()
 {
    sed -i '/\/etc\/init.d\/clashnivo refresh_sources/d' $CRON_FILE
-   sed -i '/openclash.sh/d' $CRON_FILE
-   sed -i '/openclash_ipdb.sh/d' $CRON_FILE
    sed -i '/clashnivo_ipdb.sh/d' $CRON_FILE
-   sed -i '/openclash_geoip.sh/d' $CRON_FILE
    sed -i '/clashnivo_geoip.sh/d' $CRON_FILE
-   sed -i '/openclash_geosite.sh/d' $CRON_FILE
    sed -i '/clashnivo_geosite.sh/d' $CRON_FILE
-   sed -i '/openclash_geoasn.sh/d' $CRON_FILE
    sed -i '/clashnivo_geoasn.sh/d' $CRON_FILE
-   sed -i '/openclash_chnroute.sh/d' $CRON_FILE
    sed -i '/clashnivo_chnroute.sh/d' $CRON_FILE
    sed -i '/\/etc\/init.d\/clashnivo/d' $CRON_FILE
    sed -i '/#clashnivo-overwrite-download/d' $CRON_FILE

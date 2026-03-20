@@ -1,7 +1,7 @@
 #!/bin/sh
 
 clashnivo_service_subscription_init() {
-   CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT="/usr/share/clashnivo/openclash.sh"
+   CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT="/usr/share/clashnivo/clashnivo_refresh.sh"
 }
 
 clashnivo_service_subscription_resolve_name() {

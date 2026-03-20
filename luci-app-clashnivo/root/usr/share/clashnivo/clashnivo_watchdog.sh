@@ -1,2 +1,2 @@
 #!/bin/sh
-exec /usr/share/clashnivo/runtime/openclash_watchdog.sh "$@"
+exec /usr/share/clashnivo/runtime/clashnivo_watchdog.sh "$@"

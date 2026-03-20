@@ -1,2 +1,2 @@
 #!/bin/sh
-exec /usr/share/clashnivo/update/openclash_chnroute.sh "$@"
+exec /usr/share/clashnivo/update/clashnivo_chnroute.sh "$@"
