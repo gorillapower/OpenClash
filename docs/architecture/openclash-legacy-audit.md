@@ -325,6 +325,25 @@ Minimum expected checks:
 
 Do not treat a passing grep-only validator as sufficient proof of coexistence safety.
 
+## Classification Enforcement
+
+Repo-wide classification is enforced by:
+
+- `luci-app-clashnivo/tools/validate-openclash-legacy.sh`
+- `luci-app-clashnivo/tools/openclash-legacy-classification.tsv`
+- `.github/workflows/validate_legacy_references.yml`
+
+This validator does not claim the remaining references are already acceptable. It enforces a narrower but critical rule:
+
+- every remaining `openclash` or `OpenClash` reference must be classified
+- new unclassified references must fail validation immediately
+
+That gives the project a durable baseline for future cleanup work:
+
+- no new hidden legacy coupling
+- no cleanup progress lost in grep noise
+- no future issue can claim “we did not know that reference still existed”
+
 ## Bottom Line
 
 The repo no longer has the earlier package uninstall overlap, but it still contains meaningful inherited OpenClash debt in live runtime paths.

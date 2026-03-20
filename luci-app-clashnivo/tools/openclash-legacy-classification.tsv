@@ -1,0 +1,25 @@
+# category<TAB>path regex<TAB>reason
+docs_migration_reference	^docs/	Documentation, migration notes, historical references, and accepted coexistence policy.
+docs_migration_reference	^README\.md$	Top-level project documentation may still refer to the upstream repo name.
+packaging_install_risk	^\.github/workflows/	Build and release automation still contains legacy OpenClash naming and package-branch references.
+docs_migration_reference	^\.github/ISSUE_TEMPLATE/	Issue templates still target the existing upstream-facing repository workflows.
+docs_migration_reference	^\.github/copilot-instructions\.md$	Repository guidance still documents upstream context.
+tooling_reference	^luci-app-clashnivo/tools/	Validation and helper tooling may intentionally mention legacy names while cleanup is ongoing.
+packaging_install_risk	^luci-app-clashnivo/Makefile$	Package metadata and lifecycle surface may still contain upstream repository naming.
+docs_migration_reference	^luci-app-clashnivo/po/	Translations are inherited content and may still contain OpenClash strings until localization cleanup is done.
+active_behavioral_risk	^luci-app-clashnivo/root/etc/init\.d/clashnivo$	Live init/runtime ownership path.
+active_behavioral_risk	^luci-app-clashnivo/root/etc/uci-defaults/luci-clashnivo$	Install-time defaults and shared-system mutation path.
+runtime_naming_debt	^luci-app-clashnivo/root/etc/config/clashnivo$	Default config still contains product options and upstream source references such as core_source=openclash.
+runtime_naming_debt	^luci-app-clashnivo/root/etc/clashnivo/	Clash Nivo-owned persistent files that still carry inherited custom file names or comments.
+active_behavioral_risk	^luci-app-clashnivo/root/usr/share/clashnivo/service/	Live service modules and runtime control surfaces.
+runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/runtime/	Inherited runtime helper internals still using legacy names.
+runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/update/	Inherited update helper internals still using legacy names.
+runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/lib/	Inherited library/helper internals still using legacy names.
+runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/import/	Import area may intentionally reference OpenClash as a migration source.
+runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/openclash[^/]*$	Top-level compatibility wrapper scripts and entrypoints.
+runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/(yml_|cfg_|clash_version\.sh|core_source\.sh|ruby\.sh|log\.sh|uci\.sh)	Shared helper entrypoints in the inherited helper tree.
+docs_migration_reference	^luci-app-clashnivo/root/usr/share/clashnivo/res/	Resource lists may intentionally point at upstream or OpenClash-compatible ecosystems during transition.
+runtime_naming_debt	^luci-app-clashnivo/ui/src/lib/	Frontend code may still point at inherited Clash Nivo custom-file names during transition.
+docs_migration_reference	^luci-app-clashnivo/ui/src/pages/	UI page copy may intentionally describe OpenClash guard and import behavior.
+docs_migration_reference	^luci-app-clashnivo/ui/mock-rpc-plugin\.ts$	Mock data may still simulate inherited OpenClash paths and guard states.
+docs_migration_reference	^luci-app-clashnivo/ui/src/test/	UI and integration tests may intentionally exercise OpenClash coexistence, migration, and legacy-path behavior.

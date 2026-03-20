@@ -1,0 +1,26 @@
+name: Validate Legacy OpenClash References
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/**'
+      - 'docs/**'
+      - 'luci-app-clashnivo/**'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'docs/**'
+      - 'luci-app-clashnivo/**'
+  workflow_dispatch:
+
+jobs:
+  validate-legacy-references:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Validate OpenClash Legacy Reference Classification
+        run: bash luci-app-clashnivo/tools/validate-openclash-legacy.sh
