@@ -27,8 +27,10 @@ This audit closes that gap by separating:
 
 1. active behavioral risk
 2. packaging/install risk
-3. runtime naming debt
-4. docs/comments only
+3. intentional coexistence references
+4. upstream source-policy references
+5. runtime naming debt
+6. docs/comments only
 
 ## Classification Rules
 
@@ -53,9 +55,33 @@ Examples:
 - install defaults mutating shared system configuration
 - workflow packaging and release steps using stale or misleading legacy paths/names
 
-### Category C: Runtime Naming Debt
+### Category C: Intentional Coexistence References
 
-A reference is Category C if it is still live code, but currently represents naming or wrapper debt rather than immediate coexistence breakage.
+A reference is Category C if it exists specifically so Clash Nivo can detect, report, or block against a separately installed OpenClash instance.
+
+Examples:
+
+- probing `/etc/init.d/openclash`
+- checking `openclash` and `openclash-watchdog` ubus services
+- emitting status fields like `openclash_active`
+
+These are not accidental overlap. They are the explicit coexistence guard model.
+
+### Category D: Upstream Source-Policy References
+
+A reference is Category D if it exists because Clash Nivo still supports upstream package/core source selection or upstream repository coordinates.
+
+Examples:
+
+- `core_source=openclash`
+- package update URLs under `gorillapower/OpenClash`
+- core/version URLs under `vernesong/OpenClash` or `gorillapower/OpenClash`
+
+These are not runtime ownership overlap. They are product/source-policy references.
+
+### Category E: Runtime Naming Debt
+
+A reference is Category E if it is still live code, but currently represents naming or wrapper debt rather than immediate coexistence breakage.
 
 Examples:
 
@@ -65,9 +91,9 @@ Examples:
 
 These still matter because they obscure ownership, weaken future audits, and make real-router debugging harder.
 
-### Category D: Docs, Migration, Or Intentional Product References
+### Category F: Docs, Migration, Or Intentional Product References
 
-A reference is Category D if it documents:
+A reference is Category F if it documents:
 
 - coexistence policy
 - import behavior
@@ -186,7 +212,47 @@ Judgment:
 - naming debt only in the post-process README rewrite
 - no longer a blocker for building a current Clash Nivo UI package
 
-### Category C: Runtime Naming Debt
+### Category C: Intentional Coexistence References
+
+Representative files:
+- `luci-app-clashnivo/root/usr/share/clashnivo/service/guard.sh`
+- `luci-app-clashnivo/root/usr/share/clashnivo/service/status.sh`
+
+Examples:
+- probing `/etc/init.d/openclash`
+- checking `openclash` and `openclash-watchdog` ubus services
+- reporting `openclash_installed`, `openclash_active`, and related fields
+
+Why these remain:
+- Clash Nivo must detect a separately installed OpenClash instance and refuse simultaneous runtime ownership
+- this is deliberate coexistence behavior, not accidental product overlap
+
+Judgment:
+- intentional and required
+- should remain explicit, but tightly scoped to guard/status surfaces only
+
+### Category D: Upstream Source-Policy References
+
+Representative files:
+- `luci-app-clashnivo/root/etc/config/clashnivo`
+- `luci-app-clashnivo/root/usr/share/clashnivo/service/update.sh`
+- `luci-app-clashnivo/root/usr/share/clashnivo/update/clashnivo_update.sh`
+- `luci-app-clashnivo/root/usr/share/clashnivo/update/clashnivo_version.sh`
+
+Examples:
+- `core_source=openclash`
+- package download URLs under `gorillapower/OpenClash`
+- version/core source URLs under `vernesong/OpenClash` or `gorillapower/OpenClash`
+
+Why these remain:
+- they reflect explicit source-policy choices and current upstream/release coordinates
+- they do not mean Clash Nivo owns or mutates OpenClash runtime state
+
+Judgment:
+- intentional product and distribution references
+- should only change when source-policy/product decisions change
+
+### Category E: Runtime Naming Debt
 
 #### 1. Wrapper And Helper Filenames
 
@@ -242,7 +308,7 @@ Judgment:
 - runtime naming debt
 - needs a migration/compatibility plan so existing installs do not break
 
-### Category D: Docs, Migration, Or Intentional Product References
+### Category F: Docs, Migration, Or Intentional Product References
 
 Examples:
 - `docs/decision/product-boundary.md`
@@ -259,6 +325,7 @@ Why these are not cleanup targets:
 The following OpenClash references are still valid by design:
 
 - runtime guard detection of installed/active OpenClash
+- status JSON fields exposing the OpenClash guard state to the UI
 - product docs describing coexistence and migration
 - import-scope docs and issues
 - source-policy options where `core_source=openclash` is an explicit product choice
@@ -358,10 +425,14 @@ That gives the project a durable baseline for future cleanup work:
 
 ## Bottom Line
 
-The repo no longer has the earlier package uninstall overlap, but it still contains meaningful inherited OpenClash debt in live runtime paths.
+The repo no longer has the earlier package uninstall overlap, and the remaining `openclash` references now split into three materially different groups:
+
+- intentional coexistence detection
+- intentional upstream/source-policy references
+- a much smaller set of true active behavioral risk
 
 The most important remaining work is:
 
-1. remove active runtime/comment/chain overlap
-2. eliminate the `network.lua` patch dependency
-3. only then do the broad helper/log rename sweep
+1. remove the last accidental active-behavior references
+2. keep coexistence detection explicit but tightly scoped
+3. continue reducing wrapper/helper/runtime naming debt

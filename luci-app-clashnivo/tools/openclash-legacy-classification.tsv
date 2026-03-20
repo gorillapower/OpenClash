@@ -9,11 +9,13 @@ packaging_install_risk	^luci-app-clashnivo/Makefile$	Package metadata and lifecy
 docs_migration_reference	^luci-app-clashnivo/po/	Translations are inherited content and may still contain OpenClash strings until localization cleanup is done.
 active_behavioral_risk	^luci-app-clashnivo/root/etc/init\.d/clashnivo$	Live init/runtime ownership path.
 active_behavioral_risk	^luci-app-clashnivo/root/etc/uci-defaults/luci-clashnivo$	Install-time defaults and shared-system mutation path.
-runtime_naming_debt	^luci-app-clashnivo/root/etc/config/clashnivo$	Default config still contains product options and upstream source references such as core_source=openclash.
+upstream_source_policy_reference	^luci-app-clashnivo/root/etc/config/clashnivo$	Default config may intentionally reference upstream source-policy values such as core_source=openclash and upstream overwrite URLs.
 runtime_naming_debt	^luci-app-clashnivo/root/etc/clashnivo/	Clash Nivo-owned persistent files that still carry inherited custom file names or comments.
-active_behavioral_risk	^luci-app-clashnivo/root/usr/share/clashnivo/service/	Live service modules and runtime control surfaces.
+intentional_coexistence_reference	^luci-app-clashnivo/root/usr/share/clashnivo/service/(guard|status)\.sh$	Intentional coexistence detection and status reporting for a separately installed OpenClash instance.
+upstream_source_policy_reference	^luci-app-clashnivo/root/usr/share/clashnivo/service/update\.sh$	Service update layer may intentionally branch on upstream source-policy values such as core_source=openclash.
+active_behavioral_risk	^luci-app-clashnivo/root/usr/share/clashnivo/service/	Live service modules and runtime control surfaces not covered by narrower intentional categories.
 runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/runtime/	Inherited runtime helper internals still using legacy names.
-runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/update/	Inherited update helper internals still using legacy names.
+upstream_source_policy_reference	^luci-app-clashnivo/root/usr/share/clashnivo/update/	Update/version helpers may intentionally reference upstream package/core source URLs and repository coordinates.
 runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/lib/	Inherited library/helper internals still using legacy names.
 runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/import/	Import area may intentionally reference OpenClash as a migration source.
 runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/openclash[^/]*$	Top-level compatibility wrapper scripts and entrypoints.

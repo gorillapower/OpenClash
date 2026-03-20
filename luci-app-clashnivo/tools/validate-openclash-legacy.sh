@@ -19,6 +19,8 @@ fi
 declare -a category_order=(
   "active_behavioral_risk"
   "packaging_install_risk"
+  "intentional_coexistence_reference"
+  "upstream_source_policy_reference"
   "runtime_naming_debt"
   "docs_migration_reference"
   "tooling_reference"
