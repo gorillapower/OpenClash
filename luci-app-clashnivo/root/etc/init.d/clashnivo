@@ -138,7 +138,7 @@ load_ip_route_pass() {
       if [ "$china_ip_route" != "0" ] || [ "$disable_udp_quic" = "1" ]; then
          if [ "$enable_redirect_dns" != "2" ]; then
             mkdir -p ${DNSMASQ_CONF_DIR}
-            awk '!/^$/&&!/^#/&&!/(^([1-9]|1[0-9]|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.)(([0-9]{1,2}|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.){2}([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-5][0-9]|25[0-4])((\/[0-9][0-9])?)$/{printf("'${settype}'=/%s/'${nftflag}'china_ip_route_pass'" "'\n",$0)}' /etc/clashnivo/custom/openclash_custom_chnroute_pass.list >>${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_chnroute_pass.conf
+            awk '!/^$/&&!/^#/&&!/(^([1-9]|1[0-9]|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.)(([0-9]{1,2}|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.){2}([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-5][0-9]|25[0-4])((\/[0-9][0-9])?)$/{printf("'${settype}'=/%s/'${nftflag}'china_ip_route_pass'" "'\n",$0)}' /etc/clashnivo/custom/clashnivo_custom_chnroute_pass.list >>${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_chnroute_pass.conf
             for ip in $(uci_get_config "china_ip_route_pass"); do
                [ -z "$ip" ] && continue
                echo "$ip" | awk '!/^$/&&!/^#/&&!/(^([1-9]|1[0-9]|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.)(([0-9]{1,2}|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.){2}([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-5][0-9]|25[0-4])((\/[0-9][0-9])?)$/{printf("'${settype}'=/%s/'${nftflag}'china_ip_route_pass'" "'\n",$0)}'
@@ -150,7 +150,7 @@ load_ip_route_pass() {
          if [ "$china_ip6_route" != "0" ] || [ "$disable_udp_quic" = "1" ]; then
             if [ "$enable_redirect_dns" != "2" ]; then
                mkdir -p ${DNSMASQ_CONF_DIR}
-               awk '!/^$/&&!/^#/&&/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("'${settype}'=/%s/'${nftflag}'china_ip_route_pass'" "'\n",$0)}' /etc/clashnivo/custom/openclash_custom_chnroute6_pass.list >>${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_chnroute6_pass.conf
+               awk '!/^$/&&!/^#/&&/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("'${settype}'=/%s/'${nftflag}'china_ip_route_pass'" "'\n",$0)}' /etc/clashnivo/custom/clashnivo_custom_chnroute6_pass.list >>${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_chnroute6_pass.conf
                for ip in $(uci_get_config "china_ip6_route_pass"); do
                   [ -z "$ip" ] && continue
                   echo "$ip" | awk '!/^$/&&!/^#/&&/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("'${settype}'=/%s/'${nftflag}'china_ip_route_pass'" "'\n",$0)}'
@@ -178,7 +178,7 @@ load_ip_route_pass() {
       if [ "$china_ip_route" != "0" ] || [ "$disable_udp_quic" = "1" ]; then
          if [ "$enable_redirect_dns" != "2" ]; then
             mkdir -p ${DNSMASQ_CONF_DIR}
-            awk '!/^$/&&!/^#/&&!/(^([1-9]|1[0-9]|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.)(([0-9]{1,2}|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.){2}([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-5][0-9]|25[0-4])((\/[0-9][0-9])?)$/{printf("ipset=/%s/china_ip_route_pass'" "'\n",$0)}' /etc/clashnivo/custom/openclash_custom_chnroute_pass.list >>${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_chnroute_pass.conf
+            awk '!/^$/&&!/^#/&&!/(^([1-9]|1[0-9]|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.)(([0-9]{1,2}|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.){2}([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-5][0-9]|25[0-4])((\/[0-9][0-9])?)$/{printf("ipset=/%s/china_ip_route_pass'" "'\n",$0)}' /etc/clashnivo/custom/clashnivo_custom_chnroute_pass.list >>${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_chnroute_pass.conf
             for ip in $(uci_get_config "china_ip_route_pass"); do
                [ -z "$ip" ] && continue
                echo "$ip" | awk '!/^$/&&!/^#/&&!/(^([1-9]|1[0-9]|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.)(([0-9]{1,2}|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.){2}([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-5][0-9]|25[0-4])((\/[0-9][0-9])?)$/{printf("ipset=/%s/china_ip_route_pass'" "'\n",$0)}'
@@ -190,7 +190,7 @@ load_ip_route_pass() {
          if [ "$china_ip6_route" != "0" ] || [ "$disable_udp_quic" = "1" ]; then
             if [ "$enable_redirect_dns" != "2" ]; then
                mkdir -p ${DNSMASQ_CONF_DIR}
-               awk '!/^$/&&!/^#/&&/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("ipset=/%s/china_ip_route_pass'" "'\n",$0)}' /etc/clashnivo/custom/openclash_custom_chnroute6_pass.list >>${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_chnroute6_pass.conf
+               awk '!/^$/&&!/^#/&&/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("ipset=/%s/china_ip_route_pass'" "'\n",$0)}' /etc/clashnivo/custom/clashnivo_custom_chnroute6_pass.list >>${DNSMASQ_CONF_DIR}/dnsmasq_clashnivo_chnroute6_pass.conf
                for ip in $(uci_get_config "china_ip6_route_pass"); do
                   [ -z "$ip" ] && continue
                   echo "$ip" | awk '!/^$/&&!/^#/&&/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("ipset=/%s/china_ip_route_pass'" "'\n",$0)}'
@@ -1508,9 +1508,9 @@ if [ -n "$FW4" ]; then
 
       if [ "$enable_redirect_dns" != "2" ]; then
          echo "add set inet fw4 china_ip_route_pass { type ipv4_addr; flags interval; auto-merge; }" >/tmp/clashnivo_china_ip_route_pass.list
-         [ -z `(awk '!/^$/&&!/^#/&&!/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("    %s\n",$0)}' /etc/clashnivo/custom/openclash_custom_chnroute_pass.list)` ] || {
+         [ -z `(awk '!/^$/&&!/^#/&&!/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("    %s\n",$0)}' /etc/clashnivo/custom/clashnivo_custom_chnroute_pass.list)` ] || {
             echo "define china_ip_route_pass = {" >>/tmp/clashnivo_china_ip_route_pass.list
-            awk '!/^$/&&!/^#/&&!/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("    %s,\n",$0)}' /etc/clashnivo/custom/openclash_custom_chnroute_pass.list |sed '$ s/.$//' >>/tmp/clashnivo_china_ip_route_pass.list 2>/dev/null
+            awk '!/^$/&&!/^#/&&!/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("    %s,\n",$0)}' /etc/clashnivo/custom/clashnivo_custom_chnroute_pass.list |sed '$ s/.$//' >>/tmp/clashnivo_china_ip_route_pass.list 2>/dev/null
             for ip in $(uci_get_config "china_ip_route_pass"); do
                [ -z "$ip" ] && continue
                echo "$ip" | awk '!/^$/&&!/^#/&&!/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("    %s,\n",$0)}' |sed '$ s/.$//'
@@ -1568,8 +1568,8 @@ if [ -n "$FW4" ]; then
    #local
    nft 'add set inet fw4 localnetwork { type ipv4_addr; flags interval; auto-merge; }'
    #nft 'delete set inet fw4 localnetwork'
-   if [ -f "/etc/clashnivo/custom/openclash_custom_localnetwork_ipv4.list" ]; then
-      for line in `cat "/etc/clashnivo/custom/openclash_custom_localnetwork_ipv4.list"`
+   if [ -f "/etc/clashnivo/custom/clashnivo_custom_localnetwork_ipv4.list" ]; then
+      for line in `cat "/etc/clashnivo/custom/clashnivo_custom_localnetwork_ipv4.list"`
       do
          nft add element inet fw4 localnetwork { "$line" }
       done
@@ -1961,9 +1961,9 @@ if [ -n "$FW4" ]; then
 
          if [ "$enable_redirect_dns" != "2" ]; then
             echo "add set inet fw4 china_ip6_route_pass { type ipv6_addr; flags interval; auto-merge; }" >/tmp/clashnivo_china_ip6_route_pass.list
-            [ -z `(awk '!/^$/&&!/^#/&&!/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("    %s,\n",$0)}' /etc/clashnivo/custom/openclash_custom_chnroute6_pass.list)` ] || {
+            [ -z `(awk '!/^$/&&!/^#/&&!/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("    %s,\n",$0)}' /etc/clashnivo/custom/clashnivo_custom_chnroute6_pass.list)` ] || {
                echo "define china_ip6_route_pass = {" >>/tmp/clashnivo_china_ip6_route_pass.list
-               awk '!/^$/&&!/^#/&&!/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("    %s,\n",$0)}' /etc/clashnivo/custom/openclash_custom_chnroute6_pass.list |sed '$ s/.$//' >>/tmp/clashnivo_china_ip6_route_pass.list 2>/dev/null
+               awk '!/^$/&&!/^#/&&!/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("    %s,\n",$0)}' /etc/clashnivo/custom/clashnivo_custom_chnroute6_pass.list |sed '$ s/.$//' >>/tmp/clashnivo_china_ip6_route_pass.list 2>/dev/null
                for ip in $(uci_get_config "china_ip6_route_pass"); do
                   [ -z "$ip" ] && continue
                   echo "$ip" | awk '!/^$/&&!/^#/&&!/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("    %s,\n",$0)}' |sed '$ s/.$//'
@@ -2025,8 +2025,8 @@ if [ -n "$FW4" ]; then
       #local
       nft 'add set inet fw4 localnetwork6 { type ipv6_addr; flags interval; auto-merge; }'
       #nft 'delete set inet fw4 localnetwork6'
-      if [ -f "/etc/clashnivo/custom/openclash_custom_localnetwork_ipv6.list" ]; then
-         for line in `cat "/etc/clashnivo/custom/openclash_custom_localnetwork_ipv6.list"`
+      if [ -f "/etc/clashnivo/custom/clashnivo_custom_localnetwork_ipv6.list" ]; then
+         for line in `cat "/etc/clashnivo/custom/clashnivo_custom_localnetwork_ipv6.list"`
          do
             nft add element inet fw4 localnetwork6 { "$line" }
          done
@@ -2347,7 +2347,7 @@ if [ -z "$FW4" ]; then
 
       if [ "$enable_redirect_dns" != "2" ]; then
          echo "create china_ip_route_pass hash:net family inet hashsize 1024 maxelem 1000000" >/tmp/clashnivo_china_ip_route_pass.list
-         awk '!/^$/&&!/^#/&&/(^([1-9]|1[0-9]|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.)(([0-9]{1,2}|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.){2}([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-5][0-9]|25[0-4])((\/[0-9][0-9])?)$/{printf("add china_ip_route_pass %s'" "'\n",$0)}' /etc/clashnivo/custom/openclash_custom_chnroute_pass.list >>/tmp/clashnivo_china_ip_route_pass.list
+         awk '!/^$/&&!/^#/&&/(^([1-9]|1[0-9]|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.)(([0-9]{1,2}|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.){2}([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-5][0-9]|25[0-4])((\/[0-9][0-9])?)$/{printf("add china_ip_route_pass %s'" "'\n",$0)}' /etc/clashnivo/custom/clashnivo_custom_chnroute_pass.list >>/tmp/clashnivo_china_ip_route_pass.list
          for ip in $(uci_get_config "china_ip_route_pass"); do
             [ -z "$ip" ] && continue
             echo "$ip" | awk '!/^$/&&!/^#/&&/(^([1-9]|1[0-9]|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.)(([0-9]{1,2}|1[1-9]{2}|2[0-4][0-9]|25[0-5])\.){2}([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-5][0-9]|25[0-4])((\/[0-9][0-9])?)$/{printf("add china_ip_route_pass %s'" "'\n",$0)}'
@@ -2401,8 +2401,8 @@ if [ -z "$FW4" ]; then
 
    #local
    ipset create localnetwork hash:net
-   if [ -f "/etc/clashnivo/custom/openclash_custom_localnetwork_ipv4.list" ]; then
-      for line in `cat "/etc/clashnivo/custom/openclash_custom_localnetwork_ipv4.list"`
+   if [ -f "/etc/clashnivo/custom/clashnivo_custom_localnetwork_ipv4.list" ]; then
+      for line in `cat "/etc/clashnivo/custom/clashnivo_custom_localnetwork_ipv4.list"`
       do
          ipset add localnetwork "$line"
       done
@@ -2793,7 +2793,7 @@ if [ -z "$FW4" ]; then
          ipset -! restore </etc/clashnivo/china_ip6_route.ipset
          if [ "$enable_redirect_dns" != "2" ]; then
             echo "create china_ip6_route_pass hash:net family inet6 hashsize 1024 maxelem 1000000" >/tmp/clashnivo_china_ip6_route_pass.list
-            awk '!/^$/&&!/^#/&&!/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("add china_ip6_route_pass %s'" "'\n",$0)}' /etc/clashnivo/custom/openclash_custom_chnroute6_pass.list >>/tmp/clashnivo_china_ip6_route_pass.list
+            awk '!/^$/&&!/^#/&&!/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("add china_ip6_route_pass %s'" "'\n",$0)}' /etc/clashnivo/custom/clashnivo_custom_chnroute6_pass.list >>/tmp/clashnivo_china_ip6_route_pass.list
             for ip in $(uci_get_config "china_ip6_route_pass"); do
                [ -z "$ip" ] && continue
                echo "$ip" | awk '!/^$/&&!/^#/&&!/([0-9a-zA-Z-]{1,}\.)+([a-zA-Z]{2,})/{printf("add china_ip6_route_pass %s'" "'\n",$0)}'
@@ -2860,8 +2860,8 @@ if [ -z "$FW4" ]; then
 
       #local
       ipset create localnetwork6 hash:net family inet6
-      if [ -f "/etc/clashnivo/custom/openclash_custom_localnetwork_ipv6.list" ]; then
-         for line in `cat "/etc/clashnivo/custom/openclash_custom_localnetwork_ipv6.list"`
+      if [ -f "/etc/clashnivo/custom/clashnivo_custom_localnetwork_ipv6.list" ]; then
+         for line in `cat "/etc/clashnivo/custom/clashnivo_custom_localnetwork_ipv6.list"`
          do
             ipset add localnetwork6 "$line"
          done
@@ -3160,9 +3160,9 @@ config_foreach firewall_lan_ac_traffic "lan_ac_traffic"
 
 #Custom
 
-if [ -f "/etc/clashnivo/custom/openclash_custom_firewall_rules.sh" ]; then
-   chmod +x /etc/clashnivo/custom/openclash_custom_firewall_rules.sh
-   /etc/clashnivo/custom/openclash_custom_firewall_rules.sh
+if [ -f "/etc/clashnivo/custom/clashnivo_custom_firewall_rules.sh" ]; then
+   chmod +x /etc/clashnivo/custom/clashnivo_custom_firewall_rules.sh
+   /etc/clashnivo/custom/clashnivo_custom_firewall_rules.sh
 fi
 
 } >/dev/null 2>&1
