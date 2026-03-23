@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-clashnivo
 PKG_VERSION:=0.1.11
-PKG_MAINTAINER:=gorillapower <https://github.com/gorillapower/OpenClash>
+PKG_MAINTAINER:=gorillapower <https://github.com/gorillapower>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 CLASHNIVO_UI_DIR:=$(CURDIR)/ui
