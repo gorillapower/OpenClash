@@ -31,13 +31,13 @@ yml_other_rules_dl()
    fi
 
    if [ -n "$rule_name" ]; then
-      LOG_OUT "Warrning: Multiple Other-Rules-Configurations Enabled, Ignore..."
+      LOG_OUT "Rule refresh skipped because multiple third-party rule configurations are enabled."
       return
    fi
 
    config_get "rule_name" "$section" "rule_name" ""
 
-   LOG_OUT "Start Downloading Third Party Rules in Use..."
+   LOG_OUT "Rule refresh: downloading the active third-party rule set."
    if [ "$rule_name" = "lhie1" ]; then
       if [ "$github_address_mod" != "0" ]; then
          if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
@@ -51,7 +51,7 @@ yml_other_rules_dl()
    fi
    DOWNLOAD_FILE_CURL "$DOWNLOAD_URL" "/tmp/rules.yaml"
    if [ "$?" -eq 0 ] && [ -s "/tmp/rules.yaml" ]; then
-      LOG_OUT "Download Successful, Start Preprocessing Rule File..."
+      LOG_OUT "Rule refresh: download completed. Preprocessing the rule file."
       sed -i '1i rules:' /tmp/rules.yaml
       ruby -ryaml -rYAML -I "/usr/share/clashnivo" -E UTF-8 -e "
       begin
@@ -62,19 +62,19 @@ yml_other_rules_dl()
       end
       " 2>/dev/null >> $LOG_FILE
       if [ $? -ne 0 ]; then
-         LOG_OUT "Error: Ruby Works Abnormally, Please Check The Ruby Library Depends!"
+         LOG_OUT "Rule refresh failed because Ruby could not process the downloaded rule file."
          rm -rf /tmp/rules.yaml >/dev/null 2>&1
          SLOG_CLEAN
          del_lock
          exit 0
       elif [ ! -f "/tmp/rules.yaml" ]; then
-         LOG_OUT "Error:【$rule_name】Rule File Format Validation Failed, Please Try Again Later..."
+         LOG_OUT "Rule refresh validation failed for 【$rule_name】."
          rm -rf /tmp/rules.yaml >/dev/null 2>&1
          SLOG_CLEAN
          del_lock
          exit 0
       elif ! "$(ruby_read "/tmp/rules.yaml" ".key?('rules')")" ; then
-         LOG_OUT "Error: Updated Others Rules【$rule_name】Has No Rules Field, Update Exit..."
+         LOG_OUT "Rule refresh aborted for 【$rule_name】 because the downloaded file has no rules section."
          rm -rf /tmp/rules.yaml >/dev/null 2>&1
          SLOG_CLEAN
          del_lock
@@ -91,7 +91,7 @@ yml_other_rules_dl()
             puts false
          end
          ")" && [ -f "/usr/share/clashnivo/res/${rule_name}.yaml" ]; then
-         LOG_OUT "Error: Updated Others Rules【$rule_name】Has Incompatible Proxy-Group. Update aborted. Wait for Clash Nivo rule support to adapt, then try again."
+         LOG_OUT "Rule refresh aborted for 【$rule_name】 because the downloaded rule set requires different proxy groups."
          rm -rf /tmp/rules.yaml >/dev/null 2>&1
          SLOG_CLEAN
          del_lock
@@ -104,18 +104,18 @@ yml_other_rules_dl()
       cat "$OTHER_RULE_FILE" > "/tmp/rules.yaml" 2>/dev/null
       rm -rf /tmp/other_rule* 2>/dev/null
 
-      LOG_OUT "Check The Downloaded Rule File For Updates..."
+      LOG_OUT "Rule refresh: checking whether the downloaded rule file changed."
       cmp -s /usr/share/clashnivo/res/"$rule_name".yaml /tmp/rules.yaml
       if [ "$?" -ne "0" ]; then
-         LOG_OUT "Detected that The Downloaded Rule File Has Been Updated, Starting To Replace..."
+         LOG_OUT "Rule refresh: changes detected for 【$rule_name】. Replacing the stored rule file."
          mv /tmp/rules.yaml /usr/share/clashnivo/res/"$rule_name".yaml >/dev/null 2>&1
-         LOG_OUT "Other Rules【$rule_name】Update Successful!"
+         LOG_OUT "Rule refresh: 【$rule_name】 updated."
          restart=1
       else
-         LOG_OUT "Updated Other Rules【$rule_name】No Change, Do Nothing!"
+         LOG_OUT "Rule refresh: 【$rule_name】 is already current."
       fi
    else
-      LOG_OUT "Other Rules【$rule_name】Update Error, Please Try Again Later..."
+      LOG_OUT "Rule refresh failed for 【$rule_name】."
    fi
 }
 
@@ -125,7 +125,7 @@ github_address_mod=$(uci_get_config "github_address_mod" || echo 0)
 restart=0
 
 if [ "$RUlE_SOURCE" = "0" ]; then
-   LOG_OUT "Other Rules Not Enable, Update Stop!"
+   LOG_OUT "Rule refresh skipped because external rule updates are disabled."
 else
    OTHER_RULE_FILE="/tmp/other_rule.yaml"
    CONFIG_FILE=$(uci_get_config "config_path")
@@ -150,7 +150,7 @@ else
    config_load "clashnivo"
    config_foreach yml_other_rules_dl "other_rules" "$CONFIG_NAME"
    if [ -z "$rule_name" ]; then
-     LOG_OUT "Get Other Rules Settings Faild, Update Stop!"
+     LOG_OUT "Rule refresh skipped because no active third-party rule configuration was found."
    fi
 fi
 

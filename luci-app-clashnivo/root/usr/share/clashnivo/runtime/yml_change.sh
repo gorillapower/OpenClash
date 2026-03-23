@@ -553,7 +553,7 @@ begin
                   Value['dns']['fallback'] = falldns_config['fallback'].uniq
                end
             elsif enable_custom_dns
-               YAML.LOG_ERROR('Nameserver Option Must Be Setted, Stop Customing DNS Servers')
+               YAML.LOG_ERROR('Custom DNS setup stopped because the nameserver option is empty.')
             end
          end
       rescue Exception => e
@@ -581,7 +581,7 @@ begin
       begin
          if '$custom_fallback_filter' == '1'
             if !Value.dig('dns', 'fallback')
-               YAML.LOG_ERROR('Fallback-Filter Need fallback of DNS Been Setted, Ignore...')
+               YAML.LOG_ERROR('Fallback filter was ignored because no fallback DNS servers are configured.')
             elsif (filter_config = safe_load_yaml('/etc/clashnivo/custom/clashnivo_custom_fallback_filter.yaml'))
                Value['dns']['fallback-filter'] = filter_config['fallback-filter']
             else
@@ -728,7 +728,7 @@ begin
                         original_size = Value['dns'][opt].size
                         Value['dns'][opt].reject! { |v| v.to_s.match?(/^system($|:\/\/)/) }
                         if Value['dns'][opt].size < original_size
-                           YAML.LOG_TIP('Option【%s】is Setted【system】as DNS Server Which May Cause DNS Loop, Already Remove It...' % [opt])
+                           YAML.LOG_TIP('Removed DNS server option【%s】because 【system】would create a DNS loop.' % [opt])
                         end
                      else
                         Value['dns'][opt].each do |k, v|
@@ -737,13 +737,13 @@ begin
                               v.reject! { |z| z.to_s.match?(/^system($|:\/\/)/) }
                               if v.empty?
                                  Value['dns'][opt].delete(k)
-                                 YAML.LOG_TIP('Option【%s - %s】is Setted【system】as DNS Server Which May Cause DNS Loop, Already Remove It...' % [opt, k])
+                                 YAML.LOG_TIP('Removed DNS server option【%s - %s】because 【system】would create a DNS loop.' % [opt, k])
                               elsif v.size < original_size
-                                 YAML.LOG_TIP('Option【%s - %s】is Setted【system】as DNS Server Which May Cause DNS Loop, Already Remove It...' % [opt, k])
+                                 YAML.LOG_TIP('Removed DNS server option【%s - %s】because 【system】would create a DNS loop.' % [opt, k])
                               end
                            elsif v.to_s.match?(/^system($|:\/\/)/)
                               Value['dns'][opt].delete(k)
-                              YAML.LOG_TIP('Option【%s - %s】is Setted【%s】as DNS Server Which May Cause DNS Loop, Already Remove It...' % [opt, k, v.to_s])
+                              YAML.LOG_TIP('Removed DNS server option【%s - %s】because 【%s】would create a DNS loop.' % [opt, k, v.to_s])
                            end
                         end
                      end
@@ -782,18 +782,18 @@ begin
          if respect_rules || Value.dig('dns', 'respect-rules').to_s == 'true' || all_ns_proxied || proxy_server_nameserver_policy
             Value['dns']['proxy-server-nameserver'] = default_proxy_servers
             if all_ns_proxied
-               YAML.LOG_TIP('Nameserver Option Maybe All Setted The Proxy Option, Auto Set Proxy-server-nameserver Option to【%s】For Avoiding Proxies Server Resolve Loop...' % [default_proxy_servers.join(', ')])
+               YAML.LOG_TIP('All nameserver entries appear to use proxies. Set proxy-server-nameserver to【%s】to avoid a resolver loop.' % [default_proxy_servers.join(', ')])
             elsif proxy_server_nameserver_policy
-               YAML.LOG_TIP('【Proxy-server-nameserver-policy】Need Proxy-server-nameserver Option Must Be Setted, Auto Set to【%s】' % [default_proxy_servers.join(', ')])
+               YAML.LOG_TIP('Set proxy-server-nameserver to【%s】because proxy-server-nameserver-policy requires it.' % [default_proxy_servers.join(', ')])
             else
-               YAML.LOG_TIP('【Respect-rules】Need Proxy-server-nameserver Option Must Be Setted, Auto Set to【%s】' % [default_proxy_servers.join(', ')])
+               YAML.LOG_TIP('Set proxy-server-nameserver to【%s】because respect-rules requires it.' % [default_proxy_servers.join(', ')])
             end
          end
       else
          all_psn_proxied = Value.dig('dns', 'proxy-server-nameserver').to_a.all? { |x| x.match?(proxied_server_reg) }
          if all_psn_proxied
             (Value['dns']['proxy-server-nameserver'] ||= []).concat(default_proxy_servers).uniq!
-            YAML.LOG_TIP('Proxy-server-nameserver Option Maybe All Setted The Proxy Option, Auto Set Proxy-server-nameserver Option to【%s】For Avoiding Proxies Server Resolve Loop...' % [default_proxy_servers.join(', ')])
+            YAML.LOG_TIP('Set proxy-server-nameserver to【%s】 to avoid a proxy resolver loop.' % [default_proxy_servers.join(', ')])
          end
       end
    rescue Exception => e

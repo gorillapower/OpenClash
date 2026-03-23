@@ -29,7 +29,7 @@ else
    geosite_path="/tmp/etc/clashnivo/GeoSite.dat"
    mkdir -p /tmp/etc/clashnivo
 fi
-LOG_OUT "Start Downloading GeoSite Database..."
+LOG_OUT "Downloading GeoSite database..."
 if [ -z "$GEOSITE_CUSTOM_URL" ]; then
    if [ "$github_address_mod" != "0" ]; then
       if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
@@ -46,21 +46,21 @@ fi
 DOWNLOAD_FILE_CURL "$DOWNLOAD_URL" "/tmp/GeoSite.dat" "$geosite_path"
 DOWNLOAD_RESULT=$?
 if [ "$DOWNLOAD_RESULT" -eq 0 ] && [ -s "/tmp/GeoSite.dat" ]; then
-   LOG_OUT "GeoSite Database Download Success, Check Updated..."
+   LOG_OUT "GeoSite database downloaded. Checking for changes..."
    cmp -s /tmp/GeoSite.dat "$geosite_path"
    if [ "$?" -ne "0" ]; then
-      LOG_OUT "GeoSite Database Has Been Updated, Starting To Replace The Old Version..."
+      LOG_OUT "GeoSite database changed. Replacing the current file..."
       rm -rf "/etc/clashnivo/geosite.dat"
       mv /tmp/GeoSite.dat "$geosite_path" >/dev/null 2>&1
-      LOG_OUT "GeoSite Database Update Successful!"
+      LOG_OUT "GeoSite database updated."
       restart=1
    else
-      LOG_OUT "Updated GeoSite Database No Change, Do Nothing..."
+      LOG_OUT "GeoSite database is already current."
    fi
 elif [ "$DOWNLOAD_RESULT" -eq 2 ]; then
-   LOG_OUT "Updated GeoSite Database No Change, Do Nothing..."
+   LOG_OUT "GeoSite database is already current."
 else
-   LOG_OUT "GeoSite Database Update Error, Please Try Again Later..."
+   LOG_OUT "GeoSite database update failed. Try again later."
 fi
 
 rm -rf /tmp/GeoSite.dat >/dev/null 2>&1

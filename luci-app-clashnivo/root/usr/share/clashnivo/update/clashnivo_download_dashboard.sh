@@ -67,11 +67,11 @@
             rm -rf "$DASH_FILE_DIR" >/dev/null 2>&1
             rm -rf "$BACKUP_FILE_DIR" >/dev/null 2>&1
             rm -rf "$DASH_FILE_TMP" >/dev/null 2>&1
-            LOG_OUT "Control Panel【$DASH_NAME - $DASH_TYPE】Download Successful!" && SLOG_CLEAN
+            LOG_OUT "Dashboard update: 【$DASH_NAME - $DASH_TYPE】 downloaded successfully." && SLOG_CLEAN
             del_lock
             exit 0
          else
-            LOG_OUT "Control Panel【$DASH_NAME - $DASH_TYPE】Unzip Error!" && SLOG_CLEAN
+            LOG_OUT "Dashboard update: failed to extract 【$DASH_NAME - $DASH_TYPE】." && SLOG_CLEAN
             cp -rf  "$BACKUP_FILE_DIR".  "$UNPACK_FILE_DIR" >/dev/null 2>&1
             rm -rf "$DASH_FILE_DIR" >/dev/null 2>&1
             rm -rf "$BACKUP_FILE_DIR" >/dev/null 2>&1
@@ -80,7 +80,7 @@
             exit 2
          fi
       else
-         LOG_OUT "Control Panel【$DASH_NAME - $DASH_TYPE】Unzip Error!" && SLOG_CLEAN
+         LOG_OUT "Dashboard update: failed to extract 【$DASH_NAME - $DASH_TYPE】." && SLOG_CLEAN
          cp -rf  "$BACKUP_FILE_DIR".  "$UNPACK_FILE_DIR" >/dev/null 2>&1
          rm -rf "$DASH_FILE_DIR" >/dev/null 2>&1
          rm -rf "$BACKUP_FILE_DIR" >/dev/null 2>&1
@@ -89,7 +89,7 @@
          exit 2
       fi
    elif [ "$DOWNLOAD_RESULT" -eq 2 ]; then
-      LOG_OUT "Control Panel【$DASH_NAME - $DASH_TYPE】Download Successful!" && SLOG_CLEAN
+      LOG_OUT "Dashboard update: 【$DASH_NAME - $DASH_TYPE】 downloaded successfully." && SLOG_CLEAN
       del_lock
       exit 0
    else
@@ -97,7 +97,7 @@
       rm -rf "$BACKUP_FILE_DIR" >/dev/null 2>&1
       rm -rf "$DASH_FILE_DIR" >/dev/null 2>&1
       rm -rf "$DASH_FILE_TMP" >/dev/null 2>&1
-      LOG_OUT "Control Panel【$DASH_NAME - $DASH_TYPE】Download Error!" && SLOG_CLEAN
+      LOG_OUT "Dashboard update failed for 【$DASH_NAME - $DASH_TYPE】." && SLOG_CLEAN
       del_lock
       exit 1
    fi

@@ -27,7 +27,7 @@ else
 fi
 
 if [ ! -f "/tmp/clashnivo_last_version" ]; then
-   LOG_ERROR "Failed to get version information, please try again later..."
+   LOG_ERROR "Could not fetch the latest Clash Nivo package version."
    SLOG_CLEAN
    dec_job_counter_and_restart "$restart"
    del_lock
@@ -66,7 +66,7 @@ github_address_mod=$(uci_get_config "github_address_mod" || echo 0)
 #一键更新
 if [ "$1" = "one_key_update" ]; then
    if [ "$github_address_mod" = "0" ] && [ -z "$2" ]; then
-      LOG_TIP "If the download fails, try setting the CDN in Overwrite Settings - General Settings - Github Address Modify Options"
+      LOG_TIP "If the package download fails, try a GitHub mirror in System advanced settings."
    fi
    if [ -n "$2" ]; then
       /usr/share/clashnivo/clashnivo_core.sh "Meta" "$1" "$2" >/dev/null 2>&1 &
@@ -79,12 +79,12 @@ if [ "$1" = "one_key_update" ]; then
    wait
 else
    if [ "$github_address_mod" = "0" ]; then
-      LOG_TIP "If the download fails, try setting the CDN in Overwrite Settings - General Settings - Github Address Modify Options"
+      LOG_TIP "If the package download fails, try a GitHub mirror in System advanced settings."
    fi
 fi
 
 if [ -n "$OP_CV" ] && [ -n "$OP_LV" ] && version_compare "$OP_CV" "$OP_LV" && [ -f "$LAST_OPVER" ]; then
-   LOG_TIP "Start downloading【Clash Nivo - v$LAST_VER】..."
+   LOG_TIP "Package update: downloading Clash Nivo v$LAST_VER."
    if [ "$github_address_mod" != "0" ]; then
       if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
          if [ -x "/bin/opkg" ]; then
@@ -123,13 +123,13 @@ if [ -n "$OP_CV" ] && [ -n "$OP_LV" ] && version_compare "$OP_CV" "$OP_LV" && [ 
          DOWNLOAD_RESULT=0
       else
          rm -rf "$DOWNLOAD_PATH" >/dev/null 2>&1
-         LOG_TIP "【$retry_count/$max_retries】【Clash Nivo - v$LAST_VER】Downloading..."
+         LOG_TIP "Package update: download attempt 【$retry_count/$max_retries】 for Clash Nivo v$LAST_VER."
          SHOW_DOWNLOAD_PROGRESS=1 DOWNLOAD_FILE_CURL "$DOWNLOAD_URL" "$DOWNLOAD_PATH" "$DOWNLOAD_PATH"
          DOWNLOAD_RESULT=$?
       fi
 
       if [ "$DOWNLOAD_RESULT" -ne 1 ]; then
-         LOG_TIP "【$retry_count/$max_retries】【Clash Nivo - v$LAST_VER】Download successful, start pre update test..."
+         LOG_TIP "Package update: download completed for Clash Nivo v$LAST_VER. Running pre-install checks."
 
          pre_test_success=false
          pkg_update_success=true
@@ -162,18 +162,18 @@ if [ -n "$OP_CV" ] && [ -n "$OP_LV" ] && version_compare "$OP_CV" "$OP_LV" && [ 
          fi
 
          if [ "$pre_test_success" = "true" ]; then
-            LOG_TIP "【$retry_count/$max_retries】【Clash Nivo - v$LAST_VER】Pre update test passed, ready to update and please do not refresh the page and other operations..."
+            LOG_TIP "Package update: pre-install checks passed for Clash Nivo v$LAST_VER. Installing now."
             break
          else
             if [ "$retry_count" -lt "$max_retries" ]; then
-               LOG_ERROR "【$retry_count/$max_retries】【Clash Nivo - v$LAST_VER】Pre update test failed..."
+               LOG_ERROR "Package update: pre-install checks failed on attempt 【$retry_count/$max_retries】 for Clash Nivo v$LAST_VER."
                sleep 2
                continue
             else
                if [ -x "/bin/opkg" ]; then
-                  LOG_ERROR "【Clash Nivo - v$LAST_VER】Pre update test failed after 3 attempts, the file is saved in /tmp/clashnivo.ipk, please try to update manually with【opkg install /tmp/clashnivo.ipk】"
+                  LOG_ERROR "Package update failed after 3 pre-install attempts. The package is saved at 【/tmp/clashnivo.ipk】. Install it manually with 【opkg install /tmp/clashnivo.ipk】."
                elif [ -x "/usr/bin/apk" ]; then
-                  LOG_ERROR "【Clash Nivo - v$LAST_VER】Pre update test failed after 3 attempts, the file is saved in /tmp/clashnivo.apk, please try to update manually with【apk add -q --force-overwrite --clean-protected --allow-untrusted /tmp/clashnivo.apk】"
+                  LOG_ERROR "Package update failed after 3 pre-install attempts. The package is saved at 【/tmp/clashnivo.apk】. Install it manually with 【apk add -q --force-overwrite --clean-protected --allow-untrusted /tmp/clashnivo.apk】."
                fi
 
                SLOG_CLEAN
@@ -184,11 +184,11 @@ if [ -n "$OP_CV" ] && [ -n "$OP_LV" ] && version_compare "$OP_CV" "$OP_LV" && [ 
          fi
       else
          if [ "$retry_count" -lt "$max_retries" ]; then
-            LOG_ERROR "【$retry_count/$max_retries】【Clash Nivo - v$LAST_VER】Download failed..."
+            LOG_ERROR "Package update: download failed on attempt 【$retry_count/$max_retries】 for Clash Nivo v$LAST_VER."
             sleep 2
             continue
          else
-            LOG_ERROR "【Clash Nivo - v$LAST_VER】Download Failed after 3 attempts, please check the network or try again later!"
+            LOG_ERROR "Package update failed after 3 download attempts for Clash Nivo v$LAST_VER."
             rm -rf /tmp/clashnivo.ipk >/dev/null 2>&1
             rm -rf /tmp/clashnivo.apk >/dev/null 2>&1
             SLOG_CLEAN
@@ -218,7 +218,7 @@ del_update_lock() {
 }
 
 if ! set_update_lock; then
-   echo "Update process is already running, exiting..."
+   echo "Package update is already running. Exiting."
    exit 1
 fi
 
@@ -311,7 +311,7 @@ install_success=false
 
 while [ $install_retry_count -lt $max_install_retries ]; do
    install_retry_count=$((install_retry_count + 1))
-   LOG_TIP "【$install_retry_count/$max_install_retries】Installing the new version, please do not refresh the page or do other operations..."
+   LOG_TIP "Package update: install attempt 【$install_retry_count/$max_install_retries】 is running."
 
    packages_to_check="luci-compat kmod-inet-diag kmod-nft-tproxy kmod-ipt-nat iptables-mod-tproxy iptables-mod-extra ipset"
    installed_before=""
@@ -338,7 +338,7 @@ while [ $install_retry_count -lt $max_install_retries ]; do
       install_missing_packages "$installed_before"
       break
    else
-      LOG_ERROR "【$install_retry_count/$max_install_retries】Installation failed..."
+      LOG_ERROR "Package update: install attempt 【$install_retry_count/$max_install_retries】 failed."
       if [ $install_retry_count -lt $max_install_retries ]; then
          sleep 3
       fi
@@ -353,9 +353,9 @@ if [ "$install_success" = true ]; then
    fi
 else
    if [ -x "/bin/opkg" ]; then
-      LOG_ERROR "Clash Nivo update failed after 3 attempts, the file is saved in /tmp/clashnivo.ipk, please try to update manually with【opkg install /tmp/clashnivo.ipk】"
+      LOG_ERROR "Package update failed after 3 install attempts. The package is saved at 【/tmp/clashnivo.ipk】. Install it manually with 【opkg install /tmp/clashnivo.ipk】."
    elif [ -x "/usr/bin/apk" ]; then
-      LOG_ERROR "Clash Nivo update failed after 3 attempts, the file is saved in /tmp/clashnivo.apk, please try to update manually with【apk add -q --force-overwrite --clean-protected --allow-untrusted /tmp/clashnivo.apk】"
+      LOG_ERROR "Package update failed after 3 install attempts. The package is saved at 【/tmp/clashnivo.apk】. Install it manually with 【apk add -q --force-overwrite --clean-protected --allow-untrusted /tmp/clashnivo.apk】."
    fi
    SLOG_CLEAN
 fi
@@ -365,7 +365,7 @@ EOF
    chmod 4755 /tmp/clashnivo_update.sh
 
    if [ ! -f "/tmp/clashnivo_update.sh" ] || [ ! -s "/tmp/clashnivo_update.sh" ] || [ ! -x "/tmp/clashnivo_update.sh" ]; then
-      LOG_ERROR "Failed to create update script!"
+      LOG_ERROR "Failed to create the package update script."
       rm -rf /tmp/clashnivo_update.sh
       del_lock
       exit 1
@@ -377,7 +377,7 @@ EOF
 
    while [ $retry_count -lt $max_retries ]; do
       retry_count=$((retry_count + 1))
-      LOG_TIP "【$retry_count/$max_retries】Attempting to start update service..."
+      LOG_TIP "Package update: starting the update service. Attempt 【$retry_count/$max_retries】."
 
       ubus call service add '{"name":"clashnivo_update","instances":{"update":{"command":["/tmp/clashnivo_update.sh"],"stdout":true,"stderr":true,"env":{"LAST_VER":"'"$LAST_VER"'"}}}}' >/dev/null 2>&1
 
@@ -388,22 +388,22 @@ EOF
          break
       else
          if [ $retry_count -lt $max_retries ]; then
-            LOG_ERROR "【$retry_count/$max_retries】Service start failed, retrying in 2 seconds..."
+            LOG_ERROR "Package update: update service failed to start on attempt 【$retry_count/$max_retries】. Retrying in 2 seconds."
             sleep 2
          fi
       fi
    done
 
    if [ "$service_started" = false ]; then
-      LOG_ERROR "Failed to start update service after 3 attempts, please check and try again later..."
+      LOG_ERROR "Package update service failed to start after 3 attempts."
    fi
 
    (sleep 15; rm -f /tmp/clashnivo_update.sh) &
 else
    if [ ! -f "$LAST_OPVER" ] || [ -z "$OP_CV" ] || [ -z "$OP_LV" ]; then
-      LOG_ERROR "Failed to get version information, please try again later..."
+      LOG_ERROR "Could not fetch the latest Clash Nivo package version."
    else
-      LOG_TIP "Clash Nivo is already up to date, stop continuing!"
+      LOG_TIP "Package update skipped. Clash Nivo is already current."
    fi
    SLOG_CLEAN
    dec_job_counter_and_restart "$restart"

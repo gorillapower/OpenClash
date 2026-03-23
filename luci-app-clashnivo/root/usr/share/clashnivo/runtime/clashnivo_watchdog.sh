@@ -373,58 +373,58 @@ fi
       if [ "$STREAM_AUTO_SELECT" -ne 0 ]; then
          if [ "$(expr "$STREAM_AUTO_SELECT" % "$stream_auto_select_interval_now")" -eq 0 ] || [ "$STREAM_AUTO_SELECT" -eq 1 ]; then
             if [ "$stream_auto_select_netflix" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For Netflix Unlock..."
+               LOG_TIP "Watchdog: testing proxy selection for Netflix."
                /usr/share/clashnivo/clashnivo_streaming_unlock.lua "Netflix" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_disney" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For Disney Plus Unlock..."
+               LOG_TIP "Watchdog: testing proxy selection for Disney Plus."
                /usr/share/clashnivo/clashnivo_streaming_unlock.lua "Disney Plus" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_google_not_cn" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For Google Not CN Unlock..."
+               LOG_TIP "Watchdog: testing proxy selection for Google non-CN access."
                /usr/share/clashnivo/clashnivo_streaming_unlock.lua "Google" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_ytb" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For YouTube Premium Unlock..."
+               LOG_TIP "Watchdog: testing proxy selection for YouTube Premium."
                /usr/share/clashnivo/clashnivo_streaming_unlock.lua "YouTube Premium" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_prime_video" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For Amazon Prime Video Unlock..."
+               LOG_TIP "Watchdog: testing proxy selection for Amazon Prime Video."
                /usr/share/clashnivo/clashnivo_streaming_unlock.lua "Amazon Prime Video" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_hbo_max" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For HBO Max Unlock..."
+               LOG_TIP "Watchdog: testing proxy selection for HBO Max."
                /usr/share/clashnivo/clashnivo_streaming_unlock.lua "HBO Max" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_tvb_anywhere" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For TVB Anywhere+ Unlock..."
+               LOG_TIP "Watchdog: testing proxy selection for TVB Anywhere+."
                /usr/share/clashnivo/clashnivo_streaming_unlock.lua "TVB Anywhere+" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_dazn" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For DAZN Unlock..."
+               LOG_TIP "Watchdog: testing proxy selection for DAZN."
                /usr/share/clashnivo/clashnivo_streaming_unlock.lua "DAZN" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_paramount_plus" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For Paramount Plus Unlock..."
+               LOG_TIP "Watchdog: testing proxy selection for Paramount Plus."
                /usr/share/clashnivo/clashnivo_streaming_unlock.lua "Paramount Plus" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_discovery_plus" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For Discovery Plus Unlock..."
+               LOG_TIP "Watchdog: testing proxy selection for Discovery Plus."
                /usr/share/clashnivo/clashnivo_streaming_unlock.lua "Discovery Plus" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_bilibili" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For Bilibili Unlock..."
+               LOG_TIP "Watchdog: testing proxy selection for Bilibili."
                /usr/share/clashnivo/clashnivo_streaming_unlock.lua "Bilibili" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_openai" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For OpenAI Unlock..."
+               LOG_TIP "Watchdog: testing proxy selection for OpenAI."
                /usr/share/clashnivo/clashnivo_streaming_unlock.lua "OpenAI" >> $LOG_FILE
             fi
          fi
       fi
       STREAM_AUTO_SELECT=$(expr "$STREAM_AUTO_SELECT" + 1)
    elif [ "$router_self_proxy" != "1" ] && [ "$stream_auto_select" -eq 1 ]; then
-      LOG_ERROR "Streaming Unlock Could not Work Because of Router-Self Proxy Disabled, Exiting..."
+      LOG_ERROR "Streaming auto-selection is disabled because router self-proxy is off."
    fi
 
    SLOG_CLEAN

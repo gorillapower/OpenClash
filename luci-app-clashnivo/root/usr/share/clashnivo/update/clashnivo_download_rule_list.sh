@@ -37,7 +37,7 @@
    fi
 
    if [ -z "$DOWNLOAD_PATH" ]; then
-      LOG_OUT "Rule File【$RULE_FILE_NAME】Download Error!" && SLOG_CLEAN
+      LOG_OUT "Rule list update failed for 【$RULE_FILE_NAME】." && SLOG_CLEAN
       del_lock
       exit 0
    fi
@@ -85,11 +85,11 @@
                mv "$TMP_RULE_DIR" "$RULE_FILE_DIR" >/dev/null 2>&1
             fi
             rm -rf "$TMP_RULE_DIR" >/dev/null 2>&1
-            LOG_OUT "Rule File【$RULE_FILE_NAME】Download Successful!" && SLOG_CLEAN
+            LOG_OUT "Rule list update: 【$RULE_FILE_NAME】 downloaded successfully." && SLOG_CLEAN
             del_lock
             exit 1
          else
-            LOG_OUT "Rule File【$RULE_FILE_NAME】No Change, Do Nothing!" && SLOG_CLEAN
+            LOG_OUT "Rule list update: 【$RULE_FILE_NAME】 is already current." && SLOG_CLEAN
             rm -rf "$TMP_RULE_DIR" >/dev/null 2>&1
             rm -rf "$TMP_RULE_DIR_TMP" >/dev/null 2>&1
             del_lock
@@ -97,7 +97,7 @@
          fi
    else
       rm -rf "$TMP_RULE_DIR" >/dev/null 2>&1
-      LOG_OUT "Rule File【$RULE_FILE_NAME】Download Error!" && SLOG_CLEAN
+      LOG_OUT "Rule list update failed for 【$RULE_FILE_NAME】." && SLOG_CLEAN
       del_lock
       exit 0
    fi

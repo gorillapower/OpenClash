@@ -28,7 +28,7 @@ else
    lgbm_path="/tmp/etc/clashnivo/Model.bin"
    mkdir -p /tmp/etc/clashnivo
 fi
-LOG_OUT "Start Downloading LightGBM Model..."
+LOG_OUT "Downloading LightGBM model..."
 if [ -z "$LGBM_CUSTOM_URL" ]; then
    DOWNLOAD_URL="https://github.com/vernesong/mihomo/releases/download/LightGBM-Model/Model.bin"
 else
@@ -37,21 +37,21 @@ fi
 DOWNLOAD_FILE_CURL "$DOWNLOAD_URL" "/tmp/Model.bin" "$lgbm_path"
 DOWNLOAD_RESULT=$?
 if [ "$DOWNLOAD_RESULT" -eq 0 ] && [ -s "/tmp/Model.bin" ]; then
-   LOG_OUT "LightGBM Model Download Success, Check Updated..."
+   LOG_OUT "LightGBM model downloaded. Checking for changes..."
    cmp -s /tmp/Model.bin "$lgbm_path"
    if [ "$?" -ne "0" ]; then
-      LOG_OUT "LightGBM Model Has Been Updated, Starting To Replace The Old Version..."
+      LOG_OUT "LightGBM model changed. Replacing the current file..."
       rm -rf "/etc/clashnivo/Model.bin"
       mv /tmp/Model.bin "$lgbm_path" >/dev/null 2>&1
-      LOG_OUT "LightGBM Model Update Successful!"
+      LOG_OUT "LightGBM model updated."
       restart=1
    else
-      LOG_OUT "Updated LightGBM Model No Change, Do Nothing..."
+      LOG_OUT "LightGBM model is already current."
    fi
 elif [ "$DOWNLOAD_RESULT" -eq 2 ]; then
-   LOG_OUT "Updated LightGBM Model No Change, Do Nothing..."
+   LOG_OUT "LightGBM model is already current."
 else
-   LOG_OUT "LightGBM Model Update Error, Please Try Again Later..."
+   LOG_OUT "LightGBM model update failed. Try again later."
 fi
 
 rm -rf /tmp/Model.bin >/dev/null 2>&1

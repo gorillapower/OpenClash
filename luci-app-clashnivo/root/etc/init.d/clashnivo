@@ -132,7 +132,7 @@ load_ip_route_pass() {
       nftflag="inet#fw4#"
    else
       settype="ipset"
-      [ -n "$FW4" ] && LOG_WARN "Dnsmasq not Support nftset, Use ipset..."
+      [ -n "$FW4" ] && LOG_WARN "dnsmasq does not support nftset. Using ipset rules instead."
    fi
    if [ -n "$FW4" ]; then
       if [ "$china_ip_route" != "0" ] || [ "$disable_udp_quic" = "1" ]; then
@@ -410,7 +410,7 @@ if [ ! -f "$RAW_CONFIG_FILE" ]; then
    config_load "clashnivo"
    config_foreach sub_info_get "config_subscribe" "$RAW_CONFIG_FILE"
    if [ "$subscribe_enable" = "1" ]; then
-      LOG_OUT "【$RAW_CONFIG_FILE】Config File Does Not Exist, You Have Set Subscription Information, Ready To Download..."
+      LOG_OUT "Selected source is missing: 【$RAW_CONFIG_FILE】. Subscription metadata exists, so Clash Nivo will download it now."
       clashnivo_service_subscription_refresh_async "$RAW_CONFIG_FILE"
       exit 0
    fi
@@ -422,12 +422,12 @@ if [ -z "$RAW_CONFIG_FILE" ] || [ ! -f "$RAW_CONFIG_FILE" ]; then
       clashnivo_service_config_assign_paths "$file_name"
       uci -q set clashnivo.config.config_path="$RAW_CONFIG_FILE"
       uci -q commit clashnivo
-      LOG_ERROR "Config Not Found, Switch Config File to【$RAW_CONFIG_FILE】"
+      LOG_ERROR "Selected source not found. Switched to 【$RAW_CONFIG_FILE】."
    fi
 fi
 
 if [ ! -f "$RAW_CONFIG_FILE" ]; then
-   LOG_ERROR "Config Not Found"
+   LOG_ERROR "No source config is available."
    exit 0
 fi
 clashnivo_service_config_assign_paths "$RAW_CONFIG_FILE"
@@ -448,10 +448,10 @@ rescue Exception => e
 end
 " 2>/dev/null >> $LOG_FILE
 if [ $? -ne 0 ]; then
-   LOG_ERROR "Ruby Works Abnormally, Please Check The Ruby Library Depends!"
+   LOG_ERROR "Ruby failed while validating the source config. Check the Ruby runtime dependencies."
    start_fail
 elif [ ! -f "$TMP_CONFIG_FILE" ] || [ ! -s "$TMP_CONFIG_FILE" ]; then
-   LOG_ERROR "Config File Format Validation Failed..."
+   LOG_ERROR "Source config validation failed."
    start_fail
 fi
 }
@@ -467,7 +467,7 @@ check_run_quick()
    cat "$CHANGE_TRACK_FILE" | while read -r i; do
       file_path=$(echo "$i" |awk -F ' #edited time# ' '{print $1}')
       if [ -z "$(grep "$file_path #edited time# $(date -r "$file_path")$" "$CHANGE_TRACK_FILE")" ]; then
-         LOG_TIP "Because of the file【 $file_path 】modificated, Pause quick start..."
+         LOG_TIP "Quick start disabled because this file changed: 【$file_path】."
          rm -rf "$CHANGE_TRACK_FILE"
          break
       fi
@@ -585,7 +585,7 @@ do_run_file()
    fi
 
    [ ! -f "$CLASH" ] || { [ "$core_type" = "Smart" ] && [ -z "$($CLASH -v | grep 'smart')" ]; } && {
-      LOG_TIP "Detected that the Core is not Installed, Ready to Download..."
+      LOG_TIP "Clash core binary is missing. Downloading the selected Clash core now."
       rm -rf "/tmp/clash_last_version"
       /usr/share/clashnivo/clashnivo_core.sh "$core_type"
       if [ ! -f "$meta_core_path" ]; then
@@ -595,12 +595,12 @@ do_run_file()
 
    if [ "$china_ip_route" != "0" ] || [ "$china_ip6_route" != "0" ] || [ "$disable_udp_quic" = "1" ]; then
       if [ ! -f "$chnr_path" ] || [ ! -f "$chnr6_path" ]; then
-         LOG_TIP "Detected that the Chnroute Cidr is not Installed, Ready to Download..."
+         LOG_TIP "Chnroute data is missing. Downloading the required CIDR lists now."
          /usr/share/clashnivo/clashnivo_chnroute.sh
       fi
       if [ -n "$FW4" ]; then
          if [ -z "$(cat "$chnr_path" |grep "define china_ip_route")" ] || [ -z "$(cat "$chnr6_path" |grep "define china_ip6_route")" ]; then
-            LOG_TIP "Detected that the Chnroute Cidr List Format is wrong, Ready to Reformat..."
+            LOG_TIP "Chnroute list format does not match the active firewall backend. Rebuilding it now."
             /usr/share/clashnivo/clashnivo_chnroute.sh
             if [ -z "$(cat "$chnr_path" |grep "define china_ip_route")" ] || [ -z "$(cat "$chnr6_path" |grep "define china_ip6_route")" ]; then
                start_fail
@@ -608,7 +608,7 @@ do_run_file()
          fi
       else
          if [ -n "$(cat "$chnr_path" |grep "define china_ip_route")" ] || [ -n "$(cat "$chnr6_path" |grep "define china_ip6_route")" ]; then
-            LOG_TIP "Detected that the Chnroute Cidr List Format is wrong, Ready to Reformat..."
+            LOG_TIP "Chnroute list format does not match the active firewall backend. Rebuilding it now."
             /usr/share/clashnivo/clashnivo_chnroute.sh
             if [ -n "$(cat "$chnr_path" |grep "define china_ip_route")" ] || [ -n "$(cat "$chnr6_path" |grep "define china_ip6_route")" ]; then
                start_fail
@@ -702,7 +702,7 @@ check_mod()
       return 0
    fi
 
-   LOG_ERROR "【$1】module not found, please check your system depends if something abnormal!"
+   LOG_ERROR "Kernel module not found: 【$1】."
 } >/dev/null 2>&1
 
 check_core_status()
@@ -738,13 +738,13 @@ check_core_status()
       if [ -n "$(pidof clash)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_WAIT" -gt 120 ]; then
          while ( [ -n "$(pidof clash)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_RESTART" -le 3 ] )
          do
-            LOG_WARN "TUN Interface Start Failed, Try to Restart Again..."
+            LOG_WARN "TUN interface did not come up in time. Restarting the core and trying again."
             start_run_core
             sleep 120
             let TUN_RESTART++
          done
          if [ -n "$(pidof clash)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_RESTART" -gt 3 ]; then
-            LOG_WARN "TUN Interface Start Failed, Please Check The Dependence or Try to Restart Again!"
+            LOG_WARN "TUN interface failed to start after multiple attempts. Check TUN support and runtime dependencies."
             start_fail
          fi
       fi
@@ -771,25 +771,25 @@ check_core_status()
          sleep 1
       done
       if [ -z "$(echo ${lan_ip} | grep -Eo ${reg4})" ]; then
-         LOG_ERROR "LAN IP Address Get Error, Please Check The LAN Interface Setting or Choose the Correct Interface in the Setting!"
+         LOG_ERROR "Could not determine the LAN IP address. Check the LAN interface setting."
       fi
       if [ "$CORE_HTTP_CODE" != "200" ]; then
-         LOG_ERROR "Core Status Abnormal, Please Check The Log Infos!"
+         LOG_ERROR "Clash core health check failed after startup."
          start_fail
       fi
    fi
    if [ -z "$(pidof clash)" ]; then
-      LOG_ERROR "Core Start Failed, Please Check The Log Infos!"
+      LOG_ERROR "Clash core process did not start successfully."
       start_fail
    fi
 
    # redirect dns setting after core started, prevent core dns lookup failure
    if [ "$1" == "start" ]; then
       clashnivo_service_network_apply_runtime "start"
-      LOG_TIP "Clash Nivo start completed successfully!"
+      LOG_TIP "Clash Nivo started successfully."
    else
       clashnivo_service_network_apply_runtime "reload"
-      LOG_TIP "Firewall Reload Successful!"
+      LOG_TIP "Firewall reload completed."
    fi
 
    write_run_quick

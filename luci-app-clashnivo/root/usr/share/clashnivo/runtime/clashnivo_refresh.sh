@@ -48,7 +48,7 @@ kill_streaming_unlock() {
 config_test()
 {
    if [ -f "$CLASH" ]; then
-      LOG_OUT "Config File Download Successful, Test If There is Any Errors..."
+      LOG_OUT "Source refresh: download completed. Running config validation now."
       test_info=$($CLASH -t -d $CLASH_CONFIG -f "$CFG_FILE")
       local IFS=$'\n'
       for i in $test_info; do
@@ -69,7 +69,7 @@ config_test()
 
 config_download()
 {
-LOG_TIP "Config File【$name】Downloading User-Agent【$sub_ua】..."
+LOG_TIP "Source refresh: downloading 【$name】 with User-Agent 【$sub_ua】."
 if [ -n "$subscribe_url_param" ] && [ -n "$c_address" ]; then
    LOG_INFO "Config File【$name】Downloading URL【$c_address$subscribe_url_param】..."
    DOWNLOAD_URL="${c_address}${subscribe_url_param}"
@@ -99,7 +99,7 @@ config_cus_up()
 	fi
 	if [ -z "$subscribe_url_param" ]; then
 	   if [ -n "$key_match_param" ] || [ -n "$key_ex_match_param" ]; then
-	      LOG_OUT "Config File【$name】Start Picking Nodes..."	      
+	      LOG_OUT "Source refresh: filtering nodes for 【$name】."	      
 	      ruby -ryaml -rYAML -I "/usr/share/clashnivo" -E UTF-8 -e "
 	      begin
             threads = [];
@@ -168,7 +168,7 @@ config_cus_up()
 
 config_su_check()
 {
-   LOG_OUT "Config File Test Successful, Check If There is Any Update..."
+   LOG_OUT "Source refresh: validation passed. Checking whether the source changed."
    sed -i 's/!<str> /!!str /g' "$CFG_FILE" >/dev/null 2>&1
    if [ -f "$CONFIG_FILE" ]; then
       if [ "$only_download" -eq 0 ]; then
@@ -176,16 +176,16 @@ config_su_check()
       fi
       cmp -s "$CONFIG_FILE" "$CFG_FILE"
       if [ "$?" -ne 0 ]; then
-         LOG_OUT "Config File【$name】Are Updates, Start Replacing..."
+         LOG_OUT "Source refresh: changes detected for 【$name】. Replacing the stored source."
          mv "$CFG_FILE" "$CONFIG_FILE" 2>/dev/null
          LOG_OUT "Config File【$name】Update Successful!"
       else
-         LOG_OUT "Config File【$name】No Change, Do Nothing!"
+         LOG_OUT "Source refresh: 【$name】 is already current."
          rm -rf "$CFG_FILE"
          return
       fi
    else
-      LOG_OUT "Config File【$name】Download Successful, Start To Create..."
+      LOG_OUT "Source refresh: downloaded first copy of 【$name】. Saving it now."
       if [ "$only_download" -eq 0 ]; then
          config_cus_up
       fi
@@ -199,7 +199,7 @@ config_su_check()
 
 config_error()
 {
-   LOG_ERROR "【$name】Update Error, Please Try Again Later..."
+   LOG_ERROR "Source refresh failed for 【$name】."
    rm -rf "$CFG_FILE" 2>/dev/null
 }
 
@@ -227,7 +227,7 @@ config_download_direct()
          sed -i '/^ \{0,\}enhanced-mode:/d' "$CFG_FILE" >/dev/null 2>&1
          config_test
          if [ $? -ne 0 ]; then
-            LOG_ERROR "Config File Tested Faild, Please Check The Log Infos!"
+            LOG_ERROR "Source refresh validation failed for 【$name】."
             change_dns
             config_error
             return
@@ -241,16 +241,16 @@ config_download_direct()
          end
          " 2>/dev/null >> $LOG_FILE
          if [ $? -ne 0 ]; then
-            LOG_ERROR "Ruby Works Abnormally, Please Check The Ruby Library Depends!"
+            LOG_ERROR "Ruby failed while processing 【$name】. Check the Ruby runtime dependencies."
             only_download=1
             change_dns
             config_su_check
          elif [ ! -f "$CFG_FILE" ]; then
-            LOG_OUT "Config File Format Validation Failed..."
+            LOG_OUT "Source refresh validation failed for 【$name】."
             change_dns
             config_error
          elif ! "$(ruby_read "$CFG_FILE" ".key?('proxies')")" && ! "$(ruby_read "$CFG_FILE" ".key?('proxy-providers')")" ; then
-            LOG_ERROR "Updated Config【$name】Has No Proxy Field, Update Exit..."
+            LOG_ERROR "Source refresh aborted for 【$name】 because the updated config has no proxies or proxy providers."
             change_dns
             config_error
          else
@@ -259,7 +259,7 @@ config_download_direct()
          fi
       elif [ "$DOWNLOAD_RESULT" -eq 2 ]; then
          change_dns
-         LOG_OUT "Config File【$name】No Change, Do Nothing!"
+         LOG_OUT "Source refresh: 【$name】 is already current."
       else
          change_dns
          config_error
@@ -418,7 +418,7 @@ sub_info_get()
       subscribe_url=$address
    fi
 
-   LOG_OUT "Start Updating Config File【$name】..."
+   LOG_OUT "Source refresh: starting update for 【$name】."
 
    config_download
    if [ "$DOWNLOAD_RESULT" -eq 0 ] && [ -s "$CFG_FILE" ]; then
@@ -426,8 +426,8 @@ sub_info_get()
       sed -i -E 's/protocol-param: ([^,'"'"'"''}( *#)\n\r]+)/protocol-param: "\1"/g' "$CFG_FILE" 2>/dev/null
       config_test
       if [ $? -ne 0 ]; then
-         LOG_ERROR "Config File Tested Faild, Please Check The Log Infos!"
-         LOG_ERROR "Config File【$name】Subscribed Failed, Trying to Download Without Agent..."
+         LOG_ERROR "Source refresh validation failed for 【$name】."
+         LOG_ERROR "Subscription download failed for 【$name】. Retrying without the configured user agent."
          config_download_direct
          return
       fi
@@ -440,22 +440,22 @@ sub_info_get()
       end
       " 2>/dev/null >> $LOG_FILE
       if [ $? -ne 0 ]; then
-         LOG_ERROR "Ruby Works Abnormally, Please Check The Ruby Library Depends!"
+         LOG_ERROR "Ruby failed while processing 【$name】. Check the Ruby runtime dependencies."
          only_download=1
          config_su_check
       elif [ ! -f "$CFG_FILE" ]; then
-         LOG_OUT "Config File Format Validation Failed, Trying To Download Without Agent..."
+         LOG_OUT "Validation failed for 【$name】. Retrying without the configured user agent."
          config_download_direct
       elif ! "$(ruby_read "$CFG_FILE" ".key?('proxies')")" && ! "$(ruby_read "$CFG_FILE" ".key?('proxy-providers')")" ; then
-         LOG_ERROR "Updated Config【$name】Has No Proxy Field, Trying To Download Without Agent..."
+         LOG_ERROR "Updated config for 【$name】 has no proxies or proxy providers. Retrying without the configured user agent."
          config_download_direct
       else
          config_su_check
       fi
    elif [ "$DOWNLOAD_RESULT" -eq 2 ]; then
-      LOG_OUT "Config File【$name】No Change, Do Nothing!"
+      LOG_OUT "Source refresh: 【$name】 is already current."
    else
-      LOG_ERROR "Config File【$name】Subscribed Failed, Trying to Download Without Agent..."
+      LOG_ERROR "Subscription download failed for 【$name】. Retrying without the configured user agent."
       config_download_direct
    fi
 }

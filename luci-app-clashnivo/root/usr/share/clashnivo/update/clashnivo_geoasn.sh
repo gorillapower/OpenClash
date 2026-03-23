@@ -29,7 +29,7 @@ else
    geoasn_path="/tmp/etc/clashnivo/ASN.mmdb"
    mkdir -p /tmp/etc/clashnivo
 fi
-LOG_OUT "Start Downloading Geo ASN Database..."
+LOG_OUT "Downloading Geo ASN database..."
 if [ -z "$GEOASN_CUSTOM_URL" ]; then
    if [ "$github_address_mod" != "0" ]; then
       if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
@@ -46,21 +46,21 @@ fi
 DOWNLOAD_FILE_CURL "$DOWNLOAD_URL" "/tmp/GeoLite2-ASN.mmdb" "$geoasn_path"
 DOWNLOAD_RESULT=$?
 if [ "$DOWNLOAD_RESULT" -eq 0 ] && [ -s "/tmp/GeoLite2-ASN.mmdb" ]; then
-   LOG_OUT "Geo ASN Database Download Success, Check Updated..."
+   LOG_OUT "Geo ASN database downloaded. Checking for changes..."
    cmp -s /tmp/GeoLite2-ASN.mmdb "$geoasn_path"
    if [ "$?" -ne "0" ]; then
-      LOG_OUT "Geo ASN Database Has Been Updated, Starting To Replace The Old Version..."
+      LOG_OUT "Geo ASN database changed. Replacing the current file..."
       rm -rf "/etc/clashnivo/GeoLite2-ASN.mmdb"
       mv /tmp/GeoLite2-ASN.mmdb "$geoasn_path" >/dev/null 2>&1
-      LOG_OUT "Geo ASN Database Update Successful!"
+      LOG_OUT "Geo ASN database updated."
       restart=1
    else
-      LOG_OUT "Updated Geo ASN Database No Change, Do Nothing..."
+      LOG_OUT "Geo ASN database is already current."
    fi
 elif [ "$DOWNLOAD_RESULT" -eq 2 ]; then
-   LOG_OUT "Updated Geo ASN Database No Change, Do Nothing..."
+   LOG_OUT "Geo ASN database is already current."
 else
-   LOG_OUT "Geo ASN Database Update Error, Please Try Again Later..."
+   LOG_OUT "Geo ASN database update failed. Try again later."
 fi
 
 rm -rf /tmp/GeoLite2-ASN.mmdb >/dev/null 2>&1

@@ -29,7 +29,7 @@ else
    geoip_path="/tmp/etc/clashnivo/Country.mmdb"
    mkdir -p /tmp/etc/clashnivo
 fi
-LOG_OUT "Start Downloading Geoip Database..."
+LOG_OUT "Downloading IP database..."
 if [ -z "$GEOIP_CUSTOM_URL" ]; then
    if [ "$github_address_mod" != "0" ]; then
       if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
@@ -46,20 +46,20 @@ fi
 DOWNLOAD_FILE_CURL "$DOWNLOAD_URL" "/tmp/Country.mmdb" "$geoip_path"
 DOWNLOAD_RESULT=$?
 if [ "$DOWNLOAD_RESULT" -eq 0 ] && [ -s "/tmp/Country.mmdb" ]; then
-   LOG_OUT "Geoip Database Download Success, Check Updated..."
+   LOG_OUT "IP database downloaded. Checking for changes..."
    cmp -s /tmp/Country.mmdb "$geoip_path"
    if [ "$?" -ne 0 ]; then
-      LOG_OUT "Geoip Database Has Been Updated, Starting To Replace The Old Version..."
+      LOG_OUT "IP database changed. Replacing the current file..."
       mv /tmp/Country.mmdb "$geoip_path" >/dev/null 2>&1
-      LOG_OUT "Geoip Database Update Successful!"
+      LOG_OUT "IP database updated."
       restart=1
    else
-      LOG_OUT "Updated Geoip Database No Change, Do Nothing..."
+      LOG_OUT "IP database is already current."
    fi
 elif [ "$DOWNLOAD_RESULT" -eq 2 ]; then
-   LOG_OUT "Updated Geoip Database No Change, Do Nothing..."
+   LOG_OUT "IP database is already current."
 else
-   LOG_OUT "Geoip Database Update Error, Please Try Again Later..."
+   LOG_OUT "IP database update failed. Try again later."
 fi
 
 rm -rf /tmp/Country.mmdb >/dev/null 2>&1
