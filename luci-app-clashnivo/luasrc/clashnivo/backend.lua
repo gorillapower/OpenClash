@@ -9,6 +9,13 @@ local util = require "luci.util"
 local uci_mod = require "luci.model.uci"
 
 local CLASHNIVO_INIT = "/etc/init.d/clashnivo"
+local CLASHNIVO_CORE_VERSION_SCRIPT = "/usr/share/clashnivo/clash_version.sh"
+local CLASHNIVO_PACKAGE_VERSION_SCRIPT = "/usr/share/clashnivo/clashnivo_version.sh"
+local CLASHNIVO_CORE_VERSION_FILE = "/tmp/clash_last_version"
+local CLASHNIVO_PACKAGE_VERSION_FILE = "/tmp/clashnivo_last_version"
+local CLASHNIVO_CORE_VERSION_LOCK = "/tmp/clashnivo_core_latest.lock"
+local CLASHNIVO_PACKAGE_VERSION_LOCK = "/tmp/clashnivo_package_latest.lock"
+local VERSION_CACHE_TTL = 900
 local DASHBOARD_UI_BASE = "/usr/share/clashnivo/ui"
 local DASHBOARD_OPTIONS = {
 	{ id = "dashboard_official", key = "dashboard", variant = "Official", name = "Dashboard", label = "Clash Dashboard" },
@@ -63,7 +70,9 @@ function service_status()
 	local parsed = json.parse(output)
 
 	if parsed and type(parsed) == "table" then
-		parsed.running = parsed.service_running == true
+		local enabled = parsed.enabled == true
+		local active = parsed.service_running == true or parsed.core_running == true or parsed.watchdog_running == true
+		parsed.running = enabled and active
 
 		if parsed.core_pid and parsed.core_pid ~= "" then
 			parsed.pid = tonumber(parsed.core_pid) or parsed.core_pid
@@ -80,6 +89,86 @@ function service_status()
 	end
 
 	return { running = false, service_running = false, core_running = false }
+end
+
+local function file_mtime(path)
+	local stat = fs.stat(path)
+	if stat and stat.mtime then
+		return tonumber(stat.mtime)
+	end
+	return nil
+end
+
+local function file_is_fresh(path, ttl)
+	local mtime = file_mtime(path)
+	if not mtime then
+		return false
+	end
+	return (os.time() - mtime) < ttl
+end
+
+local function read_core_latest_cached()
+	local cursor = uci_mod.cursor()
+	local github_address_mod = cursor:get("clashnivo", "config", "github_address_mod") or "0"
+	local core_type = cursor:get("clashnivo", "config", "core_type") or "Meta"
+	local smart_enable = cursor:get("clashnivo", "config", "smart_enable") or "0"
+	if smart_enable == "1" then
+		core_type = "Smart"
+	end
+
+	local line_number = core_type == "Smart" and 2 or 1
+	local version = ""
+	local content = read_trimmed_file(CLASHNIVO_CORE_VERSION_FILE)
+	if content ~= "" then
+		local lines = util.split(content, "\n", nil, true)
+		version = (lines[line_number] or ""):gsub("%s+$", "")
+	end
+
+	local source_mode = "openclash"
+	local source_branch = cursor:get("clashnivo", "config", "release_branch") or "master"
+	local source_base
+	if github_address_mod ~= "0" and github_address_mod ~= "" then
+		source_base = string.format("%sgh/vernesong/OpenClash@core", github_address_mod)
+	else
+		source_base = "https://raw.githubusercontent.com/vernesong/OpenClash/core"
+	end
+
+	return {
+		kind = "core",
+		version = version,
+		core_type = core_type,
+		source_policy = source_mode,
+		source_branch = source_branch,
+		source_base = source_base,
+	}
+end
+
+local function read_package_latest_cached()
+	return {
+		kind = "package",
+		version = read_trimmed_file(CLASHNIVO_PACKAGE_VERSION_FILE),
+		source_policy = "package-branch",
+	}
+end
+
+local function spawn_version_refresh(lock_file, command)
+	local inner
+
+	if fs.access(lock_file) and file_is_fresh(lock_file, 120) then
+		return
+	end
+
+	inner = string.format(
+		"touch %s; trap 'rm -f %s' EXIT; %s >/dev/null 2>&1",
+		shellquote(lock_file),
+		shellquote(lock_file),
+		command
+	)
+
+	sys.call(string.format(
+		"nohup /bin/sh -c %s </dev/null >/dev/null 2>&1 &",
+		shellquote(inner)
+	))
 end
 
 function service_action(action, async)
@@ -192,7 +281,18 @@ function update_command(action, ...)
 end
 
 function core_latest_version()
-	return update_command("update_core_latest")
+	local cursor = uci_mod.cursor()
+	local github_address_mod = cursor:get("clashnivo", "config", "github_address_mod") or "0"
+
+	if not file_is_fresh(CLASHNIVO_CORE_VERSION_FILE, VERSION_CACHE_TTL) then
+		local command = shellquote(CLASHNIVO_CORE_VERSION_SCRIPT)
+		if github_address_mod ~= "0" and github_address_mod ~= "" then
+			command = command .. " " .. shellquote(github_address_mod)
+		end
+		spawn_version_refresh(CLASHNIVO_CORE_VERSION_LOCK, command)
+	end
+
+	return read_core_latest_cached()
 end
 
 function start_core_update()
@@ -204,7 +304,11 @@ function core_update_status()
 end
 
 function package_latest_version()
-	return update_command("update_package_latest")
+	if not file_is_fresh(CLASHNIVO_PACKAGE_VERSION_FILE, VERSION_CACHE_TTL) then
+		spawn_version_refresh(CLASHNIVO_PACKAGE_VERSION_LOCK, shellquote(CLASHNIVO_PACKAGE_VERSION_SCRIPT))
+	end
+
+	return read_package_latest_cached()
 end
 
 function start_package_update()

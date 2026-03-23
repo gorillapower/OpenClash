@@ -186,7 +186,7 @@ function handlers.service_start()
     local cursor = uci_mod.cursor()
     cursor:set("clashnivo", "config", "enable", "1")
     cursor:commit("clashnivo")
-    backend.service_action("start")
+    backend.service_action("start", true)
     return true
 end
 

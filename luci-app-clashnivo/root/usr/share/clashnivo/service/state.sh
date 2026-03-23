@@ -8,6 +8,7 @@ clashnivo_service_init_state() {
    CLASHNIVO_WATCHDOG_SERVICE_NAME="clashnivo-watchdog"
 
    CLASHNIVO_LOG_FILE="${CLASHNIVO_RUNTIME_PREFIX}.log"
+   CLASHNIVO_CORE_LOG_FILE="${CLASHNIVO_STATE_DIR}/clash.log"
    CLASHNIVO_START_LOG_FILE="${CLASHNIVO_RUNTIME_PREFIX}_start.log"
    CLASHNIVO_CHANGE_FILE="${CLASHNIVO_RUNTIME_PREFIX}.change"
    CLASHNIVO_DEBUG_LOG_FILE="${CLASHNIVO_RUNTIME_PREFIX}_debug.log"
@@ -26,6 +27,7 @@ clashnivo_service_init_state() {
 
    # Compatibility aliases for inherited scripts that still expect generic names.
    LOG_FILE="${CLASHNIVO_LOG_FILE}"
+   CORE_LOG_FILE="${CLASHNIVO_CORE_LOG_FILE}"
    START_LOG="${CLASHNIVO_START_LOG_FILE}"
    CHANGE_TRACK_FILE="${CLASHNIVO_CHANGE_FILE}"
    DEBUG_LOG_FILE="${CLASHNIVO_DEBUG_LOG_FILE}"

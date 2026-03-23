@@ -29,3 +29,4 @@ runtime_naming_debt	^luci-app-clashnivo/ui/src/lib/	Frontend code may still poin
 docs_migration_reference	^luci-app-clashnivo/ui/src/pages/	UI page copy may intentionally describe OpenClash guard and import behavior.
 docs_migration_reference	^luci-app-clashnivo/ui/mock-rpc-plugin\.ts$	Mock data may still simulate inherited OpenClash paths and guard states.
 docs_migration_reference	^luci-app-clashnivo/ui/src/test/	UI and integration tests may intentionally exercise OpenClash coexistence, migration, and legacy-path behavior.
+upstream_source_policy_reference	^luci-app-clashnivo/luasrc/clashnivo/backend\.lua$	Backend cache and dashboard helpers may intentionally expose upstream source-policy values and OpenClash core source coordinates.
