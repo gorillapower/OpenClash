@@ -95,6 +95,16 @@ export interface UpdateStatusResult {
   log_path?: string
 }
 
+export interface DashboardOption {
+  id: string
+  key: string
+  name: string
+  label: string
+  variant: string
+  installed: boolean
+  selected: boolean
+}
+
 // ---------------------------------------------------------------------------
 // Composition preview / validation types
 // ---------------------------------------------------------------------------
@@ -354,6 +364,22 @@ export const luciRpc = {
 
   assetsUpdateStatus(target = 'all'): Promise<UpdateStatusResult> {
     return rpcCall('assets.updateStatus', [target])
+  },
+
+  dashboardList(): Promise<DashboardOption[]> {
+    return rpcCall('dashboard.list', [])
+  },
+
+  dashboardSelect(id: string): Promise<void> {
+    return rpcCall('dashboard.select', [id])
+  },
+
+  dashboardUpdate(id: string): Promise<UpdateStatusResult> {
+    return rpcCall('dashboard.update', [id])
+  },
+
+  dashboardUpdateStatus(id: string): Promise<UpdateStatusResult> {
+    return rpcCall('dashboard.updateStatus', [id])
   },
 
   // Logs

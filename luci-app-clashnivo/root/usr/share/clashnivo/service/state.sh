@@ -22,6 +22,7 @@ clashnivo_service_init_state() {
    CLASHNIVO_ASSETS_UPDATE_STATUS_FILE="${CLASHNIVO_RUNTIME_PREFIX}_assets_update_status"
    CLASHNIVO_ASSETS_UPDATE_LOG_FILE="${CLASHNIVO_ASSETS_UPDATE_STATUS_FILE}.log"
    CLASHNIVO_ASSETS_UPDATE_STATUS_DIR="${CLASHNIVO_RUNTIME_PREFIX}_asset_updates"
+   CLASHNIVO_DASHBOARD_UPDATE_STATUS_DIR="${CLASHNIVO_RUNTIME_PREFIX}_dashboard_updates"
 
    # Compatibility aliases for inherited scripts that still expect generic names.
    LOG_FILE="${CLASHNIVO_LOG_FILE}"

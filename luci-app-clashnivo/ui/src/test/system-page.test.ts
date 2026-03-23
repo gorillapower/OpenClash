@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte'
 import type { CreateQueryResult, CreateMutationResult } from '@tanstack/svelte-query'
 import type { ClashVersion } from '$lib/api/clash'
-import type { CoreVersionResult, UpdateStatusResult, UciPackage } from '$lib/api/luci'
+import type { CoreVersionResult, DashboardOption, UpdateStatusResult, UciPackage } from '$lib/api/luci'
 import SystemPage from '../pages/SystemPage.svelte'
 
 function makeQueryResult<T>(data: T) {
@@ -35,7 +35,11 @@ vi.mock('$lib/queries/luci', () => ({
   usePackageUpdateStatus: vi.fn(),
   usePackageUpdate: vi.fn(),
   useAssetsUpdateStatus: vi.fn(),
-  useAssetsUpdate: vi.fn()
+  useAssetsUpdate: vi.fn(),
+  useDashboards: vi.fn(),
+  useDashboardSelect: vi.fn(),
+  useDashboardUpdateStatus: vi.fn(),
+  useDashboardUpdate: vi.fn()
 }))
 
 vi.mock('@tanstack/svelte-query', async (importOriginal) => {
@@ -52,6 +56,10 @@ import { useClashVersion } from '$lib/queries/clash'
 import {
   useAssetsUpdate,
   useAssetsUpdateStatus,
+  useDashboards,
+  useDashboardSelect,
+  useDashboardUpdate,
+  useDashboardUpdateStatus,
   useCoreLatestVersion,
   useCoreUpdate,
   useCoreUpdateStatus,
@@ -85,9 +93,16 @@ function setupMocks({
   packageLatest = { version: 'v1.2.3', source_policy: 'package-branch' } as CoreVersionResult,
   packageStatus = { status: 'idle' } as UpdateStatusResult,
   assetsStatus = { status: 'idle' } as UpdateStatusResult,
+  dashboards = [
+    { id: 'metacubexd', key: 'metacubexd', name: 'MetaCubeXD', label: 'MetaCubeXD', variant: 'Official', installed: true, selected: true },
+    { id: 'zashboard', key: 'zashboard', name: 'Zashboard', label: 'Zashboard', variant: 'Official', installed: false, selected: false }
+  ] as DashboardOption[],
+  dashboardStatus = { status: 'idle' } as UpdateStatusResult,
   coreUpdateMutate = vi.fn().mockResolvedValue(undefined),
   packageUpdateMutate = vi.fn().mockResolvedValue(undefined),
-  assetsUpdateMutate = vi.fn().mockResolvedValue(undefined)
+  assetsUpdateMutate = vi.fn().mockResolvedValue(undefined),
+  dashboardSelectMutate = vi.fn().mockResolvedValue(undefined),
+  dashboardUpdateMutate = vi.fn().mockResolvedValue(undefined)
 } = {}) {
   vi.mocked(useUciConfig).mockReturnValue(
     makeQueryResult(uciData) as CreateQueryResult<UciPackage>
@@ -134,6 +149,18 @@ function setupMocks({
   vi.mocked(useAssetsUpdate).mockReturnValue(
     makeMutationResult(assetsUpdateMutate) as CreateMutationResult<UpdateStatusResult, unknown, void, unknown>
   )
+  vi.mocked(useDashboards).mockReturnValue(
+    makeQueryResult(dashboards) as CreateQueryResult<DashboardOption[]>
+  )
+  vi.mocked(useDashboardUpdateStatus).mockReturnValue(
+    makeQueryResult(dashboardStatus) as CreateQueryResult<UpdateStatusResult>
+  )
+  vi.mocked(useDashboardSelect).mockReturnValue(
+    makeMutationResult(dashboardSelectMutate) as CreateMutationResult<void, unknown, string, unknown>
+  )
+  vi.mocked(useDashboardUpdate).mockReturnValue(
+    makeMutationResult(dashboardUpdateMutate) as CreateMutationResult<UpdateStatusResult, unknown, string, unknown>
+  )
 }
 
 describe('SystemPage', () => {
@@ -147,7 +174,7 @@ describe('SystemPage', () => {
     expect(screen.getByText('Core runtime')).toBeInTheDocument()
     expect(screen.getByText('Package update')).toBeInTheDocument()
     expect(screen.getByText('Asset maintenance')).toBeInTheDocument()
-    expect(screen.getByText('Dashboard access')).toBeInTheDocument()
+    expect(screen.getByText('Dashboards')).toBeInTheDocument()
     expect(screen.getAllByText('Advanced settings').length).toBeGreaterThan(0)
     expect(screen.getByText('Traffic mode')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /how this works/i })).toBeInTheDocument()
@@ -166,7 +193,7 @@ describe('SystemPage', () => {
 
     expect(screen.getAllByText('Clash Nivo').length).toBeGreaterThan(0)
     expect(screen.getByText('Core runtime')).toBeInTheDocument()
-    expect(screen.getByText('Dashboard access')).toBeInTheDocument()
+    expect(screen.getByText('Dashboards')).toBeInTheDocument()
   })
 
   it('shows current and latest core versions', () => {
@@ -221,7 +248,7 @@ describe('SystemPage', () => {
     expect(assetsUpdateMutate).toHaveBeenCalledOnce()
   })
 
-  it('updates dashboard transport from the advanced settings section', async () => {
+  it('updates dashboard transport from the dashboard section', async () => {
     const dashboardSslMutate = vi.fn().mockResolvedValue(undefined)
     setupMocks()
     vi.mocked(useSetUciConfig).mockImplementation((pkg, section, option) => {
@@ -235,6 +262,24 @@ describe('SystemPage', () => {
 
     await fireEvent.click(screen.getByRole('switch', { name: /dashboard forwarding ssl/i }))
     expect(dashboardSslMutate).toHaveBeenCalledWith('1')
+  })
+
+  it('selects a dashboard option', async () => {
+    const dashboardSelectMutate = vi.fn().mockResolvedValue(undefined)
+    setupMocks({ dashboardSelectMutate })
+    render(SystemPage)
+
+    await fireEvent.click(screen.getByRole('button', { name: /^use$/i }))
+    expect(dashboardSelectMutate).toHaveBeenCalledWith('zashboard')
+  })
+
+  it('downloads a dashboard option', async () => {
+    const dashboardUpdateMutate = vi.fn().mockResolvedValue(undefined)
+    setupMocks({ dashboardUpdateMutate })
+    render(SystemPage)
+
+    await fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
+    expect(dashboardUpdateMutate).toHaveBeenCalledWith('zashboard')
   })
 
   it('flushes DNS cache from the advanced settings section', async () => {

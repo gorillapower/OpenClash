@@ -6,8 +6,18 @@ local fs = require "nixio.fs"
 local json = require "luci.jsonc"
 local sys = require "luci.sys"
 local util = require "luci.util"
+local uci_mod = require "luci.model.uci"
 
 local CLASHNIVO_INIT = "/etc/init.d/clashnivo"
+local DASHBOARD_UI_BASE = "/usr/share/clashnivo/ui"
+local DASHBOARD_OPTIONS = {
+	{ id = "dashboard_official", key = "dashboard", variant = "Official", name = "Dashboard", label = "Clash Dashboard" },
+	{ id = "dashboard_meta",     key = "dashboard", variant = "Meta",     name = "Dashboard", label = "Razord Meta" },
+	{ id = "yacd_official",      key = "yacd",      variant = "Official", name = "Yacd",      label = "Yacd" },
+	{ id = "yacd_meta",          key = "yacd",      variant = "Meta",     name = "Yacd",      label = "Yacd Meta" },
+	{ id = "metacubexd",         key = "metacubexd",variant = "Official", name = "MetaCubeXD",label = "MetaCubeXD" },
+	{ id = "zashboard",          key = "zashboard", variant = "Official", name = "Zashboard", label = "Zashboard" },
+}
 local function shellquote(value)
 	return util.shellquote(value or "")
 end
@@ -205,6 +215,87 @@ end
 
 function assets_update_status(target)
 	return update_command("update_status", "assets", target)
+end
+
+local function dashboard_dir_name(key)
+	return key
+end
+
+local function dashboard_installed(key)
+	local dir = string.format("%s/%s", DASHBOARD_UI_BASE, dashboard_dir_name(key))
+	return fs.access(dir .. "/index.html") or fs.access(dir .. "/dist/index.html") or fs.access(dir)
+end
+
+local function current_dashboard_id(cursor)
+	local default_dashboard = cursor:get("clashnivo", "config", "default_dashboard") or "metacubexd"
+	local dashboard_type = cursor:get("clashnivo", "config", "dashboard_type") or "Official"
+	local yacd_type = cursor:get("clashnivo", "config", "yacd_type") or "Official"
+
+	if default_dashboard == "dashboard" then
+		return dashboard_type == "Meta" and "dashboard_meta" or "dashboard_official"
+	elseif default_dashboard == "yacd" then
+		return yacd_type == "Meta" and "yacd_meta" or "yacd_official"
+	elseif default_dashboard == "zashboard" then
+		return "zashboard"
+	end
+
+	return "metacubexd"
+end
+
+function dashboard_list()
+	local cursor = uci_mod.cursor()
+	local selected = current_dashboard_id(cursor)
+	local result = {}
+
+	for _, option in ipairs(DASHBOARD_OPTIONS) do
+		result[#result + 1] = {
+			id = option.id,
+			key = option.key,
+			name = option.name,
+			label = option.label,
+			variant = option.variant,
+			installed = dashboard_installed(option.key) and true or false,
+			selected = option.id == selected,
+		}
+	end
+
+	return result
+end
+
+function dashboard_select(id)
+	local cursor = uci_mod.cursor()
+
+	if id == "dashboard_official" then
+		cursor:set("clashnivo", "config", "default_dashboard", "dashboard")
+		cursor:set("clashnivo", "config", "dashboard_type", "Official")
+	elseif id == "dashboard_meta" then
+		cursor:set("clashnivo", "config", "default_dashboard", "dashboard")
+		cursor:set("clashnivo", "config", "dashboard_type", "Meta")
+	elseif id == "yacd_official" then
+		cursor:set("clashnivo", "config", "default_dashboard", "yacd")
+		cursor:set("clashnivo", "config", "yacd_type", "Official")
+	elseif id == "yacd_meta" then
+		cursor:set("clashnivo", "config", "default_dashboard", "yacd")
+		cursor:set("clashnivo", "config", "yacd_type", "Meta")
+	elseif id == "metacubexd" then
+		cursor:set("clashnivo", "config", "default_dashboard", "metacubexd")
+	elseif id == "zashboard" then
+		cursor:set("clashnivo", "config", "default_dashboard", "zashboard")
+	else
+		error("unknown dashboard id")
+	end
+
+	cursor:save("clashnivo")
+	cursor:commit("clashnivo")
+	return true
+end
+
+function dashboard_update(id)
+	return update_command("update_dashboard", id)
+end
+
+function dashboard_update_status(id)
+	return update_command("update_status", "dashboard", id)
 end
 
 function preview_config()

@@ -12,6 +12,7 @@ clashnivo_service_update_init() {
    CLASHNIVO_UPDATE_GEOSITE_SCRIPT="/usr/share/clashnivo/clashnivo_geosite.sh"
    CLASHNIVO_UPDATE_GEOASN_SCRIPT="/usr/share/clashnivo/clashnivo_geoasn.sh"
    CLASHNIVO_UPDATE_CHNROUTE_SCRIPT="/usr/share/clashnivo/clashnivo_chnroute.sh"
+   CLASHNIVO_UPDATE_DASHBOARD_SCRIPT="/usr/share/clashnivo/clashnivo_download_dashboard.sh"
 }
 
 clashnivo_service_core_source_mode() {
@@ -50,6 +51,9 @@ clashnivo_service_update_status_file() {
       assets)
          [ -n "$target" ] && printf '%s' "${CLASHNIVO_ASSETS_UPDATE_STATUS_DIR}/${target}.status" || printf '%s' "$CLASHNIVO_ASSETS_UPDATE_STATUS_FILE"
       ;;
+      dashboard)
+         [ -n "$target" ] && printf '%s' "${CLASHNIVO_DASHBOARD_UPDATE_STATUS_DIR}/${target}.status" || return 1
+      ;;
       *)
          return 1
       ;;
@@ -69,6 +73,9 @@ clashnivo_service_update_log_file() {
       ;;
       assets)
          [ -n "$target" ] && printf '%s' "${CLASHNIVO_ASSETS_UPDATE_STATUS_DIR}/${target}.log" || printf '%s' "$CLASHNIVO_ASSETS_UPDATE_LOG_FILE"
+      ;;
+      dashboard)
+         [ -n "$target" ] && printf '%s' "${CLASHNIVO_DASHBOARD_UPDATE_STATUS_DIR}/${target}.log" || return 1
       ;;
       *)
          return 1
@@ -309,6 +316,62 @@ clashnivo_service_update_assets_command() {
    printf '}\n'
 }
 
+clashnivo_service_update_dashboard_command() {
+   local target="${1:-}"
+   local dashboard_name=""
+   local dashboard_type=""
+   local command_string=""
+
+   case "$target" in
+      dashboard_official)
+         dashboard_name="Dashboard"
+         dashboard_type="Official"
+      ;;
+      dashboard_meta)
+         dashboard_name="Dashboard"
+         dashboard_type="Meta"
+      ;;
+      yacd_official)
+         dashboard_name="Yacd"
+         dashboard_type="Official"
+      ;;
+      yacd_meta)
+         dashboard_name="Yacd"
+         dashboard_type="Meta"
+      ;;
+      metacubexd)
+         dashboard_name="MetaCubeXD"
+         dashboard_type="Official"
+      ;;
+      zashboard)
+         dashboard_name="Zashboard"
+         dashboard_type="Official"
+      ;;
+      *)
+         printf '{"accepted":false,"kind":"dashboard","target":%s,"error":"unknown_target"}\n' "$(clashnivo_service_json_string "$target")"
+         return 1
+      ;;
+   esac
+
+   command_string="$CLASHNIVO_UPDATE_DASHBOARD_SCRIPT ${dashboard_name} ${dashboard_type}"
+
+   clashnivo_service_update_run_async \
+      dashboard \
+      "$target" \
+      "$command_string" \
+      "Dashboard download requested"
+
+   printf '{'
+   printf '"accepted":true,'
+   printf '"kind":"dashboard",'
+   printf '"target":%s,' "$(clashnivo_service_json_string "$target")"
+   printf '"async":true,'
+   printf '"status":"accepted",'
+   printf '"status_path":%s,' "$(clashnivo_service_json_string "$(clashnivo_service_update_status_file dashboard "$target")")"
+   printf '"log_path":%s' "$(clashnivo_service_json_string "$(clashnivo_service_update_log_file dashboard "$target")")"
+   printf '}\n'
+}
+
 clashnivo_service_update_status_command() {
    local kind="${1:-all}"
    local target="${2:-}"
@@ -321,7 +384,7 @@ clashnivo_service_update_status_command() {
          printf '"assets":%s' "$(clashnivo_service_update_parse_status assets "${target:-all}")"
          printf '}\n'
       ;;
-      package|core|assets)
+      package|core|assets|dashboard)
          clashnivo_service_update_parse_status "$kind" "$target"
       ;;
       *)

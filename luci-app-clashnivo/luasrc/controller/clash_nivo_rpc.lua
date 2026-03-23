@@ -506,6 +506,34 @@ function handlers.assets_update_status(p)
     return backend.assets_update_status(target)
 end
 
+function handlers.dashboard_list()
+    return backend.dashboard_list()
+end
+
+function handlers.dashboard_select(p)
+    local id = p[1]
+    if not id or id == "" then
+        error("dashboard id is required")
+    end
+    return backend.dashboard_select(id)
+end
+
+function handlers.dashboard_update(p)
+    local id = p[1]
+    if not id or id == "" then
+        error("dashboard id is required")
+    end
+    return backend.dashboard_update(id)
+end
+
+function handlers.dashboard_update_status(p)
+    local id = p[1]
+    if not id or id == "" then
+        error("dashboard id is required")
+    end
+    return backend.dashboard_update_status(id)
+end
+
 -- ── method dispatch table (dot-notation → handler) ─────────────────────────
 
 local METHOD_MAP = {
@@ -544,6 +572,10 @@ local METHOD_MAP = {
     ["package.updateStatus"]     = handlers.package_update_status,
     ["assets.update"]            = handlers.assets_update,
     ["assets.updateStatus"]      = handlers.assets_update_status,
+    ["dashboard.list"]           = handlers.dashboard_list,
+    ["dashboard.select"]         = handlers.dashboard_select,
+    ["dashboard.update"]         = handlers.dashboard_update,
+    ["dashboard.updateStatus"]   = handlers.dashboard_update_status,
 }
 
 -- ── main RPC handler ────────────────────────────────────────────────────────

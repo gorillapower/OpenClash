@@ -42,9 +42,9 @@ let mockRuleProviderCounter = 10
 
 // Mutable config section — mirrors real UCI 'config' section
 let mockConfig: Record<string, string> = {
-  config_path: '/etc/openclash/config/my-subscription.yaml',
+  config_path: '/etc/clashnivo/config/my-subscription.yaml',
   operation_mode: 'fake-ip',
-  core_path: '/etc/openclash/core/clash_meta',
+  core_path: '/etc/clashnivo/core/clash_meta',
   en_mode: 'fake-ip',
   enable_udp_proxy: '1',
   stack_type: 'gvisor',
@@ -52,6 +52,39 @@ let mockConfig: Record<string, string> = {
   china_ip_route: '0',
   router_self_proxy: '1',
   disable_udp_quic: '1',
+  default_dashboard: 'metacubexd',
+  dashboard_type: 'Official',
+  yacd_type: 'Meta',
+  dashboard_forward_ssl: '0',
+}
+
+let mockDashboardUpdateStatus: Record<string, { status: string; message?: string }> = {}
+
+function dashboardOptions() {
+  const selectedDashboard = mockConfig.default_dashboard ?? 'metacubexd'
+  const dashboardType = mockConfig.dashboard_type ?? 'Official'
+  const yacdType = mockConfig.yacd_type ?? 'Meta'
+  const selectedId =
+    selectedDashboard === 'dashboard'
+      ? dashboardType === 'Meta'
+        ? 'dashboard_meta'
+        : 'dashboard_official'
+      : selectedDashboard === 'yacd'
+        ? yacdType === 'Meta'
+          ? 'yacd_meta'
+          : 'yacd_official'
+        : selectedDashboard === 'zashboard'
+          ? 'zashboard'
+          : 'metacubexd'
+
+  return [
+    { id: 'dashboard_official', key: 'dashboard', name: 'Dashboard', label: 'Clash Dashboard', variant: 'Official', installed: true, selected: selectedId === 'dashboard_official' },
+    { id: 'dashboard_meta', key: 'dashboard', name: 'Dashboard', label: 'Razord Meta', variant: 'Meta', installed: true, selected: selectedId === 'dashboard_meta' },
+    { id: 'yacd_official', key: 'yacd', name: 'Yacd', label: 'Yacd', variant: 'Official', installed: false, selected: selectedId === 'yacd_official' },
+    { id: 'yacd_meta', key: 'yacd', name: 'Yacd', label: 'Yacd Meta', variant: 'Meta', installed: true, selected: selectedId === 'yacd_meta' },
+    { id: 'metacubexd', key: 'metacubexd', name: 'MetaCubeXD', label: 'MetaCubeXD', variant: 'Official', installed: true, selected: selectedId === 'metacubexd' },
+    { id: 'zashboard', key: 'zashboard', name: 'Zashboard', label: 'Zashboard', variant: 'Official', installed: false, selected: selectedId === 'zashboard' }
+  ]
 }
 
 const RPC_HANDLERS: Record<string, RpcHandler> = {
@@ -220,23 +253,12 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
   },
   'file.read': (params) => {
     const path = (params as string[])[0] ?? ''
-    if (path.includes('openclash_custom_rules.list')) {
+    if (path.includes('clashnivo_custom_rules.list')) {
       return {
         content: [
           'rules:',
           '  - DOMAIN-SUFFIX,example.com,DIRECT',
           '  - DOMAIN-KEYWORD,google,HK Select'
-        ].join('\n') + '\n'
-      }
-    }
-    if (path.includes('openclash_advanced_yaml.yaml')) {
-      return {
-        content: [
-          '# Advanced YAML — proxy-groups and rules merged at startup',
-          '# proxy-groups:',
-          '#   - name: MyGroup',
-          '#     type: select',
-          '#     proxies: [DIRECT]'
         ].join('\n') + '\n'
       }
     }
@@ -257,6 +279,41 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
   'core.update': () => {
     console.log('[mock] core.update triggered')
     return true
+  },
+  'dashboard.list': () => dashboardOptions(),
+  'dashboard.select': (params) => {
+    const id = (params as string[])[0]
+    if (id === 'dashboard_official') {
+      mockConfig.default_dashboard = 'dashboard'
+      mockConfig.dashboard_type = 'Official'
+    } else if (id === 'dashboard_meta') {
+      mockConfig.default_dashboard = 'dashboard'
+      mockConfig.dashboard_type = 'Meta'
+    } else if (id === 'yacd_official') {
+      mockConfig.default_dashboard = 'yacd'
+      mockConfig.yacd_type = 'Official'
+    } else if (id === 'yacd_meta') {
+      mockConfig.default_dashboard = 'yacd'
+      mockConfig.yacd_type = 'Meta'
+    } else if (id === 'zashboard') {
+      mockConfig.default_dashboard = 'zashboard'
+    } else if (id === 'metacubexd') {
+      mockConfig.default_dashboard = 'metacubexd'
+    }
+    return true
+  },
+  'dashboard.update': (params) => {
+    const id = (params as string[])[0]
+    mockDashboardUpdateStatus[id] = {
+      status: 'done',
+      message: `Dashboard ready: ${id}`
+    }
+    console.log('[mock] dashboard.update triggered for:', id)
+    return { accepted: true }
+  },
+  'dashboard.updateStatus': (params) => {
+    const id = (params as string[])[0]
+    return mockDashboardUpdateStatus[id] ?? { status: 'idle' }
   },
   'core.updateStatus': () => ({ status: 'idle' }),
 }
@@ -345,4 +402,3 @@ export function mockRpcPlugin(): Plugin {
     }
   }
 }
-

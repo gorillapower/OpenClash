@@ -3,12 +3,17 @@
   import {
     useAssetsUpdate,
     useAssetsUpdateStatus,
+    useDashboards,
+    useDashboardSelect,
+    useDashboardUpdate,
+    useDashboardUpdateStatus,
     useCoreLatestVersion,
     useCoreUpdate,
     useCoreUpdateStatus,
     usePackageLatestVersion,
     usePackageUpdate,
     usePackageUpdateStatus,
+    useSetUciConfig,
     useUciConfig
   } from '$lib/queries/luci'
   import Button from '$lib/components/ui/button/button.svelte'
@@ -37,9 +42,11 @@
     refetchInterval: (query) => isPendingState(query.state.data?.status) ? 2000 : false
   } as never)
   const assetsUpdate = useAssetsUpdate('all')
+  const dashboards = useDashboards()
+  const setDashboardForwardSsl = useSetUciConfig('clashnivo', 'config', 'dashboard_forward_ssl')
+  const dashboardSelect = useDashboardSelect()
 
   const cfg = $derived(config.data?.config ?? {})
-  const dashboardType = $derived((cfg['dashboard_type'] as string | undefined) ?? 'Official')
   const dashboardForwardSsl = $derived((cfg['dashboard_forward_ssl'] as string | undefined) === '1')
   const coreSourcePolicy = $derived(latestCore.data?.source_policy ?? 'openclash')
   const dashboardUrl = $derived(
@@ -62,6 +69,22 @@
   )
   const assetsBusy = $derived(
     isPendingState(assetsUpdateStatus.data?.status) || assetsUpdate.isPending
+  )
+  const dashboardOptions = $derived(dashboards.data ?? [])
+  const selectedDashboard = $derived(
+    dashboardOptions.find((option) => option.selected) ?? dashboardOptions[0] ?? null
+  )
+  const selectedDashboardId = $derived(selectedDashboard?.id ?? '')
+  const dashboardUpdateStatus = useDashboardUpdateStatus(() => selectedDashboard?.id ?? '', {
+    refetchInterval: (query) =>
+      (selectedDashboard?.id ?? '') && isPendingState(query.state.data?.status) ? 2000 : false
+  } as never)
+  const dashboardUpdate = useDashboardUpdate()
+  const dashboardSelectBusy = $derived(dashboardSelect.isPending)
+  const dashboardBusy = $derived(
+    dashboardSelectBusy ||
+    isPendingState(dashboardUpdateStatus.data?.status) ||
+    dashboardUpdate.isPending
   )
 
   function isPendingState(status?: string) {
@@ -90,6 +113,13 @@
     if (policy === 'openclash') return 'OpenClash'
     if (policy === 'clashnivo') return 'Clash Nivo'
     return 'Custom'
+  }
+
+  function dashboardActionLabel(optionId: string, installed: boolean) {
+    if (dashboardBusy && selectedDashboardId === optionId) {
+      return installed ? 'Updating…' : 'Downloading…'
+    }
+    return installed ? 'Update' : 'Download'
   }
 </script>
 
@@ -235,26 +265,87 @@
               </section>
 
               <section class="space-y-4 border-t border-border pt-6">
-                <div class="space-y-1 text-sm">
-                  <div class="font-medium">Dashboard access</div>
-                  <div class="flex items-baseline gap-2 text-muted-foreground">
-                    <span>Variant</span>
-                    <span class="font-medium text-foreground">{dashboardType}</span>
+                <div class="flex items-start justify-between gap-4">
+                  <div class="space-y-1 text-sm">
+                    <div class="font-medium">Dashboards</div>
+                    <div class="flex items-baseline gap-2 text-muted-foreground">
+                      <span>Selected</span>
+                      <span class="font-medium text-foreground">{selectedDashboard?.label ?? '—'}</span>
+                    </div>
+                    <div class="flex items-baseline gap-2 text-muted-foreground">
+                      <span>Transport</span>
+                      <span class="font-medium text-foreground">{dashboardForwardSsl ? 'HTTPS' : 'HTTP'}</span>
+                    </div>
+                    <p class="break-all text-muted-foreground">{dashboardUrl}</p>
                   </div>
-                  <div class="flex items-baseline gap-2 text-muted-foreground">
-                    <span>Transport</span>
-                    <span class="font-medium text-foreground">{dashboardForwardSsl ? 'HTTPS' : 'HTTP'}</span>
+                  <div class="flex flex-col items-end gap-3">
+                    <button
+                      type="button"
+                      class={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${dashboardForwardSsl ? 'bg-primary' : 'bg-muted'}`}
+                      role="switch"
+                      aria-checked={dashboardForwardSsl}
+                      aria-label="Dashboard forwarding SSL"
+                      disabled={setDashboardForwardSsl.isPending}
+                      onclick={() => setDashboardForwardSsl.mutateAsync(dashboardForwardSsl ? '0' : '1')}
+                    >
+                      <span class={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform ${dashboardForwardSsl ? 'translate-x-4' : 'translate-x-0'}`}></span>
+                    </button>
+                    <a
+                      class="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                      href={dashboardUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open dashboard
+                    </a>
                   </div>
-                  <p class="break-all text-muted-foreground">{dashboardUrl}</p>
                 </div>
-                <a
-                  class="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                  href={dashboardUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open dashboard
-                </a>
+
+                <div class="space-y-3">
+                  {#each dashboardOptions as option (option.id)}
+                    <div class="rounded-lg border border-border bg-card px-4 py-3">
+                      <div class="flex items-start justify-between gap-4">
+                        <div class="space-y-1">
+                          <div class="flex flex-wrap items-center gap-2">
+                            <span class="font-medium">{option.label}</span>
+                            {#if option.selected}
+                              <span class="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                Active
+                              </span>
+                            {/if}
+                            {#if !option.installed}
+                              <span class="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                Not installed
+                              </span>
+                            {/if}
+                          </div>
+                        </div>
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={dashboardSelectBusy || option.selected}
+                            onclick={() => dashboardSelect.mutateAsync(option.id)}
+                          >
+                            {option.selected ? 'Active' : 'Use'}
+                          </Button>
+                          <Button
+                            variant={option.installed ? 'outline' : 'default'}
+                            size="sm"
+                            disabled={dashboardBusy}
+                            onclick={() => dashboardUpdate.mutateAsync(option.id)}
+                          >
+                            {dashboardActionLabel(option.id, option.installed)}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+
+                {#if dashboardUpdateStatus.data?.message}
+                  <p class="text-sm text-muted-foreground">{dashboardUpdateStatus.data.message}</p>
+                {/if}
               </section>
             </div>
           </div>

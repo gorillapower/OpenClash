@@ -16,7 +16,8 @@ import {
   type FileReadResult,
   type ConfigCompositionResult,
   type CoreVersionResult,
-  type UpdateStatusResult
+  type UpdateStatusResult,
+  type DashboardOption
 } from '$lib/api/luci'
 import { clashClient } from '$lib/api/clash'
 import { isApiError } from '$lib/api/errors'
@@ -45,6 +46,8 @@ export const luciKeys = {
   packageLatestVersion: [...['luci'], 'package-latest-version'] as const,
   packageUpdateStatus: [...['luci'], 'package-update-status'] as const,
   assetsUpdateStatus: (target: string) => [...['luci'], 'assets-update-status', target] as const,
+  dashboards: [...['luci'], 'dashboards'] as const,
+  dashboardUpdateStatus: (id: string) => [...['luci'], 'dashboard-update-status', id] as const,
   logService: (lines: number) => [...['luci'], 'log-service', lines] as const,
   logCore: (lines: number) => [...['luci'], 'log-core', lines] as const
 }
@@ -1096,6 +1099,58 @@ export function useAssetsUpdate(
           ? (target === 'all' ? 'Asset refresh started' : `Asset refresh started: ${target}`)
           : (target === 'all' ? 'Asset refresh requested' : `Asset refresh requested: ${target}`)
       )
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useDashboards(opts?: Partial<CreateQueryOptions<DashboardOption[]>>) {
+  return createQuery<DashboardOption[]>(() => ({
+    queryKey: luciKeys.dashboards,
+    queryFn: () => luciRpc.dashboardList(),
+    ...opts
+  } as CreateQueryOptions<DashboardOption[]>))
+}
+
+export function useDashboardUpdateStatus(
+  id: string | (() => string),
+  opts?: Partial<CreateQueryOptions<UpdateStatusResult>>
+) {
+  return createQuery<UpdateStatusResult>(() => ({
+    queryKey: luciKeys.dashboardUpdateStatus(typeof id === 'function' ? id() : id),
+    queryFn: () => luciRpc.dashboardUpdateStatus(typeof id === 'function' ? id() : id),
+    retry: false,
+    ...opts
+  } as CreateQueryOptions<UpdateStatusResult>))
+}
+
+export function useDashboardSelect(
+  opts?: Partial<CreateMutationOptions<void, unknown, string>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<void, unknown, string>(() => ({
+    mutationFn: (id: string) => luciRpc.dashboardSelect(id),
+    onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.dashboards })
+      queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
+      toasts.success('Dashboard preference saved')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useDashboardUpdate(
+  opts?: Partial<CreateMutationOptions<UpdateStatusResult, unknown, string>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<UpdateStatusResult, unknown, string>(() => ({
+    mutationFn: (id: string) => luciRpc.dashboardUpdate(id),
+    onSuccess(_, id) {
+      queryClient.invalidateQueries({ queryKey: luciKeys.dashboardUpdateStatus(id) })
+      queryClient.invalidateQueries({ queryKey: luciKeys.dashboards })
+      toasts.success('Dashboard download requested')
     },
     onError: onMutationError,
     ...opts

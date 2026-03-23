@@ -54,6 +54,11 @@ update_assets()
    clashnivo_service_update_assets_command "$1"
 }
 
+update_dashboard()
+{
+   clashnivo_service_update_dashboard_command "$1"
+}
+
 refresh_source()
 {
    clashnivo_service_subscription_refresh_command "$1"

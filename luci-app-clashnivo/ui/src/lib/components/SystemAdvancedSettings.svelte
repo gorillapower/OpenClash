@@ -11,8 +11,6 @@
 
   const config = useUciConfig('clashnivo')
 
-  const setDashboardType = useSetUciConfig('clashnivo', 'config', 'dashboard_type')
-  const setDashboardForwardSsl = useSetUciConfig('clashnivo', 'config', 'dashboard_forward_ssl')
   const setOperationMode = useSetUciConfig('clashnivo', 'config', 'en_mode')
   const setUdpProxy = useSetUciConfig('clashnivo', 'config', 'enable_udp_proxy')
   const setStackType = useSetUciConfig('clashnivo', 'config', 'stack_type')
@@ -52,8 +50,6 @@
   const COMMON_PORTS_DEFAULT =
     '21 22 23 53 80 123 143 194 443 465 587 853 993 995 998 2052 2053 2082 2083 2086 2095 2096 5222 5228 5229 5230 8080 8443 8880 8888 8889'
 
-  const dashboardType = $derived((cfg['dashboard_type'] as string | undefined) ?? 'Official')
-  const dashboardForwardSsl = $derived((cfg['dashboard_forward_ssl'] as string | undefined) === '1')
   const operationMode = $derived.by<OpMode>(() => {
     const raw = cfg['en_mode'] as string | undefined
     if (!raw || raw === '0') return 'fake-ip'
@@ -138,10 +134,6 @@
     await setIpv6Mode.mutateAsync((e.target as HTMLSelectElement).value)
   }
 
-  async function handleDashboardTypeChange(e: Event) {
-    await setDashboardType.mutateAsync((e.target as HTMLSelectElement).value)
-  }
-
   async function handleDeviceModeChange(e: Event) {
     const value = (e.target as HTMLSelectElement).value as DeviceMode
     if (value === 'whitelist') {
@@ -197,30 +189,6 @@
         Grouped operator controls for dashboards, traffic handling, DNS, LAN policy, ports, mirrors,
         and diagnostics.
       </p>
-    </div>
-
-    <div class="space-y-1">
-      <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">External dashboards</h3>
-      <div class="divide-y divide-border rounded-lg border border-border bg-card px-4">
-        <SettingRow
-          label="Dashboard variant"
-          tooltip="Choose the supported dashboard flavor used by the external UI integration."
-        >
-          <select class={selectClass} value={dashboardType} onchange={handleDashboardTypeChange} disabled={setDashboardType.isPending} aria-label="Dashboard variant">
-            <option value="Official">Official</option>
-            <option value="Meta">Meta</option>
-          </select>
-        </SettingRow>
-
-        <SettingRow
-          label="Dashboard forwarding SSL"
-          tooltip="Serve the dashboard over HTTPS on the router. Use this only when clients expect HTTPS."
-        >
-          <button type="button" role="switch" aria-checked={dashboardForwardSsl} aria-label="Dashboard forwarding SSL" class={switchClasses(dashboardForwardSsl)} onclick={() => setDashboardForwardSsl.mutateAsync(dashboardForwardSsl ? '0' : '1')} disabled={setDashboardForwardSsl.isPending}>
-            <span class={thumbClasses(dashboardForwardSsl)}></span>
-          </button>
-        </SettingRow>
-      </div>
     </div>
 
     <div class="space-y-1">
