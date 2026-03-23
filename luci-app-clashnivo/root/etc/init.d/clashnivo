@@ -855,8 +855,9 @@ start_run_core()
 
    # The Clash core starts reliably on this router when launched directly with
    # SAFE_PATHS in the process environment. Keep the command path equivalent to
-   # the known-good manual invocation.
-   nohup /bin/sh -c "SAFE_PATHS=/usr/share/clashnivo:/usr/share/clashnivo/ui:/etc/ssl exec \"$CLASH\" -d \"$CLASH_CONFIG\" -f \"$CONFIG_FILE\" >> \"$LOG_FILE\" 2>&1" >/dev/null 2>&1 &
+   # the known-good manual invocation and avoid the extra shell/nohup wrapper,
+   # which prevents the controller from coming up on this device.
+   SAFE_PATHS=/usr/share/clashnivo:/usr/share/clashnivo/ui:/etc/ssl "$CLASH" -d "$CLASH_CONFIG" -f "$CONFIG_FILE" >> "$LOG_FILE" 2>&1 &
 } >/dev/null 2>&1
 
 #防火墙设置部分
