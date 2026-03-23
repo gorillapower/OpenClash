@@ -12,6 +12,7 @@ active_behavioral_risk	^luci-app-clashnivo/root/etc/uci-defaults/luci-clashnivo$
 upstream_source_policy_reference	^luci-app-clashnivo/root/etc/config/clashnivo$	Default config may intentionally reference upstream source-policy values such as core_source=openclash and upstream overwrite URLs.
 runtime_naming_debt	^luci-app-clashnivo/root/etc/clashnivo/	Clash Nivo-owned persistent files that still carry inherited custom file names or comments.
 intentional_coexistence_reference	^luci-app-clashnivo/root/usr/share/clashnivo/service/(guard|status)\.sh$	Intentional coexistence detection and status reporting for a separately installed OpenClash instance.
+intentional_coexistence_reference	^luci-app-clashnivo/ui/src/lib/api/luci\.ts$	Frontend service-status typing intentionally exposes OpenClash coexistence fields returned by the backend guard/status model.
 upstream_source_policy_reference	^luci-app-clashnivo/root/usr/share/clashnivo/service/update\.sh$	Service update layer may intentionally branch on upstream source-policy values such as core_source=openclash.
 active_behavioral_risk	^luci-app-clashnivo/root/usr/share/clashnivo/service/	Live service modules and runtime control surfaces not covered by narrower intentional categories.
 runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/runtime/	Inherited runtime helper internals still using legacy names.

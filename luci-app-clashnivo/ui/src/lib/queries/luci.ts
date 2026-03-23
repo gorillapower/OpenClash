@@ -40,7 +40,6 @@ export const luciKeys = {
   configOverwrite: [...['luci'], 'config-overwrite'] as const,
   ruleProviders: [...['luci'], 'rule-providers'] as const,
   customProxies: [...['luci'], 'custom-proxies'] as const,
-  advancedYaml: [...['luci'], 'advanced-yaml'] as const,
   coreLatestVersion: [...['luci'], 'core-latest-version'] as const,
   coreUpdateStatus: [...['luci'], 'core-update-status'] as const,
   packageLatestVersion: [...['luci'], 'package-latest-version'] as const,
@@ -383,7 +382,7 @@ export function useFlushDnsCache(
 // Firewall rules file hooks
 // ---------------------------------------------------------------------------
 
-const FIREWALL_RULES_PATH = '/etc/clashnivo/custom/openclash_custom_firewall_rules.sh'
+const FIREWALL_RULES_PATH = '/etc/clashnivo/custom/clashnivo_custom_firewall_rules.sh'
 
 export function useFirewallRules(opts?: Partial<CreateQueryOptions<FileReadResult>>) {
   return createQuery<FileReadResult>(() => ({
@@ -579,7 +578,7 @@ export function useToggleProxyGroup(
 // Custom rules file hooks
 // ---------------------------------------------------------------------------
 
-const CUSTOM_RULES_PATH = '/etc/clashnivo/custom/openclash_custom_rules.list'
+const CUSTOM_RULES_PATH = '/etc/clashnivo/custom/clashnivo_custom_rules.list'
 
 export interface CustomRule {
   type: string
@@ -645,7 +644,7 @@ export function useSetCustomRules(
 // Config overwrite file hooks
 // ---------------------------------------------------------------------------
 
-const CONFIG_OVERWRITE_PATH = '/etc/clashnivo/custom/openclash_custom_overwrite.sh'
+const CONFIG_OVERWRITE_PATH = '/etc/clashnivo/custom/clashnivo_custom_overwrite.sh'
 
 export function useConfigOverwrite(opts?: Partial<CreateQueryOptions<FileReadResult>>) {
   return createQuery<FileReadResult>(() => ({
@@ -844,35 +843,6 @@ export function useToggleRuleProvider(
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.ruleProviders })
     },
-    ...opts
-  }))
-}
-
-// ---------------------------------------------------------------------------
-// Advanced YAML editor
-// ---------------------------------------------------------------------------
-
-const ADVANCED_YAML_PATH = '/etc/clashnivo/custom/openclash_advanced_yaml.yaml'
-
-export function useAdvancedYaml(opts?: Partial<CreateQueryOptions<FileReadResult>>) {
-  return createQuery<FileReadResult>(() => ({
-    queryKey: luciKeys.advancedYaml,
-    queryFn: () => luciRpc.fileRead(ADVANCED_YAML_PATH),
-    ...opts
-  } as CreateQueryOptions<FileReadResult>))
-}
-
-export function useSetAdvancedYaml(
-  opts?: Partial<CreateMutationOptions<void, unknown, string>>
-) {
-  const queryClient = useQueryClient()
-  return createMutation<void, unknown, string>(() => ({
-    mutationFn: (content: string) => luciRpc.fileWrite(ADVANCED_YAML_PATH, content),
-    onSuccess() {
-      queryClient.invalidateQueries({ queryKey: luciKeys.advancedYaml })
-      toasts.success('Advanced YAML saved')
-    },
-    onError: onMutationError,
     ...opts
   }))
 }

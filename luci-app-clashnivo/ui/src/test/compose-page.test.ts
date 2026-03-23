@@ -45,9 +45,7 @@ vi.mock('$lib/queries/luci', () => ({
   useCustomRules: vi.fn(),
   useSetCustomRules: vi.fn(),
   useConfigOverwrite: vi.fn(),
-  useSetConfigOverwrite: vi.fn(),
-  useAdvancedYaml: vi.fn(),
-  useSetAdvancedYaml: vi.fn()
+  useSetConfigOverwrite: vi.fn()
 }))
 
 import {
@@ -74,9 +72,7 @@ import {
   useCustomRules,
   useSetCustomRules,
   useConfigOverwrite,
-  useSetConfigOverwrite,
-  useAdvancedYaml,
-  useSetAdvancedYaml
+  useSetConfigOverwrite
 } from '$lib/queries/luci'
 
 const previewResult: ConfigCompositionResult = {
@@ -136,8 +132,6 @@ function setupMocks({
   vi.mocked(useSetCustomRules).mockReturnValue(makeMutation() as never)
   vi.mocked(useConfigOverwrite).mockReturnValue(makeQuery(overwrite) as never)
   vi.mocked(useSetConfigOverwrite).mockReturnValue(makeMutation() as never)
-  vi.mocked(useAdvancedYaml).mockReturnValue(makeQuery({ content: '# advanced' } satisfies FileReadResult) as never)
-  vi.mocked(useSetAdvancedYaml).mockReturnValue(makeMutation() as never)
 }
 
 describe('ComposePage', () => {

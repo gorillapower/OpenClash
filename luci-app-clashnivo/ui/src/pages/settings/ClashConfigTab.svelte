@@ -21,7 +21,6 @@
   import CustomProxySheet from './CustomProxySheet.svelte'
   import ConfigOverwriteSheet from './ConfigOverwriteSheet.svelte'
   import RuleProviderSheet from './RuleProviderSheet.svelte'
-  import AdvancedYamlSheet from './AdvancedYamlSheet.svelte'
 
   // ---------------------------------------------------------------------------
   // Proxy groups
@@ -253,7 +252,6 @@
   let ruleProviderSheetOpen = $state(false)
   let editingProvider = $state<RuleProvider | undefined>(undefined)
   let confirmDeleteProviderId = $state<string | undefined>(undefined)
-  let advancedYamlSheetOpen = $state(false)
 
   function openAddProvider() {
     editingProvider = undefined
@@ -684,19 +682,6 @@
     </div>
   </div>
 
-  <!-- ============================================================
-       Section 6: Advanced YAML
-  ============================================================ -->
-  <div class="space-y-3">
-    <div class="flex items-center justify-between">
-      <h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        6. Advanced YAML
-      </h2>
-      <Button variant="outline" size="sm" onclick={() => (advancedYamlSheetOpen = true)}>
-        Edit YAML
-      </Button>
-    </div>
-  </div>
 </div>
 
 <ProxyGroupSheet
@@ -720,9 +705,4 @@
   open={ruleProviderSheetOpen}
   onClose={closeRuleProviderSheet}
   provider={editingProvider}
-/>
-
-<AdvancedYamlSheet
-  open={advancedYamlSheetOpen}
-  onClose={() => (advancedYamlSheetOpen = false)}
 />

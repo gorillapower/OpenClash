@@ -41,8 +41,6 @@ vi.mock('$lib/queries/luci', () => ({
   useToggleRuleProvider: vi.fn(),
   useAddRuleProvider: vi.fn(),
   useUpdateRuleProvider: vi.fn(),
-  useAdvancedYaml: vi.fn(),
-  useSetAdvancedYaml: vi.fn(),
   useCustomProxies: vi.fn(),
   useDeleteCustomProxy: vi.fn(),
   useToggleCustomProxy: vi.fn(),
@@ -71,8 +69,6 @@ import {
   useToggleRuleProvider,
   useAddRuleProvider,
   useUpdateRuleProvider,
-  useAdvancedYaml,
-  useSetAdvancedYaml,
   useCustomProxies,
   useDeleteCustomProxy,
   useToggleCustomProxy,
@@ -145,8 +141,6 @@ function setupMocks({
   vi.mocked(useToggleRuleProvider).mockReturnValue(makeMutation() as never)
   vi.mocked(useAddRuleProvider).mockReturnValue(makeMutation(addProviderMutateAsync) as never)
   vi.mocked(useUpdateRuleProvider).mockReturnValue(makeMutation() as never)
-  vi.mocked(useAdvancedYaml).mockReturnValue(makeQuery<FileReadResult>({ content: '# Advanced YAML\n' }) as never)
-  vi.mocked(useSetAdvancedYaml).mockReturnValue(makeMutation() as never)
   vi.mocked(useCustomProxies).mockReturnValue(makeQuery(mockCustomProxies) as never)
   vi.mocked(useDeleteCustomProxy).mockReturnValue(makeMutation() as never)
   vi.mocked(useToggleCustomProxy).mockReturnValue(makeMutation() as never)
@@ -511,19 +505,6 @@ describe('ClashConfigTab', () => {
     })
   })
 
-  // --------------------------------------------------------------------------
-  // Advanced section (collapsed by default)
-  // --------------------------------------------------------------------------
-
-  describe('Advanced YAML section', () => {
-    it('shows the Advanced YAML entrypoint by default', () => {
-      setupMocks()
-      render(ClashConfigTab)
-
-      expect(screen.getByRole('button', { name: /edit yaml/i })).toBeInTheDocument()
-    })
-  })
-
   describe('Rule Providers section', () => {
     it('shows rule providers without using the Advanced toggle', async () => {
       setupMocks()
@@ -611,20 +592,5 @@ describe('ClashConfigTab', () => {
       })
     })
 
-  })
-
-  describe('Advanced YAML sheet', () => {
-    it('opens the Advanced YAML sheet when Edit YAML is clicked', async () => {
-      setupMocks()
-      render(ClashConfigTab)
-
-      await fireEvent.click(screen.getByRole('button', { name: /edit yaml/i }))
-
-      await waitFor(() => {
-        const dialog = screen.getByRole('dialog')
-        expect(dialog).toBeInTheDocument()
-        expect(within(dialog).getByText('Advanced YAML')).toBeInTheDocument()
-      })
-    })
   })
 })
