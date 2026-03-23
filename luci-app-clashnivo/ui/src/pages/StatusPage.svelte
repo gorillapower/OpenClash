@@ -314,8 +314,8 @@
             <a href="#/compose" class="font-medium text-foreground underline underline-offset-4">
               Open Compose
             </a>
-            <a href="#/system" class="font-medium text-foreground underline underline-offset-4">
-              View logs and diagnostics
+            <a href="#/logs" class="font-medium text-foreground underline underline-offset-4">
+              View logs
             </a>
             <a
               href={dashboardUrl}

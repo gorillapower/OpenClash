@@ -165,8 +165,8 @@ describe('SystemPage', () => {
     render(SystemPage)
 
     expect(screen.getAllByText('Clash Nivo').length).toBeGreaterThan(0)
-    expect(screen.getByText(/core source mode is informational here/i)).toBeInTheDocument()
-    expect(screen.getByText(/grouped runtime and maintenance controls are available below/i)).toBeInTheDocument()
+    expect(screen.getByText('Core runtime')).toBeInTheDocument()
+    expect(screen.getByText('Dashboard access')).toBeInTheDocument()
   })
 
   it('shows current and latest core versions', () => {
@@ -199,7 +199,7 @@ describe('SystemPage', () => {
     setupMocks({ coreUpdateMutate })
     render(SystemPage)
 
-    await fireEvent.click(screen.getByRole('button', { name: /update core runtime/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /update available/i }))
     expect(coreUpdateMutate).toHaveBeenCalledOnce()
   })
 
@@ -258,7 +258,7 @@ describe('SystemPage', () => {
     render(SystemPage)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /updating core runtime/i })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /^updating…$/i })).toBeDisabled()
       expect(screen.getByRole('button', { name: /updating package/i })).toBeDisabled()
       expect(screen.getByRole('button', { name: /refreshing assets/i })).toBeDisabled()
     })

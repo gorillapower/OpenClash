@@ -8,7 +8,8 @@
     { label: 'Status', path: '/' },
     { label: 'Sources', path: '/sources' },
     { label: 'Compose', path: '/compose' },
-    { label: 'System', path: '/system' }
+    { label: 'System', path: '/system' },
+    { label: 'Logs', path: '/logs' }
   ]
 </script>
 

@@ -14,7 +14,6 @@
   import Button from '$lib/components/ui/button/button.svelte'
   import { Card, CardHeader, CardContent } from '$lib/components/ui/card/index'
   import AutoUpdatesCard from '$lib/components/AutoUpdatesCard.svelte'
-  import LogsViewer from '$lib/components/LogsViewer.svelte'
   import SystemAdvancedSettings from '$lib/components/SystemAdvancedSettings.svelte'
   import PageIntro from '$lib/components/PageIntro.svelte'
   import ExplainerSheet from '$lib/components/ExplainerSheet.svelte'
@@ -43,8 +42,6 @@
   const dashboardType = $derived((cfg['dashboard_type'] as string | undefined) ?? 'Official')
   const dashboardForwardSsl = $derived((cfg['dashboard_forward_ssl'] as string | undefined) === '1')
   const coreSourcePolicy = $derived(latestCore.data?.source_policy ?? 'openclash')
-  const coreSourceBase = $derived(latestCore.data?.source_base ?? '')
-  const coreSourceBranch = $derived(latestCore.data?.source_branch ?? '')
   const dashboardUrl = $derived(
     `${dashboardForwardSsl ? 'https' : 'http'}://${window.location.hostname}:9090/ui`
   )
@@ -54,6 +51,9 @@
   const currentCoreType = $derived(currentCore.data?.meta ? 'Mihomo' : 'Clash')
   const latestCoreType = $derived(latestCore.data?.core_type ?? currentCoreType)
   const latestPackageVersion = $derived(latestPackage.data?.version ?? null)
+  const coreUpdateAvailable = $derived(
+    !!latestCoreVersion && !!currentCoreVersion && latestCoreVersion !== currentCoreVersion
+  )
   let explainerOpen = $state(false)
 
   const coreBusy = $derived(isPendingState(coreUpdateStatus.data?.status) || coreUpdate.isPending)
@@ -105,8 +105,7 @@
     {/snippet}
   </PageIntro>
 
-  <div class="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-    <div class="space-y-6">
+  <div class="space-y-6">
       <Card>
         <CardHeader>
           <div class="flex items-center justify-between gap-3">
@@ -131,7 +130,25 @@
                 </div>
               </div>
               <div class="rounded-lg border border-border bg-card px-4 py-3">
-                <div class="text-xs uppercase tracking-wider text-muted-foreground">Latest</div>
+                <div class="flex items-start justify-between gap-4">
+                  <div class="text-xs uppercase tracking-wider text-muted-foreground">Latest</div>
+                  {#if coreBusy || coreUpdateAvailable}
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled={coreBusy || latestCore.isPending}
+                      onclick={() => coreUpdate.mutateAsync()}
+                    >
+                      {#if coreBusy}
+                        Updating…
+                      {:else if coreUpdateAvailable}
+                        Update available
+                      {:else}
+                        Update
+                      {/if}
+                    </Button>
+                  {/if}
+                </div>
                 <div class="mt-2 flex items-baseline gap-2">
                   {#if latestCore.isPending}
                     <span class="text-sm text-muted-foreground">Checking…</span>
@@ -142,128 +159,107 @@
                     <span class="text-xs text-muted-foreground">{latestCoreType}</span>
                   {/if}
                 </div>
+                {#if !latestCore.isPending && !coreUpdateAvailable}
+                  <p class="mt-2 text-xs text-muted-foreground">
+                    {#if coreBusy}
+                      {formatStatus(coreUpdateStatus.data?.status)}
+                    {:else}
+                      Current
+                    {/if}
+                  </p>
+                {/if}
               </div>
             </div>
-
-            <dl class="grid gap-2 text-sm sm:grid-cols-3">
-              <div>
-                <dt class="text-muted-foreground">Source</dt>
-                <dd class="mt-1 font-medium">{titleCasePolicy(coreSourcePolicy)}</dd>
-              </div>
-              <div>
-                <dt class="text-muted-foreground">Branch</dt>
-                <dd class="mt-1 font-medium">{coreSourceBranch || '—'}</dd>
-              </div>
-              <div>
-                <dt class="text-muted-foreground">Status</dt>
-                <dd class="mt-1 font-medium">{formatStatus(coreUpdateStatus.data?.status)}</dd>
-              </div>
-            </dl>
-
-            {#if coreSourceBase}
-              <p class="text-xs text-muted-foreground break-all">
-                Resolved source base: {coreSourceBase}
-              </p>
-            {/if}
 
             {#if coreUpdateStatus.data?.message}
               <p class="text-sm text-muted-foreground">{coreUpdateStatus.data.message}</p>
             {/if}
 
-            <div class="flex flex-wrap items-center gap-3">
-              <Button
-                variant="default"
-                disabled={coreBusy || latestCore.isPending}
-                onclick={() => coreUpdate.mutateAsync()}
-              >
-                {#if coreBusy}
-                  Updating core runtime…
-                {:else}
-                  Update core runtime
+            <div class="space-y-6 border-t border-border pt-6">
+              <section class="space-y-4">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="space-y-1 text-sm">
+                    <div class="font-medium">Package update</div>
+                    <div class="flex items-baseline gap-2 text-muted-foreground">
+                      <span>Latest</span>
+                      <span class="font-medium tabular-nums text-foreground">{latestPackageVersion ?? '—'}</span>
+                    </div>
+                    <div class="flex items-baseline gap-2 text-muted-foreground">
+                      <span>Status</span>
+                      <span class="font-medium text-foreground">{formatStatus(packageUpdateStatus.data?.status)}</span>
+                    </div>
+                  </div>
+                  <Button
+                    variant="default"
+                    disabled={packageBusy || latestPackage.isPending}
+                    onclick={() => packageUpdate.mutateAsync()}
+                  >
+                    {#if packageBusy}
+                      Updating package…
+                    {:else}
+                      Update package
+                    {/if}
+                  </Button>
+                </div>
+
+                {#if packageUpdateStatus.data?.message}
+                  <p class="text-sm text-muted-foreground">{packageUpdateStatus.data.message}</p>
                 {/if}
-              </Button>
-              <p class="text-xs text-muted-foreground">
-                Core source mode is informational here. Editing it is deferred to a later System
-                settings pass.
-              </p>
+              </section>
+
+              <section class="space-y-4 border-t border-border pt-6">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="space-y-1 text-sm">
+                    <div class="font-medium">Asset maintenance</div>
+                    <div class="flex items-baseline gap-2 text-muted-foreground">
+                      <span>Target</span>
+                      <span class="font-medium text-foreground">All assets</span>
+                    </div>
+                    <div class="flex items-baseline gap-2 text-muted-foreground">
+                      <span>Status</span>
+                      <span class="font-medium text-foreground">{formatStatus(assetsUpdateStatus.data?.status)}</span>
+                    </div>
+                  </div>
+                  <Button variant="default" disabled={assetsBusy} onclick={() => assetsUpdate.mutateAsync()}>
+                    {#if assetsBusy}
+                      Refreshing assets…
+                    {:else}
+                      Refresh all assets
+                    {/if}
+                  </Button>
+                </div>
+
+                {#if assetsUpdateStatus.data?.message}
+                  <p class="text-sm text-muted-foreground">{assetsUpdateStatus.data.message}</p>
+                {/if}
+              </section>
+
+              <section class="space-y-4 border-t border-border pt-6">
+                <div class="space-y-1 text-sm">
+                  <div class="font-medium">Dashboard access</div>
+                  <div class="flex items-baseline gap-2 text-muted-foreground">
+                    <span>Variant</span>
+                    <span class="font-medium text-foreground">{dashboardType}</span>
+                  </div>
+                  <div class="flex items-baseline gap-2 text-muted-foreground">
+                    <span>Transport</span>
+                    <span class="font-medium text-foreground">{dashboardForwardSsl ? 'HTTPS' : 'HTTP'}</span>
+                  </div>
+                  <p class="break-all text-muted-foreground">{dashboardUrl}</p>
+                </div>
+                <a
+                  class="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                  href={dashboardUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open dashboard
+                </a>
+              </section>
             </div>
           </div>
         </CardContent>
       </Card>
-
-      <div class="grid gap-6 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <div>
-              <h2 class="text-sm font-semibold">Package update</h2>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div class="space-y-4">
-              <div class="text-sm">
-                <div class="flex items-baseline justify-between gap-3">
-                  <span class="text-muted-foreground">Latest package</span>
-                  <span class="font-medium tabular-nums">{latestPackageVersion ?? '—'}</span>
-                </div>
-                <div class="mt-2 flex items-baseline justify-between gap-3">
-                  <span class="text-muted-foreground">Status</span>
-                  <span class="font-medium">{formatStatus(packageUpdateStatus.data?.status)}</span>
-                </div>
-              </div>
-
-              {#if packageUpdateStatus.data?.message}
-                <p class="text-sm text-muted-foreground">{packageUpdateStatus.data.message}</p>
-              {/if}
-
-              <Button
-                variant="default"
-                disabled={packageBusy || latestPackage.isPending}
-                onclick={() => packageUpdate.mutateAsync()}
-              >
-                {#if packageBusy}
-                  Updating package…
-                {:else}
-                  Update package
-                {/if}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div>
-              <h2 class="text-sm font-semibold">Asset maintenance</h2>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div class="space-y-4">
-              <div class="text-sm">
-                <div class="flex items-baseline justify-between gap-3">
-                  <span class="text-muted-foreground">Target</span>
-                  <span class="font-medium">All assets</span>
-                </div>
-                <div class="mt-2 flex items-baseline justify-between gap-3">
-                  <span class="text-muted-foreground">Status</span>
-                  <span class="font-medium">{formatStatus(assetsUpdateStatus.data?.status)}</span>
-                </div>
-              </div>
-
-              {#if assetsUpdateStatus.data?.message}
-                <p class="text-sm text-muted-foreground">{assetsUpdateStatus.data.message}</p>
-              {/if}
-
-              <Button variant="default" disabled={assetsBusy} onclick={() => assetsUpdate.mutateAsync()}>
-                {#if assetsBusy}
-                  Refreshing assets…
-                {:else}
-                  Refresh all assets
-                {/if}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       <AutoUpdatesCard />
 
@@ -277,74 +273,6 @@
           <SystemAdvancedSettings />
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <div>
-            <h2 class="text-sm font-semibold">Logs and diagnostics</h2>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <LogsViewer />
-        </CardContent>
-      </Card>
-    </div>
-
-    <div class="space-y-6">
-      <Card>
-        <CardHeader>
-          <div>
-            <h2 class="text-sm font-semibold">Maintenance summary</h2>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <dl class="space-y-4 text-sm">
-            <div>
-              <dt class="text-muted-foreground">Core source policy</dt>
-              <dd class="mt-1 font-medium">{titleCasePolicy(coreSourcePolicy)}</dd>
-            </div>
-            <div>
-              <dt class="text-muted-foreground">Dashboard</dt>
-              <dd class="mt-1 font-medium">{dashboardType}</dd>
-            </div>
-            <div>
-              <dt class="text-muted-foreground">Dashboard transport</dt>
-              <dd class="mt-1 font-medium">{dashboardForwardSsl ? 'HTTPS' : 'HTTP'}</dd>
-            </div>
-            <div>
-              <dt class="text-muted-foreground">Advanced settings</dt>
-              <dd class="mt-1 text-muted-foreground">Grouped runtime and maintenance controls are available below.</dd>
-            </div>
-          </dl>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div>
-            <h2 class="text-sm font-semibold">Dashboard access</h2>
-            <p class="mt-1 text-sm text-muted-foreground">
-              External dashboards remain a supported runtime integration.
-            </p>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div class="space-y-3">
-            <p class="text-sm text-muted-foreground break-all">
-              {dashboardUrl}
-            </p>
-            <a
-              class="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-              href={dashboardUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open dashboard
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
   </div>
 </div>
 

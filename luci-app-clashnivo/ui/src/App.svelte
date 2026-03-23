@@ -5,6 +5,7 @@
   import StatusPage from './pages/StatusPage.svelte'
   import SourcesPage from './pages/SourcesPage.svelte'
   import ComposePage from './pages/ComposePage.svelte'
+  import LogsPage from './pages/LogsPage.svelte'
   import SystemPage from './pages/SystemPage.svelte'
 
   const queryClient = new QueryClient({
@@ -25,6 +26,8 @@
       <SourcesPage />
     {:else if router.current === '/compose'}
       <ComposePage />
+    {:else if router.current === '/logs'}
+      <LogsPage />
     {:else if router.current === '/system'}
       <SystemPage />
     {/if}

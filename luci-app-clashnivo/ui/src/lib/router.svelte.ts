@@ -1,6 +1,6 @@
-export type Route = '/' | '/sources' | '/compose' | '/system'
+export type Route = '/' | '/sources' | '/compose' | '/logs' | '/system'
 
-const VALID_ROUTES: readonly Route[] = ['/', '/sources', '/compose', '/system']
+const VALID_ROUTES: readonly Route[] = ['/', '/sources', '/compose', '/logs', '/system']
 
 function parseHash(): Route {
   const path = window.location.hash.replace(/^#/, '').split('?')[0] || '/'

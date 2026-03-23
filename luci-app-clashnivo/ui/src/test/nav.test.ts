@@ -11,11 +11,12 @@ function setHash(path: string) {
 describe('Nav component', () => {
   beforeEach(() => setHash('#/'))
 
-  it('renders 4 nav links', () => {
+  it('renders 5 nav links', () => {
     render(Nav)
     expect(screen.getByRole('link', { name: 'Status' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Sources' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Compose' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Logs' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'System' })).toBeInTheDocument()
   })
 
@@ -31,6 +32,7 @@ describe('Nav component', () => {
     expect(screen.getByRole('link', { name: 'Status' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Sources' })).not.toHaveAttribute('aria-current')
     expect(screen.getByRole('link', { name: 'Compose' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: 'Logs' })).not.toHaveAttribute('aria-current')
     expect(screen.getByRole('link', { name: 'System' })).not.toHaveAttribute('aria-current')
   })
 })
@@ -53,6 +55,13 @@ describe('Route rendering', () => {
     setHash('#/compose')
     const { unmount } = render(App)
     expect(screen.getByRole('heading', { name: 'Compose' })).toBeInTheDocument()
+    unmount()
+  })
+
+  it('shows Logs page at #/logs', () => {
+    setHash('#/logs')
+    const { unmount } = render(App)
+    expect(screen.getByRole('heading', { name: 'Logs' })).toBeInTheDocument()
     unmount()
   })
 

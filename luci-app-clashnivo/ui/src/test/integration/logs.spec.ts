@@ -1,14 +1,14 @@
 /**
  * logs.spec.ts — Log viewer loads both log types
  *
- * Navigates to the System page, opens the log viewer, and verifies
+ * Navigates to the Logs page, opens the log viewer, and verifies
  * that both the service log and the core log load non-empty content.
  */
 import { test, expect, gotoApp } from './helpers/auth'
 
 test.describe('Log viewer', () => {
   test('service log tab shows content', async ({ appPage: page }) => {
-    await gotoApp(page, '#/system')
+    await gotoApp(page, '#/logs')
     await page.waitForLoadState('networkidle')
 
     // The log viewer may be on a tab or an accordion — find it broadly
@@ -30,7 +30,7 @@ test.describe('Log viewer', () => {
   })
 
   test('switching to core log tab shows different content', async ({ appPage: page }) => {
-    await gotoApp(page, '#/system')
+    await gotoApp(page, '#/logs')
     await page.waitForLoadState('networkidle')
 
     // Find the core log trigger
@@ -48,9 +48,9 @@ test.describe('Log viewer', () => {
     expect(text).not.toBeNull()
   })
 
-  test('log section is present on the System page', async ({ appPage: page }) => {
-    await gotoApp(page, '#/system')
-    await expect(page.getByRole('heading', { name: 'System' })).toBeVisible()
+  test('log section is present on the Logs page', async ({ appPage: page }) => {
+    await gotoApp(page, '#/logs')
+    await expect(page.getByRole('heading', { name: 'Logs' })).toBeVisible()
     // Some log-related element must exist
     const hasLog = await page
       .getByText(/log/i)
