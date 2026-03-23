@@ -16,6 +16,7 @@ upstream_source_policy_reference	^luci-app-clashnivo/root/usr/share/clashnivo/se
 active_behavioral_risk	^luci-app-clashnivo/root/usr/share/clashnivo/service/	Live service modules and runtime control surfaces not covered by narrower intentional categories.
 runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/runtime/	Inherited runtime helper internals still using legacy names.
 upstream_source_policy_reference	^luci-app-clashnivo/root/usr/share/clashnivo/update/	Update/version helpers may intentionally reference upstream package/core source URLs and repository coordinates.
+upstream_source_policy_reference	^luci-app-clashnivo/root/usr/share/clashnivo/lib/core_source\.sh$	Core source helper intentionally models upstream source-policy modes and repository coordinates.
 runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/lib/	Inherited library/helper internals still using legacy names.
 runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/import/	Import area may intentionally reference OpenClash as a migration source.
 runtime_naming_debt	^luci-app-clashnivo/root/usr/share/clashnivo/openclash[^/]*$	Top-level compatibility wrapper scripts and entrypoints.

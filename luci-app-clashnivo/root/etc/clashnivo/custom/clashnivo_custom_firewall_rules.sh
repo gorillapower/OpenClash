@@ -3,7 +3,7 @@
 . /lib/functions.sh
 
 # This script is called by /etc/init.d/clashnivo
-# Add your custom firewall rules here, they will be added after the end of the OpenClash iptables rules
+# Add your custom firewall rules here. They run after Clash Nivo applies its firewall rules.
 
 LOG_TIP "Start Add Custom Firewall Rules..."
 

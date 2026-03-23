@@ -4,7 +4,7 @@
 . /lib/functions.sh
 
 # This script is called by /etc/init.d/clashnivo
-# Add your custom overwrite scripts here, they will be take effict after the OpenClash own srcipts
+# Add your custom overwrite scripts here. They run after Clash Nivo applies its own overwrite logic.
 
 LOG_TIP "Start Running Custom Overwrite Scripts..."
 LOGTIME=$(echo $(date "+%Y-%m-%d %H:%M:%S"))
