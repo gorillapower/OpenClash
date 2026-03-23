@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-clashnivo
-PKG_VERSION:=0.1.14
+PKG_VERSION:=0.1.15
 PKG_MAINTAINER:=gorillapower <https://github.com/gorillapower>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
@@ -137,7 +137,8 @@ define Package/$(PKG_NAME)/postrm
 	uci -q delete ucitrack.@clashnivo[-1]
 	uci -q commit ucitrack
 	}
-	rm -rf /tmp/luci-*
+	rm -f /tmp/luci-indexcache >/dev/null 2>&1
+	rm -f /tmp/luci-indexcache.* >/dev/null 2>&1
 	exit 0
 endef
 
