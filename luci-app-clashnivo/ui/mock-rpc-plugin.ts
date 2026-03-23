@@ -56,6 +56,8 @@ let mockConfig: Record<string, string> = {
   dashboard_type: 'Official',
   yacd_type: 'Meta',
   dashboard_forward_ssl: '0',
+  cn_port: '9093',
+  github_address_mod: '0',
 }
 
 let mockDashboardUpdateStatus: Record<string, { status: string; message?: string }> = {}

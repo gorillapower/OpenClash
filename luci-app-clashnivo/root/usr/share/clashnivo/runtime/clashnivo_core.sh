@@ -87,6 +87,7 @@ if [ "$CORE_CV" != "$CORE_LV" ] || [ -z "$CORE_CV" ]; then
          del_lock
          exit 0
       fi
+      LOG_INFO "Clash core update URL: ${DOWNLOAD_URL}"
 
       retry_count=0
       max_retries=3

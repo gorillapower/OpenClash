@@ -1,4 +1,5 @@
 #!/bin/bash
+. /usr/share/clashnivo/log.sh
 . /usr/share/clashnivo/clashnivo_curl.sh
 . /usr/share/clashnivo/uci.sh
 . /usr/share/clashnivo/core_source.sh
@@ -23,9 +24,11 @@ if [ -n "$1" ]; then
 fi
 
 DOWNLOAD_URL="$(clashnivo_core_source_version_url "$github_address_mod")" || {
+   LOG_ERROR "Clash core version check could not resolve a source URL."
    del_lock
    exit 1
 }
 
+LOG_INFO "Clash core version check URL: ${DOWNLOAD_URL}"
 DOWNLOAD_FILE_CURL "$DOWNLOAD_URL" "$DOWNLOAD_FILE" "$DOWNLOAD_FILE"
 del_lock

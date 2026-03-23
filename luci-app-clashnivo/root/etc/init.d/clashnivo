@@ -4,6 +4,19 @@
 START=99
 STOP=15
 USE_PROCD=1
+EXTRA_COMMANDS="preview validate update_status update_core update_core_latest update_package update_package_latest update_assets update_dashboard refresh_source refresh_sources"
+EXTRA_HELP="\
+\tpreview\tBuild a preview config\n\
+\tvalidate\tValidate the current composed config\n\
+\tupdate_status\tShow async update status\n\
+\tupdate_core\tDownload the selected Clash core\n\
+\tupdate_core_latest\tCheck the latest Clash core version\n\
+\tupdate_package\tUpdate the Clash Nivo package\n\
+\tupdate_package_latest\tCheck the latest Clash Nivo package version\n\
+\tupdate_assets\tRefresh runtime assets\n\
+\tupdate_dashboard\tDownload or update a dashboard\n\
+\trefresh_source\tRefresh one source by name\n\
+\trefresh_sources\tRefresh all enabled sources"
 
 . $IPKG_INSTROOT/usr/share/clashnivo/service/env.sh
 clashnivo_service_init_env "$IPKG_INSTROOT"
@@ -71,7 +84,9 @@ refresh_sources()
 
 add_cron()
 {
-   [ "$(tail -n1 /etc/crontabs/root | wc -l)" -eq 0 ] && [ -n "$(cat /etc/crontabs/root 2>/dev/null)" ] && echo >> /etc/crontabs/root
+   mkdir -p "$(dirname "$CRON_FILE")" >/dev/null 2>&1
+   [ -f "$CRON_FILE" ] || : > "$CRON_FILE"
+   [ "$(tail -n1 "$CRON_FILE" 2>/dev/null | wc -l)" -eq 0 ] && [ -n "$(cat "$CRON_FILE" 2>/dev/null)" ] && echo >> "$CRON_FILE"
    [ -z "$(grep "/etc/init.d/clashnivo refresh_sources" "$CRON_FILE" 2>/dev/null)" ] && {
       [ "$(uci_get_config "auto_update")" -eq 1 ] && [ "$(uci_get_config "config_auto_update_mode")" -ne 1 ] && echo "0 $(uci_get_config "auto_update_time" || 1) * * $(uci_get_config "config_update_week_time" || 0) /etc/init.d/clashnivo refresh_sources" >> $CRON_FILE
    }
@@ -97,12 +112,13 @@ add_cron()
    config_load "clashnivo"
    config_foreach add_overwrite_cron "config_overwrite"
 
-   crontab $CRON_FILE
+   command -v crontab >/dev/null 2>&1 && crontab "$CRON_FILE"
    start_watchdog
 }
 
 del_cron()
 {
+   [ -f "$CRON_FILE" ] || return 0
    sed -i '/\/etc\/init.d\/clashnivo refresh_sources/d' $CRON_FILE
    sed -i '/clashnivo_ipdb.sh/d' $CRON_FILE
    sed -i '/clashnivo_geoip.sh/d' $CRON_FILE
@@ -716,8 +732,11 @@ check_core_status()
    TUN_RESTART=1
    CORE_WAIT=0
    CORE_HTTP_CODE=0
+   CORE_HTTP_CODE_LOCAL=0
+   CORE_HTTP_CODE_LAN=0
+   CORE_API_URL=""
 
-   while ( [ -z "$(pidof clash)" ] && [ "$CORE_WAIT" -le 10 ] )
+   while ( [ -z "$(pidof clash mihomo)" ] && [ "$CORE_WAIT" -le 10 ] )
    do
       sleep 1
       let CORE_WAIT++
@@ -733,29 +752,29 @@ check_core_status()
       fi
 
       #wait 120s most for tun interface start
-      while ( [ -n "$(pidof clash)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_WAIT" -le 120 ] )
+      while ( [ -n "$(pidof clash mihomo)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_WAIT" -le 120 ] )
       do
          $ip_ link set "$CLASHNIVO_ROUTING_TUN_DEVICE" up
          let TUN_WAIT++
          sleep 1
       done
 
-      if [ -n "$(pidof clash)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_WAIT" -gt 120 ]; then
-         while ( [ -n "$(pidof clash)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_RESTART" -le 3 ] )
+      if [ -n "$(pidof clash mihomo)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_WAIT" -gt 120 ]; then
+         while ( [ -n "$(pidof clash mihomo)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_RESTART" -le 3 ] )
          do
             LOG_WARN "TUN interface did not come up in time. Restarting the core and trying again."
             start_run_core
             sleep 120
             let TUN_RESTART++
          done
-         if [ -n "$(pidof clash)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_RESTART" -gt 3 ]; then
+         if [ -n "$(pidof clash mihomo)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_RESTART" -gt 3 ]; then
             LOG_WARN "TUN interface failed to start after multiple attempts. Check TUN support and runtime dependencies."
             start_fail
          fi
       fi
 
-      if [ -n "$(pidof clash)" ]; then
-         while ( [ -n "$(pidof clash)" ] && [ -n "$(ip -6 rule show |grep 2022)" ] && [ "$CORE_WAIT" -le 10 ] )
+      if [ -n "$(pidof clash mihomo)" ]; then
+         while ( [ -n "$(pidof clash mihomo)" ] && [ -n "$(ip -6 rule show |grep 2022)" ] && [ "$CORE_WAIT" -le 10 ] )
          do
             clashnivo_service_routing_cleanup_tun_core_table_ipv6 2022
             let CORE_WAIT++
@@ -769,21 +788,33 @@ check_core_status()
       fi
    else
       reg4='^(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$'
-      while ( [ -n "$(pidof clash)" ] && [ "$CORE_HTTP_CODE" != "200" ] && [ "$TUN_WAIT" -le 120 ] && [ -n "$(echo ${lan_ip} | grep -Eo ${reg4})" ] )
+      LOG_INFO "Clash core health check: probing controller on port ${cn_port}."
+      while ( [ -n "$(pidof clash mihomo)" ] && [ "$CORE_HTTP_CODE" != "200" ] && [ "$TUN_WAIT" -le 120 ] )
       do
-         CORE_HTTP_CODE=$(curl -m 5 -o /dev/null -s -w '%{http_code}' -H 'Content-Type: application/json' -H "Authorization: Bearer ${da_password}" -XGET http://${lan_ip}:${cn_port}/group)
+         CORE_HTTP_CODE_LOCAL=$(curl -m 5 -o /dev/null -s -w '%{http_code}' -H 'Content-Type: application/json' -H "Authorization: Bearer ${da_password}" -XGET http://127.0.0.1:${cn_port}/version)
+         if [ "$CORE_HTTP_CODE_LOCAL" = "200" ]; then
+            CORE_HTTP_CODE="$CORE_HTTP_CODE_LOCAL"
+            CORE_API_URL="http://127.0.0.1:${cn_port}/version"
+            break
+         fi
+         if [ -n "$(echo ${lan_ip} | grep -Eo ${reg4})" ]; then
+            CORE_HTTP_CODE_LAN=$(curl -m 5 -o /dev/null -s -w '%{http_code}' -H 'Content-Type: application/json' -H "Authorization: Bearer ${da_password}" -XGET http://${lan_ip}:${cn_port}/version)
+            if [ "$CORE_HTTP_CODE_LAN" = "200" ]; then
+               CORE_HTTP_CODE="$CORE_HTTP_CODE_LAN"
+               CORE_API_URL="http://${lan_ip}:${cn_port}/version"
+               break
+            fi
+         fi
          let TUN_WAIT++
          sleep 1
       done
-      if [ -z "$(echo ${lan_ip} | grep -Eo ${reg4})" ]; then
-         LOG_ERROR "Could not determine the LAN IP address. Check the LAN interface setting."
-      fi
       if [ "$CORE_HTTP_CODE" != "200" ]; then
-         LOG_ERROR "Clash core health check failed after startup."
+         LOG_ERROR "Clash core health check failed after startup. Controller port ${cn_port} did not return HTTP 200 (localhost=${CORE_HTTP_CODE_LOCAL}, lan=${CORE_HTTP_CODE_LAN})."
          start_fail
       fi
+      [ -n "$CORE_API_URL" ] && LOG_INFO "Clash core health check passed via ${CORE_API_URL}."
    fi
-   if [ -z "$(pidof clash)" ]; then
+   if [ -z "$(pidof clash mihomo)" ]; then
       LOG_ERROR "Clash core process did not start successfully."
       start_fail
    fi
@@ -817,10 +848,8 @@ start_run_core()
    procd_set_param command /bin/sh -c "$CLASH -d $CLASH_CONFIG -f \"$CONFIG_FILE\" >> $LOG_FILE 2>&1"
    procd_set_param user "root"
    procd_set_param group "nogroup"
-   procd_set_param limits nproc="unlimited" as="unlimited" memlock="unlimited" nofile="1000000 1000000"
    procd_set_param respawn 300 5 3
    procd_set_param stderr 1
-   procd_set_param no_new_privs 1
    procd_close_instance
 } >/dev/null 2>&1
 

@@ -33,6 +33,7 @@
   const setInterfaceName = useSetUciConfig('clashnivo', 'config', 'interface_name')
   const setTproxyPort = useSetUciConfig('clashnivo', 'config', 'tproxy_port')
   const setDnsPort = useSetUciConfig('clashnivo', 'config', 'dns_port')
+  const setControllerPort = useSetUciConfig('clashnivo', 'config', 'cn_port')
   const setGithubMirror = useSetUciConfig('clashnivo', 'config', 'github_address_mod')
   const setLogLevel = useSetUciConfig('clashnivo', 'config', 'log_level')
   const setLogSize = useSetUciConfig('clashnivo', 'config', 'log_size')
@@ -78,7 +79,8 @@
   const interfaceName = $derived((cfg['interface_name'] as string | undefined) ?? '0')
   const tproxyPort = $derived((cfg['tproxy_port'] as string | undefined) ?? '7895')
   const dnsPort = $derived((cfg['dns_port'] as string | undefined) ?? '7874')
-  const githubMirror = $derived((cfg['github_address_mod'] as string | undefined) === '1')
+  const controllerPort = $derived((cfg['cn_port'] as string | undefined) ?? '9093')
+  const githubMirrorValue = $derived((cfg['github_address_mod'] as string | undefined) ?? '0')
   const logLevel = $derived((cfg['log_level'] as string | undefined) ?? '0')
   const logSize = $derived((cfg['log_size'] as string | undefined) ?? '1024')
 
@@ -96,12 +98,33 @@
   let localInterfaceName = $state('')
   let localTproxyPort = $state('')
   let localDnsPort = $state('')
+  let localControllerPort = $state('')
+  let localCustomGithubMirror = $state('')
   let localLogSize = $state('')
+
+  const GITHUB_MIRROR_OPTIONS = {
+    direct: '0',
+    jsdelivr: 'https://cdn.jsdelivr.net/',
+    fastly: 'https://fastly.jsdelivr.net/',
+    testingcf: 'https://testingcf.jsdelivr.net/'
+  } as const
+
+  type GithubMirrorPreset = keyof typeof GITHUB_MIRROR_OPTIONS | 'custom'
+
+  const githubMirrorPreset = $derived.by<GithubMirrorPreset>(() => {
+    if (githubMirrorValue === GITHUB_MIRROR_OPTIONS.direct) return 'direct'
+    if (githubMirrorValue === GITHUB_MIRROR_OPTIONS.jsdelivr) return 'jsdelivr'
+    if (githubMirrorValue === GITHUB_MIRROR_OPTIONS.fastly) return 'fastly'
+    if (githubMirrorValue === GITHUB_MIRROR_OPTIONS.testingcf) return 'testingcf'
+    return 'custom'
+  })
 
   $effect(() => {
     localInterfaceName = interfaceName === '0' ? '' : interfaceName
     localTproxyPort = tproxyPort
     localDnsPort = dnsPort
+    localControllerPort = controllerPort
+    localCustomGithubMirror = githubMirrorPreset === 'custom' && githubMirrorValue !== '0' ? githubMirrorValue : ''
     localLogSize = logSize
   })
 
@@ -168,6 +191,29 @@
 
   async function saveDnsPort() {
     await setDnsPort.mutateAsync(localDnsPort.trim() || '7874')
+  }
+
+  async function saveControllerPort() {
+    await setControllerPort.mutateAsync(localControllerPort.trim() || '9093')
+  }
+
+  async function handleGithubMirrorPresetChange(e: Event) {
+    const value = (e.target as HTMLSelectElement).value as GithubMirrorPreset
+    if (value === 'custom') {
+      if (!localCustomGithubMirror) localCustomGithubMirror = 'https://'
+      return
+    }
+    await setGithubMirror.mutateAsync(GITHUB_MIRROR_OPTIONS[value])
+  }
+
+  async function saveCustomGithubMirror() {
+    const trimmed = localCustomGithubMirror.trim()
+    if (!trimmed) {
+      await setGithubMirror.mutateAsync('0')
+      return
+    }
+    const normalised = trimmed.endsWith('/') ? trimmed : `${trimmed}/`
+    await setGithubMirror.mutateAsync(normalised)
   }
 
   async function saveLogSize() {
@@ -418,6 +464,16 @@
             <Button variant="outline" size="sm" onclick={saveDnsPort} disabled={setDnsPort.isPending}>Save</Button>
           </div>
         </SettingRow>
+
+        <SettingRow
+          label="Controller port"
+          tooltip="The Clash core API port used for status checks, dashboard access, and runtime control. Change this if the router already serves another app on the current port."
+        >
+          <div class="flex items-center gap-2">
+            <input class={inputClass} bind:value={localControllerPort} aria-label="Controller port" inputmode="numeric" />
+            <Button variant="outline" size="sm" onclick={saveControllerPort} disabled={setControllerPort.isPending}>Save</Button>
+          </div>
+        </SettingRow>
       </div>
     </div>
 
@@ -425,12 +481,24 @@
       <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Download sources and mirrors</h3>
       <div class="divide-y divide-border rounded-lg border border-border bg-card px-4">
         <SettingRow
-          label="GitHub mirror modifier"
-          tooltip="Rewrites download URLs through the configured mirror path. Use this when direct GitHub access is unreliable from your network."
+          label="GitHub mirror"
+          tooltip="Controls how Clash Nivo rewrites GitHub download URLs for package, core, asset, and subscription fetches when direct GitHub access is unreliable."
         >
-          <button type="button" role="switch" aria-checked={githubMirror} aria-label="GitHub mirror modifier" class={switchClasses(githubMirror)} onclick={() => setGithubMirror.mutateAsync(githubMirror ? '0' : '1')} disabled={setGithubMirror.isPending}>
-            <span class={thumbClasses(githubMirror)}></span>
-          </button>
+          <div class="flex items-center gap-2">
+            <select class={selectClass} value={githubMirrorPreset} onchange={handleGithubMirrorPresetChange} disabled={setGithubMirror.isPending} aria-label="GitHub mirror">
+              <option value="direct">Direct GitHub</option>
+              <option value="jsdelivr">jsDelivr</option>
+              <option value="fastly">Fastly jsDelivr</option>
+              <option value="testingcf">TestingCF jsDelivr</option>
+              <option value="custom">Custom URL</option>
+            </select>
+            {#if githubMirrorPreset === 'custom'}
+              <input class={inputClass} bind:value={localCustomGithubMirror} aria-label="Custom GitHub mirror URL" placeholder="https://mirror.example.com/" />
+            {/if}
+            {#if githubMirrorPreset === 'custom'}
+              <Button variant="outline" size="sm" onclick={saveCustomGithubMirror} disabled={setGithubMirror.isPending}>Save</Button>
+            {/if}
+          </div>
         </SettingRow>
       </div>
     </div>

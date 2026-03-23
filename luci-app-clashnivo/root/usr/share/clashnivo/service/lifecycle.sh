@@ -63,8 +63,6 @@ clashnivo_service_run_start() {
 
       rm -rf /tmp/yaml_*
    }
-
-   echo "Clash Nivo already started!"
 }
 
 clashnivo_service_run_stop() {
