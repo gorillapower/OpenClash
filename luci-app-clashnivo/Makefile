@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-clashnivo
-PKG_VERSION:=0.1.15
+PKG_VERSION:=0.1.16
 PKG_MAINTAINER:=gorillapower <https://github.com/gorillapower>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
@@ -115,6 +115,9 @@ endef
 
 define Package/$(PKG_NAME)/postrm
 #!/bin/sh
+	if [ "$${1}" = "upgrade" ] || [ "$${1}" = "1" ]; then
+		exit 0
+	fi
 	DEFAULT_DNSMASQ_CFGID="$$(uci -q show "dhcp.@dnsmasq[0]" | awk 'NR==1 {split($0, conf, /[.=]/); print conf[2]}' 2>/dev/null)"
 	if [ -f "/tmp/etc/dnsmasq.conf.$DEFAULT_DNSMASQ_CFGID" ]; then
 	   DNSMASQ_CONF_DIR="$$(awk -F '=' '/^conf-dir=/ {print $2}' "/tmp/etc/dnsmasq.conf.$DEFAULT_DNSMASQ_CFGID" 2>/dev/null)"

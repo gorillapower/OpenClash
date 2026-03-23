@@ -59,6 +59,7 @@ clashnivo_service_status_json() {
    core_pid="$(clashnivo_service_core_pid)"
    core_running="false"
    [ -n "$core_pid" ] && core_running="true"
+   [ "$service_running" != "true" ] && [ "$core_running" = "true" ] && service_running="true"
 
    openclash_installed="false"
    clashnivo_openclash_installed && openclash_installed="true"
@@ -127,7 +128,7 @@ clashnivo_service_status_exit_code() {
    openclash_active="false"
    clashnivo_openclash_active && openclash_active="true"
 
-   if [ "$service_running" = "true" ]; then
+   if [ "$service_running" = "true" ] || clashnivo_service_core_running; then
       return 0
    fi
 

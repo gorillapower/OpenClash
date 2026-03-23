@@ -86,6 +86,13 @@ clashnivo_service_run_stop() {
             done
          fi
       done
+      pgrep -f "$CLASH -d $CLASH_CONFIG -f " 2>/dev/null | while read -r pid; do
+         [ -n "$pid" ] && kill "$pid" >/dev/null 2>&1
+      done
+      sleep 1
+      pgrep -f "$CLASH -d $CLASH_CONFIG -f " 2>/dev/null | while read -r pid; do
+         [ -n "$pid" ] && kill -9 "$pid" >/dev/null 2>&1
+      done
       # prevent respawn during stopping
       procd_kill "${CLASHNIVO_SERVICE_NAME}"
       clashnivo_service_stop_watchdog_instances
