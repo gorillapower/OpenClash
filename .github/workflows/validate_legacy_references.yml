@@ -22,5 +22,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Install Validation Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+
       - name: Validate Legacy OpenClash Reference Classification
         run: bash luci-app-clashnivo/tools/validate-openclash-legacy.sh
