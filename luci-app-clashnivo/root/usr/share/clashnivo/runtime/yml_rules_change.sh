@@ -9,6 +9,8 @@ github_address_mod=$(uci_get_config "github_address_mod" || echo 0)
 urltest_address_mod=$(uci_get_config "urltest_address_mod" || echo 0)
 tolerance=$(uci_get_config "tolerance" || echo 0)
 urltest_interval_mod=$(uci_get_config "urltest_interval_mod" || echo 0)
+ACTIVE_SOURCE_PATH=$(uci_get_config "config_path")
+ACTIVE_SOURCE_NAME=$(basename "$ACTIVE_SOURCE_PATH" 2>/dev/null)
 
 yml_other_set()
 {
@@ -152,12 +154,31 @@ yml_other_set()
 
                      next unless rules_array;
 
+                     current_source = '$ACTIVE_SOURCE_NAME';
                      ipv4_regex = /^(\d{1,3}\.){3}\d{1,3}$/;
                      ipv6_regex = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]+|::(ffff(:0{1,4})?:)?((25[0-5]|(2[0-4]|1?[0-9])?[0-9])\.){3}(25[0-5]|(2[0-4]|1?[0-9])?[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1?[0-9])?[0-9])\.){3}(25[0-5]|(2[0-4]|1?[0-9])?[0-9]))$/;
                      cidr_regex = /\/\d+$/;
                      rule_suffix_regex = /^no-resolve$|^src$/;
 
-                     transformed_rules = rules_array.map{|x|
+                     transformed_rules = rules_array.map{|entry|
+                        rule_string = if entry.is_a?(Hash) then
+                           scope_mode = entry['scope_mode'].to_s == 'selected' ? 'selected' : 'all';
+                           scope_targets = entry['scope_targets'].is_a?(Array) ? entry['scope_targets'].map(&:to_s) : [];
+                           next nil if scope_mode == 'selected' && !scope_targets.include?(current_source);
+
+                           type = entry['type'].to_s.strip;
+                           value = entry['value'].to_s.strip;
+                           target = entry['target'].to_s.strip;
+                           next nil if type.empty? || value.empty? || target.empty?;
+
+                           [type, value, target].join(',');
+                        else
+                           entry.to_s
+                        end;
+
+                        next nil if rule_string.nil? || rule_string.empty?;
+
+                        x = rule_string;
                         parts = x.split(',');
                         if parts.length >= 2 then
                            ip_part = parts[1].strip;
@@ -178,7 +199,7 @@ yml_other_set()
                            end;
                         end;
                         x;
-                     };
+                     }.compact;
 
                      valid_rules = transformed_rules.select{|x|
                         RULE_GROUP = ((x.split(',')[-1] =~ rule_suffix_regex) ? x.split(',')[-2] : x.split(',')[-1]).strip;

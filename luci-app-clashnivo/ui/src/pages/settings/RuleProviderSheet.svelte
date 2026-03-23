@@ -14,9 +14,10 @@
     onClose: () => void
     /** Pass a provider to edit; undefined = add mode */
     provider?: RuleProvider
+    sourceNames: string[]
   }
 
-  let { open, onClose, provider }: Props = $props()
+  let { open, onClose, provider, sourceNames }: Props = $props()
 
   const addMutation = useAddRuleProvider()
   const updateMutation = useUpdateRuleProvider()
@@ -32,6 +33,8 @@
   let format = $state<RuleProvider['format']>('yaml')
   let group = $state('')
   let position = $state<RuleProvider['position']>('0')
+  let scopeMode = $state<RuleProvider['scopeMode']>('all')
+  let scopeTargets = $state<string[]>([])
   let errors = $state<Record<string, string>>({})
 
   const showUrlFields = $derived(type === 'http')
@@ -46,6 +49,8 @@
       format = provider?.format ?? 'yaml'
       group = provider?.group ?? ''
       position = provider?.position ?? '0'
+      scopeMode = provider?.scopeMode ?? 'all'
+      scopeTargets = [...(provider?.scopeTargets ?? [])]
       errors = {}
     }
   })
@@ -54,6 +59,7 @@
     const e: Record<string, string> = {}
     if (!name.trim()) e.name = 'Name is required'
     if (showUrlFields && !url.trim()) e.url = 'URL is required for HTTP type'
+    if (scopeMode === 'selected' && scopeTargets.length === 0) e.scopeTargets = 'Select at least one source'
     errors = e
     return Object.keys(e).length === 0
   }
@@ -68,7 +74,9 @@
       position,
       url: showUrlFields && url.trim() ? url.trim() : undefined,
       interval: showUrlFields && interval.trim() ? interval.trim() : undefined,
-      group: group.trim() || undefined
+      group: group.trim() || undefined,
+      scopeMode,
+      scopeTargets
     }
     if (isEdit && provider) {
       await updateMutation.mutateAsync({ id: provider.id, ...input })
@@ -190,6 +198,41 @@
           <option value="0">Top (higher priority)</option>
           <option value="1">Bottom (lower priority)</option>
         </select>
+      </div>
+
+      <div class="space-y-2">
+        <label for="rp-scope" class="text-sm font-medium text-foreground">Scope</label>
+        <select
+          id="rp-scope"
+          bind:value={scopeMode}
+          class="flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+        >
+          <option value="all">All sources</option>
+          <option value="selected">Selected sources</option>
+        </select>
+
+        {#if scopeMode === 'selected'}
+          <div class="space-y-2 rounded-md border border-border bg-muted/30 px-3 py-3">
+            {#each sourceNames as sourceName (sourceName)}
+              <label class="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={scopeTargets.includes(sourceName)}
+                  onchange={(event) => {
+                    const checked = (event.currentTarget as HTMLInputElement).checked
+                    scopeTargets = checked
+                      ? [...scopeTargets, sourceName]
+                      : scopeTargets.filter((value) => value !== sourceName)
+                  }}
+                />
+                <span>{sourceName}</span>
+              </label>
+            {/each}
+          </div>
+          {#if errors.scopeTargets}
+            <p class="text-xs text-destructive">{errors.scopeTargets}</p>
+          {/if}
+        {/if}
       </div>
     </div>
 

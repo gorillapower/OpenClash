@@ -10,6 +10,7 @@
     useCustomProxies,
     useCustomRules,
     useConfigOverwrite,
+    scopeAppliesToCurrentSource,
     type ConfigCompositionResult
   } from '$lib/queries/luci'
   import Button from '$lib/components/ui/button/button.svelte'
@@ -35,6 +36,7 @@
   let previewResult = $state<ConfigCompositionResult | null>(null)
   let validateResult = $state<ConfigCompositionResult | null>(null)
   let explainerOpen = $state(false)
+  let pendingSourceName = $state('')
 
   const selectedSource = $derived(configs.data?.find((config) => config.active) ?? null)
   const hasSelectedSource = $derived(Boolean(selectedSource))
@@ -43,9 +45,36 @@
   const ruleProviderCount = $derived(ruleProviders.data?.length ?? 0)
   const customProxyCount = $derived(customProxies.data?.length ?? 0)
   const customRuleCount = $derived(customRules.data?.length ?? 0)
+  const effectiveProxyGroupCount = $derived(
+    (proxyGroups.data ?? []).filter((group) =>
+      scopeAppliesToCurrentSource(group.scopeMode, group.scopeTargets, selectedSource?.name)
+    ).length
+  )
+  const effectiveRuleProviderCount = $derived(
+    (ruleProviders.data ?? []).filter((provider) =>
+      scopeAppliesToCurrentSource(provider.scopeMode, provider.scopeTargets, selectedSource?.name)
+    ).length
+  )
+  const effectiveCustomProxyCount = $derived(
+    (customProxies.data ?? []).filter((proxy) =>
+      scopeAppliesToCurrentSource(proxy.scopeMode, proxy.scopeTargets, selectedSource?.name)
+    ).length
+  )
+  const effectiveCustomRuleCount = $derived(
+    (customRules.data ?? []).filter((rule) =>
+      scopeAppliesToCurrentSource(rule.scopeMode, rule.scopeTargets, selectedSource?.name)
+    ).length
+  )
   const hasOverwrite = $derived(Boolean(configOverwrite.data?.content?.trim()))
 
   const workflowReady = $derived(Boolean(validateResult?.valid))
+  const sourceSwitchPending = $derived(
+    Boolean(pendingSourceName && pendingSourceName !== selectedSource?.name)
+  )
+
+  $effect(() => {
+    pendingSourceName = selectedSource?.name ?? ''
+  })
 
   function formatStageName(value: string): string {
     return value
@@ -80,9 +109,9 @@
     await restartMutation.mutateAsync()
   }
 
-  async function handleSourceSwitch(name: string) {
-    if (!name || name === selectedSource?.name) return
-    await configSetActive.mutateAsync(name)
+  async function handleSourceSwitch() {
+    if (!pendingSourceName || pendingSourceName === selectedSource?.name) return
+    await configSetActive.mutateAsync(pendingSourceName)
     previewResult = null
     validateResult = null
   }
@@ -107,21 +136,31 @@
       </CardHeader>
       <CardContent class="space-y-4">
         {#if hasSelectedSource}
-          <select
-            class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm"
-            value={selectedSource?.name ?? ''}
-            disabled={!configs.data?.length || configSetActive.isPending}
-            aria-label="Switch selected source"
-            onchange={(event) => handleSourceSwitch((event.target as HTMLSelectElement).value)}
-          >
-            {#if !configs.data?.length}
-              <option value="">No sources available</option>
-            {:else}
-              {#each configs.data as config (config.name)}
-                <option value={config.name}>{config.name}</option>
-              {/each}
-            {/if}
-          </select>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <select
+              class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm"
+              value={pendingSourceName}
+              disabled={!configs.data?.length || configSetActive.isPending}
+              aria-label="Selected source"
+              onchange={(event) => (pendingSourceName = (event.target as HTMLSelectElement).value)}
+            >
+              {#if !configs.data?.length}
+                <option value="">No sources available</option>
+              {:else}
+                {#each configs.data as config (config.name)}
+                  <option value={config.name}>{config.name}</option>
+                {/each}
+              {/if}
+            </select>
+            <Button
+              class="sm:self-start"
+              variant="outline"
+              onclick={handleSourceSwitch}
+              disabled={!sourceSwitchPending || configSetActive.isPending}
+            >
+              {configSetActive.isPending ? 'Switching…' : 'Switch'}
+            </Button>
+          </div>
         {:else}
           <EmptyState
             compact
@@ -140,19 +179,19 @@
         <div class="space-y-2">
           <div class="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
             <p class="text-sm text-muted-foreground">1. Custom Proxies</p>
-            <p class="text-lg font-semibold text-foreground">{customProxyCount}</p>
+            <p class="text-sm font-semibold text-foreground">{effectiveCustomProxyCount} of {customProxyCount}</p>
           </div>
           <div class="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
             <p class="text-sm text-muted-foreground">2. Rule Providers</p>
-            <p class="text-lg font-semibold text-foreground">{ruleProviderCount}</p>
+            <p class="text-sm font-semibold text-foreground">{effectiveRuleProviderCount} of {ruleProviderCount}</p>
           </div>
           <div class="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
             <p class="text-sm text-muted-foreground">3. Proxy Groups</p>
-            <p class="text-lg font-semibold text-foreground">{proxyGroupCount}</p>
+            <p class="text-sm font-semibold text-foreground">{effectiveProxyGroupCount} of {proxyGroupCount}</p>
           </div>
           <div class="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
             <p class="text-sm text-muted-foreground">4. Custom Rules</p>
-            <p class="text-lg font-semibold text-foreground">{customRuleCount}</p>
+            <p class="text-sm font-semibold text-foreground">{effectiveCustomRuleCount} of {customRuleCount}</p>
           </div>
           <div class="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
             <p class="text-sm text-muted-foreground">5. Overwrite</p>

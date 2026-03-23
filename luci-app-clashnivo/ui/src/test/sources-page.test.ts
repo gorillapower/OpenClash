@@ -139,7 +139,8 @@ describe('SourcesPage', () => {
     expect(screen.getByRole('heading', { name: 'Sources' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /how this works/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Selected source' })).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: /quick source switch/i })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /selected source/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^switch$/i })).toBeDisabled()
   })
 
   it('shows the selected source without redundant inventory summaries', () => {
@@ -215,15 +216,17 @@ describe('SourcesPage', () => {
     expect(screen.getByRole('button', { name: /select source/i })).toBeInTheDocument()
   })
 
-  it('allows quick source switching from the selected source section', async () => {
+  it('switches source only after explicit confirmation from the selected source section', async () => {
     const configSetActiveMutateAsync = vi.fn().mockResolvedValue(undefined)
     setupMocks({ configSetActiveMutateAsync })
     render(SourcesPage)
 
-    await fireEvent.change(screen.getByRole('combobox', { name: /quick source switch/i }), {
+    await fireEvent.change(screen.getByRole('combobox', { name: /selected source/i }), {
       target: { value: 'backup.yaml' }
     })
 
+    expect(configSetActiveMutateAsync).not.toHaveBeenCalled()
+    await fireEvent.click(screen.getByRole('button', { name: /^switch$/i }))
     await waitFor(() => expect(configSetActiveMutateAsync).toHaveBeenCalledWith('backup.yaml'))
   })
 

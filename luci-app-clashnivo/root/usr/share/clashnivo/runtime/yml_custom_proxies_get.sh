@@ -2,8 +2,11 @@
 . /lib/functions.sh
 . /usr/share/clashnivo/log.sh
 . /usr/share/clashnivo/uci.sh
+. /usr/share/clashnivo/lib/scope.sh
 
 CUSTOM_PROXIES_FILE="/tmp/yaml_custom_proxies.yaml"
+ACTIVE_SOURCE_PATH="$(uci_get_config "config_path")"
+ACTIVE_SOURCE_NAME="$(basename "$ACTIVE_SOURCE_PATH" 2>/dev/null)"
 
 # Start with an empty proxies list — will be appended to $SERVER_FILE by caller
 > "$CUSTOM_PROXIES_FILE"
@@ -28,6 +31,7 @@ write_custom_proxy() {
    # Skip disabled or incomplete entries
    [ "$enabled" = "0" ] && return
    [ -z "$name" ] || [ -z "$proxy_type" ] || [ -z "$server" ] || [ -z "$port" ] && return
+   clashnivo_scope_section_applies "$section" "$ACTIVE_SOURCE_NAME" || return
 
    config_get cipher         "$section" "cipher"           "aes-256-gcm"
    config_get password       "$section" "password"         ""

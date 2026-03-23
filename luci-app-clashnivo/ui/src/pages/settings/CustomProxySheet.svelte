@@ -15,9 +15,10 @@
     onClose: () => void
     /** Pass a proxy to edit; undefined = add mode */
     proxy?: CustomProxy
+    sourceNames: string[]
   }
 
-  let { open, onClose, proxy }: Props = $props()
+  let { open, onClose, proxy, sourceNames }: Props = $props()
 
   const addMutation = useAddCustomProxy()
   const updateMutation = useUpdateCustomProxy()
@@ -53,6 +54,8 @@
   let flow = $state('')
   let vlessTls = $state(false)
   let vlessSni = $state('')
+  let scopeMode = $state<CustomProxy['scopeMode']>('all')
+  let scopeTargets = $state<string[]>([])
 
   let errors = $state<Record<string, string>>({})
 
@@ -97,6 +100,8 @@
       flow = proxy?.flow ?? ''
       vlessTls = proxy?.proxyType === 'vless' ? (proxy?.tls ?? false) : false
       vlessSni = proxy?.proxyType === 'vless' ? (proxy?.sni ?? '') : ''
+      scopeMode = proxy?.scopeMode ?? 'all'
+      scopeTargets = [...(proxy?.scopeTargets ?? [])]
 
       errors = {}
     }
@@ -115,6 +120,7 @@
     if (proxyType === 'trojan' && !trojanPassword.trim()) e.trojanPassword = 'Password is required'
     if (proxyType === 'vmess' && !uuid.trim()) e.uuid = 'UUID is required'
     if (proxyType === 'vless' && !vlessUuid.trim()) e.vlessUuid = 'UUID is required'
+    if (scopeMode === 'selected' && scopeTargets.length === 0) e.scopeTargets = 'Select at least one source'
     errors = e
     return Object.keys(e).length === 0
   }
@@ -122,7 +128,13 @@
   async function handleSubmit() {
     if (!validate()) return
 
-    const base = { name: name.trim(), server: server.trim(), port: port.trim() }
+    const base = {
+      name: name.trim(),
+      server: server.trim(),
+      port: port.trim(),
+      scopeMode,
+      scopeTargets
+    }
 
     let input: CustomProxyInput
     if (proxyType === 'ss') {
@@ -430,6 +442,41 @@
           </select>
         </div>
       {/if}
+
+      <div class="space-y-2">
+        <label for="cp-scope" class="text-sm font-medium text-foreground">Scope</label>
+        <select
+          id="cp-scope"
+          bind:value={scopeMode}
+          class="flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+        >
+          <option value="all">All sources</option>
+          <option value="selected">Selected sources</option>
+        </select>
+
+        {#if scopeMode === 'selected'}
+          <div class="space-y-2 rounded-md border border-border bg-muted/30 px-3 py-3">
+            {#each sourceNames as sourceName (sourceName)}
+              <label class="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={scopeTargets.includes(sourceName)}
+                  onchange={(event) => {
+                    const checked = (event.currentTarget as HTMLInputElement).checked
+                    scopeTargets = checked
+                      ? [...scopeTargets, sourceName]
+                      : scopeTargets.filter((value) => value !== sourceName)
+                  }}
+                />
+                <span>{sourceName}</span>
+              </label>
+            {/each}
+          </div>
+          {#if errors.scopeTargets}
+            <p class="text-xs text-destructive">{errors.scopeTargets}</p>
+          {/if}
+        {/if}
+      </div>
     </div>
 
     <div class="mt-auto flex justify-end gap-2">

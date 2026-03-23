@@ -27,6 +27,7 @@ function makeMutation(mutateAsync = vi.fn().mockResolvedValue(undefined), isPend
 // ---------------------------------------------------------------------------
 
 vi.mock('$lib/queries/luci', () => ({
+  useConfigs: vi.fn(),
   useProxyGroups: vi.fn(),
   useDeleteProxyGroup: vi.fn(),
   useToggleProxyGroup: vi.fn(),
@@ -45,7 +46,15 @@ vi.mock('$lib/queries/luci', () => ({
   useDeleteCustomProxy: vi.fn(),
   useToggleCustomProxy: vi.fn(),
   useAddCustomProxy: vi.fn(),
-  useUpdateCustomProxy: vi.fn()
+  useUpdateCustomProxy: vi.fn(),
+  scopeAppliesToCurrentSource: vi.fn((scopeMode: string, scopeTargets: string[], sourceName?: string) =>
+    scopeMode === 'all' || (!!sourceName && scopeTargets.includes(sourceName))
+  ),
+  isNarrowerScope: vi.fn((childMode: string, childTargets: string[], parentMode: string, parentTargets: string[]) => {
+    if (childMode === 'all') return parentMode !== 'all'
+    if (parentMode === 'all') return false
+    return childTargets.some((target) => !parentTargets.includes(target))
+  })
 }))
 
 vi.mock('@tanstack/svelte-query', async (importOriginal) => {
@@ -55,6 +64,7 @@ vi.mock('@tanstack/svelte-query', async (importOriginal) => {
 
 import type { ProxyGroup, CustomRule, RuleProvider, CustomProxy } from '$lib/queries/luci'
 import {
+  useConfigs,
   useProxyGroups,
   useDeleteProxyGroup,
   useToggleProxyGroup,
@@ -81,23 +91,23 @@ import {
 // ---------------------------------------------------------------------------
 
 const mockProxyGroups: ProxyGroup[] = [
-  { id: 'cfg1', name: 'HK Select', type: 'select', policyFilter: '.*HK.*', enabled: true },
-  { id: 'cfg2', name: 'Auto', type: 'url-test', testUrl: 'https://cp.cloudflare.com/generate_204', testInterval: '300', enabled: true }
+  { id: 'cfg1', name: 'HK Select', type: 'select', policyFilter: '.*HK.*', enabled: true, scopeMode: 'all', scopeTargets: [] },
+  { id: 'cfg2', name: 'Auto', type: 'url-test', testUrl: 'https://cp.cloudflare.com/generate_204', testInterval: '300', enabled: true, scopeMode: 'selected', scopeTargets: ['alpha.yaml'] }
 ]
 
 const mockRules: CustomRule[] = [
-  { type: 'DOMAIN-SUFFIX', value: 'google.com', target: 'DIRECT' },
-  { type: 'IP-CIDR', value: '1.1.1.1/32', target: 'HK Select' }
+  { type: 'DOMAIN-SUFFIX', value: 'google.com', target: 'DIRECT', scopeMode: 'all', scopeTargets: [] },
+  { type: 'IP-CIDR', value: '1.1.1.1/32', target: 'HK Select', scopeMode: 'selected', scopeTargets: ['alpha.yaml'] }
 ]
 
 const mockRuleProviders: RuleProvider[] = [
-  { id: 'rp1', name: 'Azure_West_Europe', enabled: true, type: 'http', behavior: 'ipcidr', url: 'https://example.com/azure.yaml', interval: '86400', format: 'yaml', group: 'PROXY', position: '0' },
-  { id: 'rp2', name: 'BlockAds', enabled: false, type: 'http', behavior: 'domain', url: 'https://example.com/ads.yaml', interval: '86400', format: 'yaml', group: 'REJECT', position: '1' }
+  { id: 'rp1', name: 'Azure_West_Europe', enabled: true, type: 'http', behavior: 'ipcidr', url: 'https://example.com/azure.yaml', interval: '86400', format: 'yaml', group: 'PROXY', position: '0', scopeMode: 'all', scopeTargets: [] },
+  { id: 'rp2', name: 'BlockAds', enabled: false, type: 'http', behavior: 'domain', url: 'https://example.com/ads.yaml', interval: '86400', format: 'yaml', group: 'REJECT', position: '1', scopeMode: 'selected', scopeTargets: ['alpha.yaml'] }
 ]
 
 const mockCustomProxies: CustomProxy[] = [
-  { id: 'cp1', name: 'My VPS', proxyType: 'ss', server: '1.2.3.4', port: '8388', enabled: true, cipher: 'aes-256-gcm', password: 'secret', udp: true },
-  { id: 'cp2', name: 'Work Server', proxyType: 'trojan', server: 'vpn.example.com', port: '443', enabled: false, password: 'pass', sni: 'vpn.example.com' }
+  { id: 'cp1', name: 'My VPS', proxyType: 'ss', server: '1.2.3.4', port: '8388', enabled: true, cipher: 'aes-256-gcm', password: 'secret', udp: true, scopeMode: 'all', scopeTargets: [] },
+  { id: 'cp2', name: 'Work Server', proxyType: 'trojan', server: 'vpn.example.com', port: '443', enabled: false, password: 'pass', sni: 'vpn.example.com', scopeMode: 'selected', scopeTargets: ['alpha.yaml'] }
 ]
 
 function setupMocks({
@@ -127,6 +137,7 @@ function setupMocks({
   addProviderMutateAsync?: ReturnType<typeof vi.fn>
   deleteProviderMutateAsync?: ReturnType<typeof vi.fn>
 } = {}) {
+  vi.mocked(useConfigs).mockReturnValue(makeQuery([{ name: 'alpha.yaml', active: true }, { name: 'beta.yaml', active: false }]) as never)
   vi.mocked(useProxyGroups).mockReturnValue(makeQuery(groups, groupsPending) as never)
   vi.mocked(useDeleteProxyGroup).mockReturnValue(makeMutation(deleteMutateAsync) as never)
   vi.mocked(useToggleProxyGroup).mockReturnValue(makeMutation() as never)
@@ -246,7 +257,7 @@ describe('ClashConfigTab', () => {
 
     it('shows disabled group as dimmed with enable toggle label', () => {
       setupMocks({
-        groups: [{ id: 'cfg1', name: 'HK Select', type: 'select', enabled: false }]
+        groups: [{ id: 'cfg1', name: 'HK Select', type: 'select', enabled: false, scopeMode: 'all', scopeTargets: [] }]
       })
       render(ClashConfigTab)
 

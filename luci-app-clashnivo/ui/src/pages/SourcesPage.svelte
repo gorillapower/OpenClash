@@ -66,6 +66,15 @@
   let confirmSelectName = $state<string | null>(null)
   let confirmDeleteName = $state<string | null>(null)
   let explainerOpen = $state(false)
+  let pendingSourceName = $state('')
+
+  const sourceSwitchPending = $derived(
+    Boolean(pendingSourceName && pendingSourceName !== activeSource?.name)
+  )
+
+  $effect(() => {
+    pendingSourceName = activeSource?.name ?? ''
+  })
 
   function validateUrl(value: string): string {
     if (!value.trim()) return 'URL is required'
@@ -241,6 +250,11 @@
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }
+
+  async function handleSourceSwitch() {
+    if (!pendingSourceName || pendingSourceName === activeSource?.name) return
+    await handleSelectSource(pendingSourceName)
+  }
 </script>
 
 <div class="space-y-8">
@@ -260,26 +274,33 @@
 
     <Card>
       <CardContent class="pt-5">
-        <select
-          class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm"
-          value={activeSource?.name ?? ''}
-          disabled={!configs.data?.length || configSetActive.isPending}
-          aria-label="Quick source switch"
-          onchange={(event) => {
-            const value = (event.target as HTMLSelectElement).value
-            if (value && value !== activeSource?.name) {
-              handleSelectSource(value)
-            }
-          }}
-        >
-          {#if !configs.data?.length}
-            <option value="">No sources available</option>
-          {:else}
-            {#each configs.data as config (config.name)}
-              <option value={config.name}>{config.name}</option>
-            {/each}
-          {/if}
-        </select>
+        <div class="flex flex-col gap-2 sm:flex-row">
+          <select
+            class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm"
+            value={pendingSourceName}
+            disabled={!configs.data?.length || configSetActive.isPending}
+            aria-label="Selected source"
+            onchange={(event) => {
+              pendingSourceName = (event.target as HTMLSelectElement).value
+            }}
+          >
+            {#if !configs.data?.length}
+              <option value="">No sources available</option>
+            {:else}
+              {#each configs.data as config (config.name)}
+                <option value={config.name}>{config.name}</option>
+              {/each}
+            {/if}
+          </select>
+          <Button
+            class="sm:self-start"
+            variant="outline"
+            onclick={handleSourceSwitch}
+            disabled={!sourceSwitchPending || configSetActive.isPending}
+          >
+            {configSetActive.isPending ? 'Switching…' : 'Switch'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   </section>

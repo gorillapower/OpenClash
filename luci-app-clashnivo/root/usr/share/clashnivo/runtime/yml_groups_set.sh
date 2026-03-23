@@ -2,6 +2,7 @@
 . /lib/functions.sh
 . /usr/share/clashnivo/log.sh
 . /usr/share/clashnivo/uci.sh
+. /usr/share/clashnivo/lib/scope.sh
 
 set_lock() {
    exec 887>"/tmp/lock/clashnivo_groups_set.lock" 2>/dev/null
@@ -65,15 +66,11 @@ yml_servers_add()
 {
 
    local section="$1"
-   local enabled config name
+   local enabled name
    add_for_this=0
    config_get_bool "enabled" "$section" "enabled" "1"
-   config_get "config" "$section" "config" ""
    config_get "name" "$section" "name" ""
-
-   if [ -n "$config" ] && [ "$config" != "$CONFIG_NAME" ] && [ "$config" != "all" ]; then
-      return
-  fi
+   clashnivo_scope_section_applies "$section" "$CONFIG_NAME" || return
 
    if [ "$enabled" = "0" ]; then
       return
@@ -88,18 +85,14 @@ yml_servers_add()
 add_other_group()
 {
    local section="$1"
-   local name enabled config
+   local name enabled
    config_get_bool "enabled" "$section" "enabled" "1"
-   config_get "config" "$section" "config" ""
    config_get "name" "$section" "name" ""
 
    if [ "$enabled" = "0" ]; then
       return
    fi
-
-   if [ -n "$config" ] && [ "$config" != "$CONFIG_NAME" ] && [ "$config" != "all" ]; then
-      return
-   fi
+   clashnivo_scope_section_applies "$section" "$CONFIG_NAME" || return
 
    if [ -z "$name" ]; then
       return
@@ -159,15 +152,11 @@ set_other_groups()
 set_proxy_provider()
 {
    local section="$1"
-   local enabled config name
+   local enabled name
    add_for_this=0
    config_get_bool "enabled" "$section" "enabled" "1"
-   config_get "config" "$section" "config" ""
    config_get "name" "$section" "name" ""
-
-   if [ -n "$config" ] && [ "$config" != "$CONFIG_NAME" ] && [ "$config" != "all" ]; then
-      return
-   fi
+   clashnivo_scope_section_applies "$section" "$CONFIG_NAME" || return
 
    if [ "$enabled" = "0" ]; then
       return
@@ -199,9 +188,8 @@ set_provider_groups()
 yml_groups_set()
 {
    local section="$1"
-   local enabled config type name disable_udp strategy old_name test_url test_interval tolerance policy_filter uselightgbm collectdata policy_priority other_parameters icon
+   local enabled type name disable_udp strategy old_name test_url test_interval tolerance policy_filter uselightgbm collectdata policy_priority other_parameters icon
    config_get_bool "enabled" "$section" "enabled" "1"
-   config_get "config" "$section" "config" ""
    config_get "type" "$section" "type" ""
    config_get "name" "$section" "name" ""
    config_get "disable_udp" "$section" "disable_udp" ""
@@ -220,10 +208,7 @@ yml_groups_set()
    if [ "$enabled" = "0" ]; then
       return
    fi
-
-   if [ -n "$config" ] && [ "$config" != "$CONFIG_NAME" ] && [ "$config" != "all" ]; then
-      return
-   fi
+   clashnivo_scope_section_applies "$section" "$CONFIG_NAME" || return
 
    if [ -z "$type" ]; then
       return
@@ -329,4 +314,3 @@ sed -i "s/#delete_//g" "$CONFIG_FILE" 2>/dev/null
 
 /usr/share/clashnivo/yml_proxys_set.sh "$CONFIG_FILE" >/dev/null 2>&1
 del_lock
-

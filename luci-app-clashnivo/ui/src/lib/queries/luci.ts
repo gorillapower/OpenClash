@@ -50,6 +50,68 @@ export const luciKeys = {
 }
 
 // ---------------------------------------------------------------------------
+// Scope helpers
+// ---------------------------------------------------------------------------
+
+export type ScopeMode = 'all' | 'selected'
+
+export interface ScopedCustomization {
+  scopeMode: ScopeMode
+  scopeTargets: string[]
+}
+
+function normaliseScopeMode(value: unknown): ScopeMode {
+  return value === 'selected' ? 'selected' : 'all'
+}
+
+function normaliseScopeTargets(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return [value]
+  }
+  return []
+}
+
+function sectionScope(section: Record<string, unknown>): ScopedCustomization {
+  return {
+    scopeMode: normaliseScopeMode(section['scope_mode']),
+    scopeTargets: normaliseScopeTargets(section['scope_targets'])
+  }
+}
+
+async function writeScopeFields(id: string, input: ScopedCustomization) {
+  await luciRpc.uciSet('clashnivo', id, 'scope_mode', input.scopeMode)
+  if (input.scopeMode === 'selected' && input.scopeTargets.length > 0) {
+    await luciRpc.uciSet('clashnivo', id, 'scope_targets', input.scopeTargets)
+  } else {
+    await luciRpc.uciDelete('clashnivo', id, 'scope_targets')
+  }
+}
+
+export function scopeAppliesToCurrentSource(
+  scopeMode: ScopeMode,
+  scopeTargets: string[],
+  sourceName?: string | null
+): boolean {
+  if (scopeMode === 'all') return true
+  if (!sourceName) return false
+  return scopeTargets.includes(sourceName)
+}
+
+export function isNarrowerScope(
+  childMode: ScopeMode,
+  childTargets: string[],
+  parentMode: ScopeMode,
+  parentTargets: string[]
+): boolean {
+  if (childMode === 'all') return parentMode !== 'all'
+  if (parentMode === 'all') return false
+  return childTargets.some((target) => !parentTargets.includes(target))
+}
+
+// ---------------------------------------------------------------------------
 // Error handler (mutations only — queries no longer support onError in v5+)
 // ---------------------------------------------------------------------------
 
@@ -411,7 +473,7 @@ export function useSetFirewallRules(
 // Custom proxy groups (UCI sections of type "groups")
 // ---------------------------------------------------------------------------
 
-export interface ProxyGroup {
+export interface ProxyGroup extends ScopedCustomization {
   /** UCI section ID (auto-generated) */
   id: string
   name: string
@@ -441,7 +503,8 @@ function sectionsToProxyGroups(pkg: UciPackage): ProxyGroup[] {
         testInterval: s['test_interval'] || undefined,
         policyFilter: s['policy_filter'] || undefined,
         // UCI bool: '0' = disabled, anything else (or absent) = enabled
-        enabled: s['enabled'] !== '0'
+        enabled: s['enabled'] !== '0',
+        ...sectionScope(section as Record<string, unknown>)
       }
     })
 }
@@ -464,6 +527,8 @@ export interface ProxyGroupInput {
   testInterval?: string
   policyFilter?: string
   enabled?: boolean
+  scopeMode: ScopeMode
+  scopeTargets: string[]
 }
 
 export function useAddProxyGroup(
@@ -476,6 +541,7 @@ export function useAddProxyGroup(
       await luciRpc.uciSet('clashnivo', id, 'name', input.name)
       await luciRpc.uciSet('clashnivo', id, 'type', input.type)
       await luciRpc.uciSet('clashnivo', id, 'enabled', (input.enabled ?? true) ? '1' : '0')
+      await writeScopeFields(id, input)
       if (input.testUrl) await luciRpc.uciSet('clashnivo', id, 'test_url', input.testUrl)
       if (input.testInterval) await luciRpc.uciSet('clashnivo', id, 'test_interval', input.testInterval)
       if (input.policyFilter) await luciRpc.uciSet('clashnivo', id, 'policy_filter', input.policyFilter)
@@ -498,6 +564,7 @@ export function useUpdateProxyGroup(
     mutationFn: async ({ id, ...input }) => {
       await luciRpc.uciSet('clashnivo', id, 'name', input.name)
       await luciRpc.uciSet('clashnivo', id, 'type', input.type)
+      await writeScopeFields(id, input)
       if (input.testUrl) {
         await luciRpc.uciSet('clashnivo', id, 'test_url', input.testUrl)
       } else {
@@ -584,31 +651,94 @@ export interface CustomRule {
   type: string
   value: string
   target: string
+  scopeMode: ScopeMode
+  scopeTargets: string[]
 }
 
 function parseCustomRules(content: string): CustomRule[] {
   const lines = content.split('\n')
   const rules: CustomRule[] = []
   let inRules = false
+  let current: Partial<CustomRule> | null = null
+  let inScopeTargets = false
+
+  function pushCurrent() {
+    if (!current?.type || !current.value || !current.target) return
+    rules.push({
+      type: current.type,
+      value: current.value,
+      target: current.target,
+      scopeMode: normaliseScopeMode(current.scopeMode),
+      scopeTargets: normaliseScopeTargets(current.scopeTargets)
+    })
+  }
+
   for (const raw of lines) {
     const line = raw.trim()
-    if (line === 'rules:') { inRules = true; continue }
-    if (!inRules) continue
-    if (!line.startsWith('-')) continue
-    const entry = line.replace(/^-\s*/, '').replace(/^['"]|['"]$/g, '')
-    const parts = entry.split(',')
-    if (parts.length >= 3) {
-      rules.push({ type: parts[0].trim(), value: parts[1].trim(), target: parts[2].trim() })
+    if (!line) continue
+    if (line === 'rules:') {
+      inRules = true
+      continue
     }
+    if (!inRules) continue
+
+    if (current && inScopeTargets && line.startsWith('- ')) {
+      current.scopeTargets = [...(current.scopeTargets ?? []), line.replace(/^- /, '').trim()]
+      continue
+    }
+
+    if (line.startsWith('- ')) {
+      pushCurrent()
+      current = { scopeMode: 'all', scopeTargets: [] }
+      inScopeTargets = false
+
+      const payload = line.replace(/^- /, '')
+      if (payload.startsWith('type:')) {
+        current.type = payload.replace(/^type:\s*/, '').trim()
+      } else {
+        const entry = payload.replace(/^['"]|['"]$/g, '')
+        const parts = entry.split(',')
+        if (parts.length >= 3) {
+          current.type = parts[0].trim()
+          current.value = parts[1].trim()
+          current.target = parts.slice(2).join(',').trim()
+        }
+      }
+      continue
+    }
+
+    if (!current) continue
+
+    if (line === 'scope_targets:') {
+      current.scopeTargets = []
+      inScopeTargets = true
+      continue
+    }
+
+    inScopeTargets = false
+    if (line.startsWith('type:')) current.type = line.replace(/^type:\s*/, '').trim()
+    else if (line.startsWith('value:')) current.value = line.replace(/^value:\s*/, '').trim()
+    else if (line.startsWith('target:')) current.target = line.replace(/^target:\s*/, '').trim()
+    else if (line.startsWith('scope_mode:')) current.scopeMode = normaliseScopeMode(line.replace(/^scope_mode:\s*/, '').trim())
   }
+
+  pushCurrent()
   return rules
 }
 
 function serializeCustomRules(rules: CustomRule[]): string {
-  if (rules.length === 0) return 'rules:\n'
   const lines = ['rules:']
-  for (const r of rules) {
-    lines.push(`  - ${r.type},${r.value},${r.target}`)
+  for (const rule of rules) {
+    lines.push('  - type: ' + rule.type)
+    lines.push('    value: ' + rule.value)
+    lines.push('    target: ' + rule.target)
+    lines.push('    scope_mode: ' + normaliseScopeMode(rule.scopeMode))
+    if (rule.scopeMode === 'selected' && rule.scopeTargets.length > 0) {
+      lines.push('    scope_targets:')
+      for (const target of rule.scopeTargets) {
+        lines.push('      - ' + target)
+      }
+    }
   }
   return lines.join('\n') + '\n'
 }
@@ -673,7 +803,7 @@ export function useSetConfigOverwrite(
 // Rule providers
 // ---------------------------------------------------------------------------
 
-export interface RuleProvider {
+export interface RuleProvider extends ScopedCustomization {
   /** UCI section ID (auto-generated) */
   id: string
   name: string
@@ -705,6 +835,8 @@ export interface RuleProviderInput {
   group?: string
   position?: RuleProvider['position']
   enabled?: boolean
+  scopeMode: ScopeMode
+  scopeTargets: string[]
 }
 
 function sectionsToRuleProviders(pkg: UciPackage): RuleProvider[] {
@@ -722,7 +854,8 @@ function sectionsToRuleProviders(pkg: UciPackage): RuleProvider[] {
         interval: s['interval'] || undefined,
         format: (s['format'] as RuleProvider['format']) ?? 'yaml',
         group: s['group'] || undefined,
-        position: (s['position'] as RuleProvider['position']) ?? '0'
+        position: (s['position'] as RuleProvider['position']) ?? '0',
+        ...sectionScope(section as Record<string, unknown>)
       }
     })
 }
@@ -751,6 +884,7 @@ export function useAddRuleProvider(
       await luciRpc.uciSet('clashnivo', id, 'enabled', (input.enabled ?? true) ? '1' : '0')
       await luciRpc.uciSet('clashnivo', id, 'format', input.format ?? 'yaml')
       await luciRpc.uciSet('clashnivo', id, 'position', input.position ?? '0')
+      await writeScopeFields(id, input)
       if (input.url) await luciRpc.uciSet('clashnivo', id, 'url', input.url)
       if (input.interval) await luciRpc.uciSet('clashnivo', id, 'interval', input.interval)
       if (input.group) await luciRpc.uciSet('clashnivo', id, 'group', input.group)
@@ -776,6 +910,7 @@ export function useUpdateRuleProvider(
       await luciRpc.uciSet('clashnivo', id, 'behavior', input.behavior)
       await luciRpc.uciSet('clashnivo', id, 'format', input.format ?? 'yaml')
       await luciRpc.uciSet('clashnivo', id, 'position', input.position ?? '0')
+      await writeScopeFields(id, input)
       if (input.url) {
         await luciRpc.uciSet('clashnivo', id, 'url', input.url)
         await luciRpc.uciSet('clashnivo', id, 'interval', input.interval ?? '86400')
@@ -995,7 +1130,7 @@ export function useLogCore(
 // Custom proxies
 // ---------------------------------------------------------------------------
 
-export interface CustomProxy {
+export interface CustomProxy extends ScopedCustomization {
   /** UCI section ID (auto-generated) */
   id: string
   name: string
@@ -1032,6 +1167,8 @@ export interface CustomProxyInput {
   server: string
   port: string
   enabled?: boolean
+  scopeMode: ScopeMode
+  scopeTargets: string[]
   cipher?: string
   password?: string
   udp?: boolean
@@ -1069,7 +1206,8 @@ function sectionsToCustomProxies(pkg: UciPackage): CustomProxy[] {
         alterId: s['alter_id'] || undefined,
         vmessCipher: s['vmess_cipher'] || undefined,
         tls: s['tls'] === '1',
-        flow: s['flow'] || undefined
+        flow: s['flow'] || undefined,
+        ...sectionScope(section as Record<string, unknown>)
       }
     })
 }
@@ -1097,6 +1235,7 @@ export function useAddCustomProxy(
       await luciRpc.uciSet('clashnivo', id, 'server', input.server)
       await luciRpc.uciSet('clashnivo', id, 'port', input.port)
       await luciRpc.uciSet('clashnivo', id, 'enabled', (input.enabled ?? true) ? '1' : '0')
+      await writeScopeFields(id, input)
       if (input.cipher) await luciRpc.uciSet('clashnivo', id, 'cipher', input.cipher)
       if (input.password) await luciRpc.uciSet('clashnivo', id, 'password', input.password)
       if (input.udp) await luciRpc.uciSet('clashnivo', id, 'udp', '1')
@@ -1128,6 +1267,7 @@ export function useUpdateCustomProxy(
       await luciRpc.uciSet('clashnivo', id, 'proxy_type', input.proxyType)
       await luciRpc.uciSet('clashnivo', id, 'server', input.server)
       await luciRpc.uciSet('clashnivo', id, 'port', input.port)
+      await writeScopeFields(id, input)
 
       // Write optional fields or delete if cleared
       const optFields: Array<[string, string | undefined]> = [

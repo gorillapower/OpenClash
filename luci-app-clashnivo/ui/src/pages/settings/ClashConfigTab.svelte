@@ -1,6 +1,7 @@
 <script lang="ts">
   import Button from '$lib/components/ui/button/button.svelte'
   import {
+    useConfigs,
     useProxyGroups,
     useDeleteProxyGroup,
     useToggleProxyGroup,
@@ -12,15 +13,23 @@
     useCustomProxies,
     useDeleteCustomProxy,
     useToggleCustomProxy,
+    scopeAppliesToCurrentSource,
+    isNarrowerScope,
     type ProxyGroup,
     type CustomRule,
     type RuleProvider,
-    type CustomProxy
+    type CustomProxy,
+    type ScopeMode
   } from '$lib/queries/luci'
   import ProxyGroupSheet from './ProxyGroupSheet.svelte'
   import CustomProxySheet from './CustomProxySheet.svelte'
   import ConfigOverwriteSheet from './ConfigOverwriteSheet.svelte'
   import RuleProviderSheet from './RuleProviderSheet.svelte'
+  import CustomRuleScopeSheet from './CustomRuleScopeSheet.svelte'
+
+  const configs = useConfigs()
+  const sourceNames = $derived((configs.data ?? []).map((config) => config.name))
+  const activeSourceName = $derived(configs.data?.find((config) => config.active)?.name ?? null)
 
   // ---------------------------------------------------------------------------
   // Proxy groups
@@ -149,6 +158,8 @@
   let newRuleValue = $state('')
   let newRuleTarget = $state('DIRECT')
   let newRuleTargetCustom = $state('')
+  let newRuleScopeMode = $state<ScopeMode>('all')
+  let newRuleScopeTargets = $state<string[]>([])
   let addRuleError = $state('')
 
   const ruleTypes = [
@@ -189,13 +200,25 @@
       addRuleError = 'Target is required'
       return
     }
+    if (newRuleScopeMode === 'selected' && newRuleScopeTargets.length === 0) {
+      addRuleError = 'Select at least one source'
+      return
+    }
     rules = [
       ...rules,
-      { type: newRuleType, value: newRuleValue.trim(), target }
+      {
+        type: newRuleType,
+        value: newRuleValue.trim(),
+        target,
+        scopeMode: newRuleScopeMode,
+        scopeTargets: [...newRuleScopeTargets]
+      }
     ]
     rulesDirty = true
     newRuleValue = ''
     newRuleTargetCustom = ''
+    newRuleScopeMode = 'all'
+    newRuleScopeTargets = []
   }
 
   function removeRule(idx: number) {
@@ -269,6 +292,45 @@
     ruleProviderSheetOpen = false
     editingProvider = undefined
   }
+
+  let customRuleScopeSheetOpen = $state(false)
+  let editingRuleIndex = $state<number | null>(null)
+
+  function scopeLabel(scopeMode: ScopeMode, scopeTargets: string[]): string {
+    if (scopeMode === 'all') return 'All sources'
+    if (scopeTargets.length === 1) return scopeTargets[0]
+    return `${scopeTargets.length} selected sources`
+  }
+
+  function appliesToCurrentSource(scopeMode: ScopeMode, scopeTargets: string[]): boolean {
+    return scopeAppliesToCurrentSource(scopeMode, scopeTargets, activeSourceName)
+  }
+
+  function ruleScopeWarning(rule: CustomRule): string | null {
+    if (rule.target === 'DIRECT' || rule.target === 'REJECT') return null
+    const group = localGroups.find((item) => item.name === rule.target)
+    if (!group) return null
+    if (isNarrowerScope(rule.scopeMode, rule.scopeTargets, group.scopeMode, group.scopeTargets)) {
+      return 'This rule depends on a narrower-scope proxy group.'
+    }
+    return null
+  }
+
+  function providerScopeWarning(provider: RuleProvider): string | null {
+    if (!provider.group || provider.group === 'DIRECT' || provider.group === 'REJECT') return null
+    const group = localGroups.find((item) => item.name === provider.group)
+    if (!group) return null
+    if (isNarrowerScope(provider.scopeMode, provider.scopeTargets, group.scopeMode, group.scopeTargets)) {
+      return 'This provider routes into a narrower-scope proxy group.'
+    }
+    return null
+  }
+
+  function updateRuleScope(rule: CustomRule) {
+    if (editingRuleIndex === null) return
+    rules = rules.map((item, index) => (index === editingRuleIndex ? rule : item))
+    rulesDirty = true
+  }
 </script>
 
 <div class="space-y-8">
@@ -319,6 +381,12 @@
                 </span>
               </div>
               <p class="truncate text-xs text-muted-foreground">{proxy.server}:{proxy.port}</p>
+              <div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>{scopeLabel(proxy.scopeMode, proxy.scopeTargets)}</span>
+                {#if activeSourceName && !appliesToCurrentSource(proxy.scopeMode, proxy.scopeTargets)}
+                  <span class="text-amber-700">Out of scope for {activeSourceName}</span>
+                {/if}
+              </div>
             </div>
 
             <div class="ml-2 flex shrink-0 gap-2">
@@ -405,6 +473,15 @@
               <p class="truncate text-xs text-muted-foreground">
                 {provider.behavior} · {provider.type}{provider.group ? ` → ${provider.group}` : ''}
               </p>
+              <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>{scopeLabel(provider.scopeMode, provider.scopeTargets)}</span>
+                {#if activeSourceName && !appliesToCurrentSource(provider.scopeMode, provider.scopeTargets)}
+                  <span class="text-amber-700">Out of scope for {activeSourceName}</span>
+                {/if}
+                {#if providerScopeWarning(provider)}
+                  <span class="text-destructive">{providerScopeWarning(provider)}</span>
+                {/if}
+              </div>
             </div>
 
             {#if confirmDeleteProviderId === provider.id}
@@ -494,6 +571,12 @@
               <p class="text-xs text-muted-foreground">
                 {group.type}{group.policyFilter ? ` · ${group.policyFilter}` : ''}
               </p>
+              <div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>{scopeLabel(group.scopeMode, group.scopeTargets)}</span>
+                {#if activeSourceName && !appliesToCurrentSource(group.scopeMode, group.scopeTargets)}
+                  <span class="text-amber-700">Out of scope for {activeSourceName}</span>
+                {/if}
+              </div>
             </div>
             <div class="ml-2 flex shrink-0 gap-2">
               <Button
@@ -599,6 +682,40 @@
 
         <Button onclick={addRule} variant="outline" size="sm" class="h-9">Add</Button>
       </div>
+      <div class="mt-3 space-y-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <label for="rule-scope" class="text-xs font-medium text-muted-foreground">Scope</label>
+          <select
+            id="rule-scope"
+            bind:value={newRuleScopeMode}
+            aria-label="Rule scope"
+            class="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            <option value="all">All sources</option>
+            <option value="selected">Selected sources</option>
+          </select>
+        </div>
+
+        {#if newRuleScopeMode === 'selected'}
+          <div class="flex flex-wrap gap-3 rounded-md border border-border bg-muted/30 px-3 py-3">
+            {#each sourceNames as sourceName (sourceName)}
+              <label class="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={newRuleScopeTargets.includes(sourceName)}
+                  onchange={(event) => {
+                    const checked = (event.currentTarget as HTMLInputElement).checked
+                    newRuleScopeTargets = checked
+                      ? [...newRuleScopeTargets, sourceName]
+                      : newRuleScopeTargets.filter((value) => value !== sourceName)
+                  }}
+                />
+                <span>{sourceName}</span>
+              </label>
+            {/each}
+          </div>
+        {/if}
+      </div>
       {#if addRuleError}
         <p class="mt-1.5 text-xs text-destructive">{addRuleError}</p>
       {/if}
@@ -640,9 +757,28 @@
               </button>
             </div>
 
-            <code class="min-w-0 flex-1 truncate font-mono text-xs text-foreground">
-              {rule.type},{rule.value},{rule.target}
-            </code>
+            <div class="min-w-0 flex-1">
+              <code class="truncate font-mono text-xs text-foreground">
+                {rule.type},{rule.value},{rule.target}
+              </code>
+              <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>{scopeLabel(rule.scopeMode, rule.scopeTargets)}</span>
+                {#if activeSourceName && !appliesToCurrentSource(rule.scopeMode, rule.scopeTargets)}
+                  <span class="text-amber-700">Out of scope for {activeSourceName}</span>
+                {/if}
+                {#if ruleScopeWarning(rule)}
+                  <span class="text-destructive">{ruleScopeWarning(rule)}</span>
+                {/if}
+              </div>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onclick={() => { editingRuleIndex = idx; customRuleScopeSheetOpen = true }}
+            >
+              Scope
+            </Button>
 
             <button
               onclick={() => removeRule(idx)}
@@ -688,12 +824,14 @@
   open={proxyGroupSheetOpen}
   onClose={closeProxyGroupSheet}
   group={editingGroup}
+  {sourceNames}
 />
 
 <CustomProxySheet
   open={customProxySheetOpen}
   onClose={closeCustomProxySheet}
   proxy={editingProxy}
+  {sourceNames}
 />
 
 <ConfigOverwriteSheet
@@ -705,4 +843,13 @@
   open={ruleProviderSheetOpen}
   onClose={closeRuleProviderSheet}
   provider={editingProvider}
+  {sourceNames}
+/>
+
+<CustomRuleScopeSheet
+  open={customRuleScopeSheetOpen}
+  onClose={() => { customRuleScopeSheetOpen = false; editingRuleIndex = null }}
+  onSave={updateRuleScope}
+  rule={editingRuleIndex === null ? undefined : rules[editingRuleIndex]}
+  {sourceNames}
 />

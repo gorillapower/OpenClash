@@ -45,7 +45,10 @@ vi.mock('$lib/queries/luci', () => ({
   useCustomRules: vi.fn(),
   useSetCustomRules: vi.fn(),
   useConfigOverwrite: vi.fn(),
-  useSetConfigOverwrite: vi.fn()
+  useSetConfigOverwrite: vi.fn(),
+  scopeAppliesToCurrentSource: vi.fn((scopeMode: string, scopeTargets: string[], sourceName?: string) =>
+    scopeMode === 'all' || (!!sourceName && scopeTargets.includes(sourceName))
+  )
 }))
 
 import {
@@ -113,22 +116,22 @@ function setupMocks({
   vi.mocked(useConfigPreview).mockReturnValue(makeMutation(vi.fn().mockResolvedValue(preview)) as never)
   vi.mocked(useConfigValidate).mockReturnValue(makeMutation(vi.fn().mockResolvedValue(validation)) as never)
   vi.mocked(useServiceRestart).mockReturnValue(makeMutation(vi.fn().mockResolvedValue(undefined)) as never)
-  vi.mocked(useProxyGroups).mockReturnValue(makeQuery([{ id: 'g1', name: 'Global', type: 'select', enabled: true }]) as never)
+  vi.mocked(useProxyGroups).mockReturnValue(makeQuery([{ id: 'g1', name: 'Global', type: 'select', enabled: true, scopeMode: 'all', scopeTargets: [] }]) as never)
   vi.mocked(useDeleteProxyGroup).mockReturnValue(makeMutation() as never)
   vi.mocked(useToggleProxyGroup).mockReturnValue(makeMutation() as never)
   vi.mocked(useAddProxyGroup).mockReturnValue(makeMutation() as never)
   vi.mocked(useUpdateProxyGroup).mockReturnValue(makeMutation() as never)
-  vi.mocked(useRuleProviders).mockReturnValue(makeQuery([{ id: 'rp1', name: 'Ads', enabled: true, type: 'http', behavior: 'domain', format: 'yaml', position: '0' }]) as never)
+  vi.mocked(useRuleProviders).mockReturnValue(makeQuery([{ id: 'rp1', name: 'Ads', enabled: true, type: 'http', behavior: 'domain', format: 'yaml', position: '0', scopeMode: 'all', scopeTargets: [] }]) as never)
   vi.mocked(useDeleteRuleProvider).mockReturnValue(makeMutation() as never)
   vi.mocked(useToggleRuleProvider).mockReturnValue(makeMutation() as never)
   vi.mocked(useAddRuleProvider).mockReturnValue(makeMutation() as never)
   vi.mocked(useUpdateRuleProvider).mockReturnValue(makeMutation() as never)
-  vi.mocked(useCustomProxies).mockReturnValue(makeQuery([{ id: 'cp1', name: 'My VPS', proxyType: 'ss', server: '1.1.1.1', port: '443', enabled: true }]) as never)
+  vi.mocked(useCustomProxies).mockReturnValue(makeQuery([{ id: 'cp1', name: 'My VPS', proxyType: 'ss', server: '1.1.1.1', port: '443', enabled: true, scopeMode: 'all', scopeTargets: [] }]) as never)
   vi.mocked(useDeleteCustomProxy).mockReturnValue(makeMutation() as never)
   vi.mocked(useToggleCustomProxy).mockReturnValue(makeMutation() as never)
   vi.mocked(useAddCustomProxy).mockReturnValue(makeMutation() as never)
   vi.mocked(useUpdateCustomProxy).mockReturnValue(makeMutation() as never)
-  vi.mocked(useCustomRules).mockReturnValue(makeQuery([{ type: 'DOMAIN-SUFFIX', value: 'google.com', target: 'DIRECT' }]) as never)
+  vi.mocked(useCustomRules).mockReturnValue(makeQuery([{ type: 'DOMAIN-SUFFIX', value: 'google.com', target: 'DIRECT', scopeMode: 'all', scopeTargets: [] }]) as never)
   vi.mocked(useSetCustomRules).mockReturnValue(makeMutation() as never)
   vi.mocked(useConfigOverwrite).mockReturnValue(makeQuery(overwrite) as never)
   vi.mocked(useSetConfigOverwrite).mockReturnValue(makeMutation() as never)
@@ -144,12 +147,14 @@ describe('ComposePage', () => {
     expect(screen.getByRole('heading', { name: 'Compose' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /how this works/i })).toBeInTheDocument()
     expect(screen.getByText('alpha')).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: /switch selected source/i })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /selected source/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^switch$/i })).toBeDisabled()
     expect(screen.getAllByText('1. Custom Proxies').length).toBeGreaterThan(0)
     expect(screen.getAllByText('2. Rule Providers').length).toBeGreaterThan(0)
     expect(screen.getAllByText('3. Proxy Groups').length).toBeGreaterThan(0)
     expect(screen.getAllByText('4. Custom Rules').length).toBeGreaterThan(0)
     expect(screen.getAllByText('5. Overwrite').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('1 of 1').length).toBeGreaterThan(0)
     expect(screen.getByText('Configured')).toBeInTheDocument()
   })
 
@@ -179,17 +184,19 @@ describe('ComposePage', () => {
     })
   })
 
-  it('allows quick source switching from the pipeline summary', async () => {
+  it('switches source only after explicit confirmation from the pipeline summary', async () => {
     const setActiveMutate = vi.fn().mockResolvedValue(undefined)
     setupMocks({ configs: [{ name: 'alpha', active: true }, { name: 'beta.yaml', active: false }] })
     vi.mocked(useConfigSetActive).mockReturnValue(makeMutation(setActiveMutate) as never)
 
     render(ComposePage)
 
-    await fireEvent.change(screen.getByRole('combobox', { name: /switch selected source/i }), {
+    await fireEvent.change(screen.getByRole('combobox', { name: /selected source/i }), {
       target: { value: 'beta.yaml' }
     })
 
+    expect(setActiveMutate).not.toHaveBeenCalled()
+    await fireEvent.click(screen.getByRole('button', { name: /^switch$/i }))
     await waitFor(() => expect(setActiveMutate).toHaveBeenCalledWith('beta.yaml'))
   })
 
