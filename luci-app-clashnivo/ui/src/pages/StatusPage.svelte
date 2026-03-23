@@ -39,7 +39,10 @@
   let subscriptionUrl = $state('')
   let urlError = $state<string | null>(null)
 
-  const dashboardUrl = `http://${window.location.hostname}:9090/ui`
+  const controllerPort = $derived(
+    ((uciConfig.data?.config as Record<string, string> | undefined)?.cn_port ?? '9093').trim() || '9093'
+  )
+  const dashboardUrl = $derived(`http://${window.location.hostname}:${controllerPort}/ui`)
 
   const isRunning = $derived(optimisticRunning ?? serviceStatus.data?.running ?? false)
   const isBusy = $derived(

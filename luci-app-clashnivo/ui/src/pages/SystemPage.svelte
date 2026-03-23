@@ -47,10 +47,11 @@
   const dashboardSelect = useDashboardSelect()
 
   const cfg = $derived(config.data?.config ?? {})
+  const controllerPort = $derived(((cfg['cn_port'] as string | undefined) ?? '9093').trim() || '9093')
   const dashboardForwardSsl = $derived((cfg['dashboard_forward_ssl'] as string | undefined) === '1')
   const coreSourcePolicy = $derived(latestCore.data?.source_policy ?? 'openclash')
   const dashboardUrl = $derived(
-    `${dashboardForwardSsl ? 'https' : 'http'}://${window.location.hostname}:9090/ui`
+    `${dashboardForwardSsl ? 'https' : 'http'}://${window.location.hostname}:${controllerPort}/ui`
   )
 
   const currentCoreVersion = $derived(currentCore.data?.version ?? null)

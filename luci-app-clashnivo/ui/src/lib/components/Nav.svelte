@@ -1,8 +1,13 @@
 <script lang="ts">
   import { router, type Route } from '$lib/router.svelte'
   import { theme } from '$lib/theme.svelte'
+  import { useUciConfig } from '$lib/queries/luci'
 
-  const dashboardUrl = `http://${window.location.hostname}:9090/ui`
+  const config = useUciConfig('clashnivo')
+  const controllerPort = $derived(
+    ((config.data?.config as Record<string, string> | undefined)?.cn_port ?? '9093').trim() || '9093'
+  )
+  const dashboardUrl = $derived(`http://${window.location.hostname}:${controllerPort}/ui`)
 
   const navItems: { label: string; path: Route }[] = [
     { label: 'Status', path: '/' },

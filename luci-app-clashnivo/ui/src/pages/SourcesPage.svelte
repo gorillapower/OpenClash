@@ -99,13 +99,21 @@
   async function handleAdd() {
     addUrlError = validateUrl(addUrl)
     if (addUrlError) return
-    await subscriptionAdd.mutateAsync({
+    const result = await subscriptionAdd.mutateAsync({
       url: addUrl.trim(),
       name: addName.trim() || undefined
     })
     addOpen = false
     addUrl = ''
     addName = ''
+    if (result?.name) {
+      updatingNames = new Set([...updatingNames, result.name])
+      subscriptionUpdate.mutate(result.name, {
+        onSettled: () => {
+          updatingNames = new Set([...updatingNames].filter((value) => value !== result.name))
+        }
+      })
+    }
   }
 
   function openEdit(subscription: Subscription) {

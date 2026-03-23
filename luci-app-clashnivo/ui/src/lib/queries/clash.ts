@@ -3,7 +3,13 @@ import {
   type CreateQueryOptions,
   type QueryClient
 } from '@tanstack/svelte-query'
-import { clashClient, type ClashVersion, type ClashConfig, type ProxiesResponse, type ConnectionsResponse } from '$lib/api/clash'
+import {
+  createRuntimeClashClient,
+  type ClashVersion,
+  type ClashConfig,
+  type ProxiesResponse,
+  type ConnectionsResponse
+} from '$lib/api/clash'
 import { fetchGeoIp, type GeoIpResult } from '$lib/api/ip'
 
 // ---------------------------------------------------------------------------
@@ -27,7 +33,7 @@ export const clashKeys = {
 export function useClashVersion(opts?: Partial<CreateQueryOptions<ClashVersion>>) {
   return createQuery<ClashVersion>(() => ({
     queryKey: clashKeys.version(),
-    queryFn: () => clashClient.getVersion(),
+    queryFn: async () => (await createRuntimeClashClient()).getVersion(),
     ...opts
   } as CreateQueryOptions<ClashVersion>))
 }
@@ -35,7 +41,7 @@ export function useClashVersion(opts?: Partial<CreateQueryOptions<ClashVersion>>
 export function useClashConfig(opts?: Partial<CreateQueryOptions<ClashConfig>>) {
   return createQuery<ClashConfig>(() => ({
     queryKey: clashKeys.config(),
-    queryFn: () => clashClient.getConfig(),
+    queryFn: async () => (await createRuntimeClashClient()).getConfig(),
     ...opts
   } as CreateQueryOptions<ClashConfig>))
 }
@@ -43,7 +49,7 @@ export function useClashConfig(opts?: Partial<CreateQueryOptions<ClashConfig>>) 
 export function useProxies(opts?: Partial<CreateQueryOptions<ProxiesResponse>>) {
   return createQuery<ProxiesResponse>(() => ({
     queryKey: clashKeys.proxies(),
-    queryFn: () => clashClient.getProxies(),
+    queryFn: async () => (await createRuntimeClashClient()).getProxies(),
     ...opts
   } as CreateQueryOptions<ProxiesResponse>))
 }
@@ -51,7 +57,7 @@ export function useProxies(opts?: Partial<CreateQueryOptions<ProxiesResponse>>) 
 export function useConnections(opts?: Partial<CreateQueryOptions<ConnectionsResponse>>) {
   return createQuery<ConnectionsResponse>(() => ({
     queryKey: clashKeys.connections(),
-    queryFn: () => clashClient.getConnections(),
+    queryFn: async () => (await createRuntimeClashClient()).getConnections(),
     ...opts
   } as CreateQueryOptions<ConnectionsResponse>))
 }
@@ -64,7 +70,7 @@ export function useConnections(opts?: Partial<CreateQueryOptions<ConnectionsResp
 export function useClashStatus(opts?: Partial<CreateQueryOptions<ClashVersion>>) {
   return createQuery<ClashVersion>(() => ({
     queryKey: clashKeys.status(),
-    queryFn: () => clashClient.getVersion(),
+    queryFn: async () => (await createRuntimeClashClient()).getVersion(),
     refetchInterval: 5000,
     retry: false,
     ...opts

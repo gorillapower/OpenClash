@@ -77,6 +77,7 @@ import {
 function setupMocks({
   uciData = {
     config: {
+      cn_port: '9093',
       dashboard_type: 'Official',
       dashboard_forward_ssl: '0'
     }
@@ -211,6 +212,7 @@ describe('SystemPage', () => {
     setupMocks({
       uciData: {
         config: {
+          cn_port: '9093',
           dashboard_type: 'Official',
           dashboard_forward_ssl: '1'
         }
@@ -218,7 +220,7 @@ describe('SystemPage', () => {
     })
     render(SystemPage)
 
-    expect(screen.getByRole('link', { name: /open dashboard/i })).toHaveAttribute('href', 'https://localhost:9090/ui')
+    expect(screen.getByRole('link', { name: /open dashboard/i })).toHaveAttribute('href', 'https://localhost:9093/ui')
   })
 
   it('calls core update when the button is clicked', async () => {

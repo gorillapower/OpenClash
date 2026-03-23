@@ -1,4 +1,5 @@
 import { assertOk, normaliseError } from './errors'
+import { luciRpc, type UciPackage } from './luci'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -81,16 +82,25 @@ export interface ClashClientOptions {
   secret?: string
 }
 
+function parseControllerPort(config: Record<string, string> | undefined): string {
+  return config?.cn_port?.trim() || '9093'
+}
+
+function parseControllerSecret(config: Record<string, string> | undefined): string | undefined {
+  const secret = config?.dashboard_password?.trim()
+  return secret ? secret : undefined
+}
+
 function resolveBaseUrl(): string {
   const env = (import.meta as unknown as { env: Record<string, string> | undefined }).env
   // VITE_CLASH_URL is dev-only: routes through Vite's /clash-api proxy to avoid CORS.
   // Never use it in production builds — the app is served from the router itself,
-  // so it can talk directly to Clash on port 9090.
+  // so it can talk directly to Clash on the configured controller port.
   if (import.meta.env.DEV && env?.VITE_CLASH_URL) return env.VITE_CLASH_URL
   // Production: derive from current hostname (app is served from the router)
   return typeof window !== 'undefined'
-    ? `http://${window.location.hostname}:9090`
-    : 'http://192.168.1.1:9090'
+    ? `http://${window.location.hostname}:9093`
+    : 'http://192.168.1.1:9093'
 }
 
 export function createClashClient(opts: ClashClientOptions = {}) {
@@ -175,3 +185,16 @@ export type ClashClient = ReturnType<typeof createClashClient>
 
 /** Default singleton client, reads config from env. */
 export const clashClient = createClashClient()
+
+export async function createRuntimeClashClient() {
+  const uci = (await luciRpc.uciGet('clashnivo')) as UciPackage
+  const config = uci.config as Record<string, string> | undefined
+  const port = parseControllerPort(config)
+  const secret = parseControllerSecret(config)
+  const baseUrl =
+    typeof window !== 'undefined'
+      ? `http://${window.location.hostname}:${port}`
+      : `http://192.168.1.1:${port}`
+
+  return createClashClient({ baseUrl, secret })
+}

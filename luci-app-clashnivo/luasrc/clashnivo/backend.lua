@@ -83,8 +83,14 @@ function service_status()
 end
 
 function service_action(action, async)
-	local suffix = async and " >/dev/null 2>&1 &" or " >/dev/null 2>&1"
-	return sys.call(string.format("%s %s%s", shellquote(CLASHNIVO_INIT), action, suffix))
+	if async then
+		return sys.call(string.format(
+			"nohup %s %s </dev/null >/dev/null 2>&1 &",
+			shellquote(CLASHNIVO_INIT),
+			shellquote(action)
+		))
+	end
+	return sys.call(string.format("%s %s >/dev/null 2>&1", shellquote(CLASHNIVO_INIT), shellquote(action)))
 end
 
 local function service_arg_command(action, arg, async)
@@ -93,7 +99,7 @@ local function service_arg_command(action, arg, async)
 		cmd = cmd .. " " .. shellquote(arg)
 	end
 	if async then
-		cmd = cmd .. " >/dev/null 2>&1 &"
+		cmd = "nohup " .. cmd .. " </dev/null >/dev/null 2>&1 &"
 	else
 		cmd = cmd .. " >/dev/null 2>&1"
 	end

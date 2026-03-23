@@ -300,9 +300,6 @@ function handlers.subscription_add(p)
     cursor:save("clashnivo")
     cursor:commit("clashnivo")
 
-    -- Trigger async subscription download through the backend adapter
-    backend.start_subscription_update(name)
-
     return { name = name }
 end
 

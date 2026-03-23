@@ -1,7 +1,20 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/svelte'
 import Nav from '$lib/components/Nav.svelte'
 import App from '../App.svelte'
+
+vi.mock('$lib/queries/luci', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('$lib/queries/luci')>()
+  return {
+    ...actual,
+    useUciConfig: vi.fn(() => ({
+      data: { config: { cn_port: '9093' } },
+      isPending: false,
+      isError: false,
+      isSuccess: true
+    }))
+  }
+})
 
 function setHash(path: string) {
   window.location.hash = path
