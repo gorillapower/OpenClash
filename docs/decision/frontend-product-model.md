@@ -66,6 +66,7 @@ Rules:
 - similar operations must use the same verbs across the product
 - actions that change stored settings, generated config, runtime activation, or remote refresh must be clearly distinguished
 - the UI must not rely on the user inferring behavior from context or legacy OpenClash vocabulary
+- the surrounding surface should carry the noun context so action labels can stay short
 
 Examples of distinctions the product must keep explicit:
 - save settings versus preview generated config
@@ -73,16 +74,37 @@ Examples of distinctions the product must keep explicit:
 - refresh source config versus restart Clash Nivo runtime
 - switch selected source versus start or stop service
 
+Preferred action vocabulary:
+- `Save`
+- `Refresh`
+- `Activate`
+- `Open`
+- `Install`
+- `Update`
+- `Check`
+- `Pause`
+- `Resume`
+- `Clear`
+
+Avoid:
+- repeated noun-heavy labels when the section or card already identifies the target
+- mixing synonyms for the same effect across pages
+
 ### Explain Advanced Features In Context
 
 Advanced settings are allowed, but they must not feel like unexplained traps.
 
 Rules:
 - advanced settings should be grouped by intent and colocated with related controls
-- the UI should use helper text, informative labels, and tooltips where the feature cannot be made obvious by structure alone
+- the UI should use informative labels and tooltips where the feature cannot be made obvious by structure alone
 - advanced pages should help the user understand what a setting affects, when it matters, and what the common safe choice is
 - documentation should be discoverable from the UI for advanced features that need more explanation than short helper text can provide
 - the default path should remain usable without reading long documentation, but advanced behavior must still be explainable when needed
+
+Product guidance:
+- prefer tooltip-sized explanation over persistent subtitle text
+- use always-visible helper text only when the user must understand a consequence before acting
+- remove explanation from the main surface when structure already makes intent obvious
 
 
 ### Generated Runtime, Preserved Source
@@ -144,6 +166,7 @@ Target flow:
 
 Product rule:
 - first-run should feel like guided setup, not like opening an advanced admin console
+- guidance should be inline and conditional, not a permanent generic checklist panel
 
 ### Journey 2: Daily Operation
 
@@ -221,6 +244,7 @@ The user wants to:
 
 Product rule:
 - maintenance exists, but it is secondary to running and composing the product successfully
+- maintenance UI should be visually demoted relative to primary runtime and source flows
 
 ## Primary Actions Versus Advanced Actions
 
@@ -353,6 +377,11 @@ If the system is blocked, the UI should prioritize:
 - why it is blocked
 - what the user can do about it
 
+Status should not:
+- keep persistent generic `Next steps` panels once the same guidance can be expressed inline
+- compete with maintenance surfaces or explanatory filler
+- require the user to read repeated subtitles before seeing operational state and controls
+
 ### Switching Source Configs
 
 Switching the selected source config is allowed.
@@ -443,6 +472,10 @@ At minimum, the user should be able to tell:
 - whether the current active runtime was changed
 - what action is expected next
 
+Feedback should stay compact on the main surface:
+- prefer inline state near the affected object
+- do not multiply banners, subtitles, and helper copy for the same event
+
 ## Product Simplification Rules
 
 To keep the frontend intuitive, later IA and design work should preserve these rules:
@@ -452,6 +485,9 @@ To keep the frontend intuitive, later IA and design work should preserve these r
 - source inventory and source customization are related but distinct concerns
 - maintenance/update workflows are secondary to operational clarity
 - the UI should expose backend state and backend rules, not invent a competing browser-side model
+- section hierarchy should reflect task frequency and user value
+- selectors, summaries, and actions for the same object should be colocated
+- persistent explanatory subtitles should be treated as an exception, not a default pattern
 
 
 ## Feature Scope Review Requirement

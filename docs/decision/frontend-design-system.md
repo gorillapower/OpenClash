@@ -74,6 +74,79 @@ That includes:
 
 The interface must never make the user infer meaning from different button placement or inherited wording.
 
+### Context Carries Meaning
+
+The surface around a control should do most of the explanatory work.
+
+This means:
+- section titles should provide the noun context
+- actions should usually be short verbs
+- labels should be concise and literal
+- explanation should not be repeated in headers, body copy, and buttons
+
+Examples:
+- in `Logs`, prefer `Refresh`, `Pause`, `Resume`, and `Clear`
+- in `Sources`, prefer `Refresh`, `Activate`, `Edit`, and `Delete`
+- in `System`, prefer `Check`, `Install`, `Update`, and `Open` when the surrounding section already names the target
+
+Avoid:
+- repeating the same noun in the section title and the action label
+- verbose labels that only compensate for weak layout
+- standalone badges or captions that restate nearby controls
+
+### Tooltip-First Explanation
+
+Short explanation should default to tooltips, not persistent subtitle text.
+
+Use tooltips for:
+- term clarification
+- common-safe-choice guidance
+- short consequence notes
+- advanced-setting warnings
+
+Use always-visible helper text only when:
+- the user must understand the consequence before acting
+- the information changes the decision materially in normal use
+- the explanation cannot reasonably fit in a tooltip
+
+Avoid:
+- subtitle text under every section heading
+- labels followed by another sentence that only restates the same concept
+- long descriptive rows that compete with the actual control
+
+### Hierarchy By Frequency And Value
+
+Pages must visually prioritize the most common and highest-value tasks first.
+
+This means:
+- top-of-page surfaces should answer the main operational question quickly
+- secondary maintenance tasks should be visually demoted and placed lower
+- low-frequency tasks should not compete equally with core workflows
+
+Examples:
+- `Core` belongs above package/assets maintenance in `System`
+- service state belongs above generic help panels in `Status`
+- source inventory belongs above low-frequency batch utilities in `Sources`
+
+Avoid:
+- giving routine maintenance the same weight as primary runtime control
+- stacking many equal-priority sections with no visual ranking
+- forcing the user to scan low-value surfaces before seeing the main control path
+
+### Colocation Over Broadcast
+
+Status, selector, and action for the same object must live together.
+
+This means:
+- current state and current actions for a core should be in the same surface
+- dashboard selection and dashboard actions should be adjacent
+- source-specific actions should live with the source row/card they affect
+
+Avoid:
+- placing selectors far away from the action they govern
+- top-right pills or detached metadata that appear decorative rather than functional
+- one part of the page describing an object while another distant section controls it
+
 ### Structured Over Clever
 
 The frontend should prefer obvious structure over compact but obscure interactions.
@@ -90,6 +163,8 @@ Avoid:
 - overly dense toolbars
 - icon-only critical actions
 - vague drawers or sheets for core workflows unless the interaction truly benefits from containment
+- filler panels that exist only to narrate obvious next steps
+- generic “what to do next” surfaces when the page can instead make the right action obvious inline
 
 ### Native By Default
 
@@ -195,6 +270,31 @@ Examples:
 - `View logs` is utility/navigation
 
 Do not present five equal-weight buttons in the same action row.
+
+### Action Copy
+
+Action labels should be the shortest accurate verb phrase.
+
+Rules:
+- prefer one-word verbs when the section already provides context
+- keep the same verb for the same outcome across pages
+- use longer labels only when ambiguity would otherwise be real
+
+Prefer:
+- `Refresh`
+- `Activate`
+- `Open`
+- `Update`
+- `Install`
+- `Check`
+- `Pause`
+- `Resume`
+- `Clear`
+
+Avoid:
+- `Refresh logs` when the control is already inside Logs
+- `Activate subscription` when the card already identifies a subscription
+- repeated noun phrases that make controls feel heavy and noisy
 
 ### Form Behavior
 
@@ -322,6 +422,7 @@ Helper text should explain:
 - what the common or safe choice is
 
 Helper text should not merely repeat the label in longer words.
+Helper text should also be rare on primary surfaces.
 
 ### Tooltips And Docs
 
@@ -329,6 +430,7 @@ Tooltips are for:
 - short clarifications
 - acronym expansion
 - edge-case warnings
+- primary-surface explanation that would otherwise become persistent subtitle clutter
 
 Longer conceptual explanations should link to deeper documentation or in-product help.
 
@@ -339,6 +441,16 @@ Advanced settings should be understandable through:
 - optional linked documentation
 
 not by expecting the user to read raw source or trial-and-error behavior.
+
+### Surface Cleanliness
+
+Primary operational pages should feel quiet and deliberate.
+
+Rules:
+- remove repeated explanatory copy when structure can carry meaning
+- do not keep generic onboarding or next-step panels visible after they stop adding value
+- avoid decorative or detached metadata chips that compete with true controls
+- prefer one strong section summary over multiple weak subtitles
 
 ## Accessibility And Robustness
 
@@ -363,6 +475,10 @@ These constraints should govern regenerated Epic 5 work:
 - do keep external dashboard access as a supported integration
 - do make advanced/system settings explainable in context
 - do preserve a clear distinction between source management, composition, and system maintenance
+- do keep action language short and consistent across pages
+- do prefer tooltips over persistent subtitle text on primary surfaces
+- do colocate controls, status, and selectors for the same object
+- do visually demote low-frequency maintenance tasks below primary operational tasks
 
 ## Outcome
 
