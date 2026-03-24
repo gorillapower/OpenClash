@@ -372,9 +372,9 @@ EOF
 
 start_fail()
 {
-   uci -q set clashnivo.config.enable=0
-   uci -q commit clashnivo
-   stop
+   local reason="${1:-start_failed}"
+
+   clashnivo_service_failed_start_cleanup "$reason"
    exit 0
 }
 
@@ -474,13 +474,13 @@ rescue Exception => e
    system 'rm -rf ${TMP_CONFIG_FILE}';
 end
 " 2>/dev/null >> $LOG_FILE
-if [ $? -ne 0 ]; then
-   LOG_ERROR "Ruby failed while validating the source config. Check the Ruby runtime dependencies."
-   start_fail
-elif [ ! -f "$TMP_CONFIG_FILE" ] || [ ! -s "$TMP_CONFIG_FILE" ]; then
-   LOG_ERROR "Source config validation failed."
-   start_fail
-fi
+   if [ $? -ne 0 ]; then
+      LOG_ERROR "Ruby failed while validating the source config. Check the Ruby runtime dependencies."
+      start_fail "source_validation_ruby_failed"
+   elif [ ! -f "$TMP_CONFIG_FILE" ] || [ ! -s "$TMP_CONFIG_FILE" ]; then
+      LOG_ERROR "Source config validation failed."
+      start_fail "source_validation_failed"
+   fi
 }
 
 check_run_quick()
@@ -616,7 +616,7 @@ do_run_file()
       rm -rf "/tmp/clash_last_version"
       /usr/share/clashnivo/clashnivo_core.sh "$core_type"
       if [ ! -f "$meta_core_path" ]; then
-         start_fail
+         start_fail "core_missing_after_download"
       fi
    }
 
@@ -630,7 +630,7 @@ do_run_file()
             LOG_TIP "Chnroute list format does not match the active firewall backend. Rebuilding it now."
             /usr/share/clashnivo/clashnivo_chnroute.sh
             if [ -z "$(cat "$chnr_path" |grep "define china_ip_route")" ] || [ -z "$(cat "$chnr6_path" |grep "define china_ip6_route")" ]; then
-               start_fail
+               start_fail "chnroute_backend_rebuild_failed"
             fi
          fi
       else
@@ -638,12 +638,12 @@ do_run_file()
             LOG_TIP "Chnroute list format does not match the active firewall backend. Rebuilding it now."
             /usr/share/clashnivo/clashnivo_chnroute.sh
             if [ -n "$(cat "$chnr_path" |grep "define china_ip_route")" ] || [ -n "$(cat "$chnr6_path" |grep "define china_ip6_route")" ]; then
-               start_fail
+               start_fail "chnroute_backend_rebuild_failed"
             fi
          fi
       fi
       if [ ! -f "$chnr_path" ] || [ ! -f "$chnr6_path" ]; then
-         start_fail
+         start_fail "chnroute_missing"
       fi
    fi
 
@@ -775,7 +775,7 @@ check_core_status()
          done
          if [ -n "$(pidof clash mihomo)" ] && ! clashnivo_service_routing_tun_route_present "$ip_" && [ "$TUN_RESTART" -gt 3 ]; then
             LOG_WARN "TUN interface failed to start after multiple attempts. Check TUN support and runtime dependencies."
-            start_fail
+            start_fail "tun_route_missing"
          fi
       fi
 
@@ -816,13 +816,13 @@ check_core_status()
       done
       if [ "$CORE_HTTP_CODE" != "200" ]; then
          LOG_ERROR "Clash core health check failed after startup. Controller port ${cn_port} did not return HTTP 200 (localhost=${CORE_HTTP_CODE_LOCAL}, lan=${CORE_HTTP_CODE_LAN})."
-         start_fail
+         start_fail "core_healthcheck_failed"
       fi
       [ -n "$CORE_API_URL" ] && LOG_INFO "Clash core health check passed via ${CORE_API_URL}."
    fi
    if [ -z "$(pidof clash mihomo)" ]; then
       LOG_ERROR "Clash core process did not start successfully."
-      start_fail
+      start_fail "core_process_missing"
    fi
 
    # redirect dns setting after core started, prevent core dns lookup failure

@@ -28,6 +28,10 @@ clashnivo_service_init_state() {
    CLASHNIVO_ASSETS_UPDATE_LOG_FILE="${CLASHNIVO_ASSETS_UPDATE_STATUS_FILE}.log"
    CLASHNIVO_ASSETS_UPDATE_STATUS_DIR="${CLASHNIVO_RUNTIME_PREFIX}_asset_updates"
    CLASHNIVO_DASHBOARD_UPDATE_STATUS_DIR="${CLASHNIVO_RUNTIME_PREFIX}_dashboard_updates"
+   CLASHNIVO_RUNTIME_STATE_DIR="${CLASHNIVO_RUNTIME_PREFIX}_runtime"
+   CLASHNIVO_RUNTIME_DNS_APPLIED_FILE="${CLASHNIVO_RUNTIME_STATE_DIR}/dns_applied"
+   CLASHNIVO_RUNTIME_FIREWALL_APPLIED_FILE="${CLASHNIVO_RUNTIME_STATE_DIR}/firewall_applied"
+   CLASHNIVO_RUNTIME_START_FAILED_FILE="${CLASHNIVO_RUNTIME_STATE_DIR}/start_failed"
 
    # Compatibility aliases for inherited scripts that still expect generic names.
    LOG_FILE="${CLASHNIVO_LOG_FILE}"
@@ -49,6 +53,63 @@ clashnivo_service_init_state() {
    CORE_LATEST_CACHE_FILE="${CLASHNIVO_CORE_LATEST_CACHE_FILE}"
    ASSETS_UPDATE_STATUS_FILE="${CLASHNIVO_ASSETS_UPDATE_STATUS_FILE}"
    ASSETS_UPDATE_LOG_FILE="${CLASHNIVO_ASSETS_UPDATE_LOG_FILE}"
+}
+
+clashnivo_service_runtime_state_ensure_dir() {
+   mkdir -p "${CLASHNIVO_RUNTIME_STATE_DIR}" 2>/dev/null
+}
+
+clashnivo_service_runtime_state_mark() {
+   local marker="${1:-}"
+
+   [ -n "${marker}" ] || return 1
+   clashnivo_service_runtime_state_ensure_dir || return 1
+   : > "${marker}"
+}
+
+clashnivo_service_runtime_state_mark_dns_applied() {
+   clashnivo_service_runtime_state_mark "${CLASHNIVO_RUNTIME_DNS_APPLIED_FILE}"
+}
+
+clashnivo_service_runtime_state_mark_firewall_applied() {
+   clashnivo_service_runtime_state_mark "${CLASHNIVO_RUNTIME_FIREWALL_APPLIED_FILE}"
+}
+
+clashnivo_service_runtime_state_mark_start_failed() {
+   local reason="${1:-start_failed}"
+
+   clashnivo_service_runtime_state_ensure_dir || return 1
+   printf '%s\n' "${reason}" > "${CLASHNIVO_RUNTIME_START_FAILED_FILE}"
+}
+
+clashnivo_service_runtime_state_dns_applied() {
+   [ -f "${CLASHNIVO_RUNTIME_DNS_APPLIED_FILE}" ]
+}
+
+clashnivo_service_runtime_state_firewall_applied() {
+   [ -f "${CLASHNIVO_RUNTIME_FIREWALL_APPLIED_FILE}" ]
+}
+
+clashnivo_service_runtime_state_start_failed() {
+   [ -f "${CLASHNIVO_RUNTIME_START_FAILED_FILE}" ]
+}
+
+clashnivo_service_runtime_state_start_failed_reason() {
+   [ -f "${CLASHNIVO_RUNTIME_START_FAILED_FILE}" ] && sed -n '1p' "${CLASHNIVO_RUNTIME_START_FAILED_FILE}" 2>/dev/null
+}
+
+clashnivo_service_runtime_state_clear_start_failed() {
+   rm -f "${CLASHNIVO_RUNTIME_START_FAILED_FILE}"
+}
+
+clashnivo_service_runtime_state_clear_network() {
+   rm -f \
+      "${CLASHNIVO_RUNTIME_DNS_APPLIED_FILE}" \
+      "${CLASHNIVO_RUNTIME_FIREWALL_APPLIED_FILE}"
+}
+
+clashnivo_service_runtime_state_reset() {
+   rm -rf "${CLASHNIVO_RUNTIME_STATE_DIR}"
 }
 
 clashnivo_service_clear_disabled_runtime_state() {

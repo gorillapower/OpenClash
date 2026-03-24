@@ -8,6 +8,41 @@ clashnivo_service_stop_watchdog_instances() {
    procd_kill "${CLASHNIVO_WATCHDOG_SERVICE_NAME}" >/dev/null 2>&1
 }
 
+clashnivo_service_stop_core_instances() {
+   local process pids pid
+
+   for process in "clashnivo_streaming_unlock.lua"; do
+      pids=$(unify_ps_pids "$process")
+      if [ -n "$pids" ]; then
+         for pid in $pids; do
+            kill -9 "$pid" >/dev/null 2>&1
+         done
+      fi
+   done
+
+   pgrep -f "$CLASH -d $CLASH_CONFIG -f " 2>/dev/null | while read -r pid; do
+      [ -n "$pid" ] && kill "$pid" >/dev/null 2>&1
+   done
+   sleep 1
+   pgrep -f "$CLASH -d $CLASH_CONFIG -f " 2>/dev/null | while read -r pid; do
+      [ -n "$pid" ] && kill -9 "$pid" >/dev/null 2>&1
+   done
+}
+
+clashnivo_service_failed_start_cleanup() {
+   local reason="${1:-start_failed}"
+
+   LOG_WARN "Clash Nivo start failed. Rolling back runtime changes (${reason})."
+
+   clashnivo_service_stop_watchdog_instances
+   procd_kill "${CLASHNIVO_SERVICE_NAME}" >/dev/null 2>&1
+   clashnivo_service_stop_core_instances
+   del_cron
+   clashnivo_service_network_rollback_failed_start "${reason}"
+   clear_overwrite_set
+   rm -rf /tmp/yaml_*
+}
+
 clashnivo_service_start_watchdog() {
    clashnivo_service_stop_watchdog_instances
    procd_open_instance "${CLASHNIVO_WATCHDOG_SERVICE_NAME}"
@@ -27,6 +62,7 @@ clashnivo_service_run_start() {
    clashnivo_service_require_guard_clear "start" || exit $?
 
    LOG_TIP "Clash Nivo start requested."
+   clashnivo_service_runtime_state_reset
 
    {
       LOG_OUT "Step 1: Get The Configuration..."
@@ -61,6 +97,7 @@ clashnivo_service_run_start() {
          LOG_WARN "Please Note That Network May Abnormal With IPv6's DHCP Server"
       fi
 
+      clashnivo_service_runtime_state_clear_start_failed
       rm -rf /tmp/yaml_*
    }
 }
@@ -78,21 +115,7 @@ clashnivo_service_run_stop() {
       clashnivo_service_network_cleanup_runtime
 
       LOG_OUT "Step 3: Stop Clash Nivo services..."
-      for process in "clashnivo_streaming_unlock.lua"; do
-         pids=$(unify_ps_pids "$process")
-         if [ -n "$pids" ]; then
-            for pid in $pids; do
-               kill -9 "$pid"
-            done
-         fi
-      done
-      pgrep -f "$CLASH -d $CLASH_CONFIG -f " 2>/dev/null | while read -r pid; do
-         [ -n "$pid" ] && kill "$pid" >/dev/null 2>&1
-      done
-      sleep 1
-      pgrep -f "$CLASH -d $CLASH_CONFIG -f " 2>/dev/null | while read -r pid; do
-         [ -n "$pid" ] && kill -9 "$pid" >/dev/null 2>&1
-      done
+      clashnivo_service_stop_core_instances
       # prevent respawn during stopping
       procd_kill "${CLASHNIVO_SERVICE_NAME}"
       clashnivo_service_stop_watchdog_instances
@@ -102,6 +125,7 @@ clashnivo_service_run_stop() {
 
       LOG_OUT "Step 5: Delete Clash Nivo runtime residue..."
       LOG_TIP "Clash Nivo already stopped!"
+      clashnivo_service_runtime_state_reset
 
       if [ "$enable" != "1" ]; then
          clashnivo_service_clear_disabled_runtime_state
