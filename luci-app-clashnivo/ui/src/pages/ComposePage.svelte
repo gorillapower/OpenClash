@@ -4,6 +4,7 @@
     useConfigSetActive,
     useConfigPreview,
     useConfigValidate,
+    useServiceStatus,
     useServiceRestart,
     useProxyGroups,
     useRuleProviders,
@@ -22,6 +23,7 @@
   import ClashConfigTab from './settings/ClashConfigTab.svelte'
 
   const configs = useConfigs()
+  const serviceStatus = useServiceStatus('clashnivo', { refetchInterval: 5000 })
   const configSetActive = useConfigSetActive()
   const previewMutation = useConfigPreview()
   const validateMutation = useConfigValidate()
@@ -71,6 +73,12 @@
   const sourceSwitchPending = $derived(
     Boolean(pendingSourceName && pendingSourceName !== selectedSource?.name)
   )
+  const globalBusy = $derived(serviceStatus.data?.busy ?? false)
+  const busyCommand = $derived(serviceStatus.data?.busy_command ?? null)
+  const busyMessage = $derived.by(() => {
+    if (!busyCommand) return null
+    return `Clash Nivo is busy with ${busyCommand}. Compose actions are temporarily disabled.`
+  })
 
   $effect(() => {
     pendingSourceName = selectedSource?.name ?? ''
@@ -129,6 +137,12 @@
     {/snippet}
   </PageIntro>
 
+  {#if busyMessage}
+    <div class="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+      {busyMessage}
+    </div>
+  {/if}
+
   <div class="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
     <Card>
       <CardHeader class="space-y-2">
@@ -140,7 +154,7 @@
             <select
               class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm"
               value={pendingSourceName}
-              disabled={!configs.data?.length || configSetActive.isPending}
+              disabled={globalBusy || !configs.data?.length || configSetActive.isPending}
               aria-label="Selected source"
               onchange={(event) => (pendingSourceName = (event.target as HTMLSelectElement).value)}
             >
@@ -156,7 +170,7 @@
               class="sm:self-start"
               variant="outline"
               onclick={handleSourceSwitch}
-              disabled={!sourceSwitchPending || configSetActive.isPending}
+              disabled={globalBusy || !sourceSwitchPending || configSetActive.isPending}
             >
               {configSetActive.isPending ? 'Switching…' : 'Switch'}
             </Button>
@@ -212,20 +226,20 @@
           <Button
             variant="outline"
             onclick={handlePreview}
-            disabled={!hasSelectedSource || previewMutation.isPending}
+            disabled={globalBusy || !hasSelectedSource || previewMutation.isPending}
           >
             {previewMutation.isPending ? 'Generating preview…' : 'Preview generated config'}
           </Button>
           <Button
             variant="outline"
             onclick={handleValidate}
-            disabled={!hasSelectedSource || validateMutation.isPending}
+            disabled={globalBusy || !hasSelectedSource || validateMutation.isPending}
           >
             {validateMutation.isPending ? 'Validating generated config…' : 'Validate generated config'}
           </Button>
           <Button
             onclick={handleActivate}
-            disabled={!hasSelectedSource || !workflowReady || restartMutation.isPending}
+            disabled={globalBusy || !hasSelectedSource || !workflowReady || restartMutation.isPending}
           >
             {restartMutation.isPending ? 'Activating generated config…' : 'Activate generated config'}
           </Button>

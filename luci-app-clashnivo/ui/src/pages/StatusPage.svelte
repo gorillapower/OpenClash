@@ -46,8 +46,12 @@
 
   const isRunning = $derived(optimisticRunning ?? serviceStatus.data?.running ?? false)
   const isBusy = $derived(
-    startMutation.isPending || stopMutation.isPending || restartMutation.isPending
+    (serviceStatus.data?.busy ?? false) ||
+    startMutation.isPending ||
+    stopMutation.isPending ||
+    restartMutation.isPending
   )
+  const busyCommand = $derived(serviceStatus.data?.busy_command ?? null)
 
   const activeConfigPath = $derived(
     serviceStatus.data?.active_config ??
@@ -105,6 +109,19 @@
     if (!activeConfigPath) return 'Add a source to create your first active config.'
     if (!isRunning && canStart) return 'Start Clash Nivo to apply the active generated config.'
     return 'Use Compose to preview, validate, and activate changes before restarting.'
+  })
+  const busyMessage = $derived.by(() => {
+    if (!busyCommand) return null
+    switch (busyCommand) {
+      case 'start':
+        return 'Clash Nivo is starting.'
+      case 'stop':
+        return 'Clash Nivo is stopping.'
+      case 'restart':
+        return 'Clash Nivo is restarting.'
+      default:
+        return `Clash Nivo is busy with ${busyCommand}.`
+    }
   })
 
   function blockedReasonMessage(reason: string | null): string {
@@ -196,6 +213,12 @@
 
   {#if isEmpty}
     <div class="space-y-5 py-2">
+      {#if busyMessage}
+        <div class="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          {busyMessage}
+        </div>
+      {/if}
+
       <EmptyState
         title="Add a subscription"
         body=""
@@ -207,13 +230,13 @@
             type="url"
             placeholder="https://example.com/subscribe?token=..."
             bind:value={subscriptionUrl}
-            disabled={subscriptionAdd.isPending}
+            disabled={subscriptionAdd.isPending || isBusy}
             aria-label="Subscription URL"
             aria-invalid={urlError ? 'true' : undefined}
           />
           <Button
             variant="default"
-            disabled={subscriptionAdd.isPending}
+            disabled={subscriptionAdd.isPending || isBusy}
             onclick={handleGetStarted}
           >
             {#if subscriptionAdd.isPending}
@@ -236,6 +259,12 @@
     <div class="grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
       <Card class="h-full">
         <CardHeader class="space-y-4">
+          {#if busyMessage}
+            <div class="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+              {busyMessage}
+            </div>
+          {/if}
+
           <div class="flex flex-wrap items-start justify-between gap-4">
             <div class="space-y-2">
               <div class="flex items-center gap-3">

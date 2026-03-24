@@ -224,6 +224,30 @@ local function spawn_version_refresh(lock_file, command)
 	))
 end
 
+local function refresh_core_latest_now()
+	local cursor = uci_mod.cursor()
+	local github_address_mod = cursor:get("clashnivo", "config", "github_address_mod") or "0"
+	local command = shellquote(CLASHNIVO_CORE_VERSION_SCRIPT)
+
+	if github_address_mod ~= "0" and github_address_mod ~= "" then
+		command = command .. " " .. shellquote(github_address_mod)
+	end
+
+	local rc = sys.call(command .. " >/dev/null 2>&1")
+	local result = read_core_latest_cached()
+	result.accepted = rc == 0
+	result.status = rc == 0 and "done" or "error"
+	return result
+end
+
+local function refresh_package_latest_now()
+	local rc = sys.call(string.format("%s >/dev/null 2>&1", shellquote(CLASHNIVO_PACKAGE_VERSION_SCRIPT)))
+	local result = read_package_latest_cached()
+	result.accepted = rc == 0
+	result.status = rc == 0 and "done" or "error"
+	return result
+end
+
 function service_action(action, async)
 	if command_lock_busy() then
 		return busy_response(action)
@@ -353,18 +377,11 @@ function update_command(action, ...)
 end
 
 function core_latest_version()
-	local cursor = uci_mod.cursor()
-	local github_address_mod = cursor:get("clashnivo", "config", "github_address_mod") or "0"
-
-	if not file_is_fresh(CLASHNIVO_CORE_VERSION_FILE, VERSION_CACHE_TTL) then
-		local command = shellquote(CLASHNIVO_CORE_VERSION_SCRIPT)
-		if github_address_mod ~= "0" and github_address_mod ~= "" then
-			command = command .. " " .. shellquote(github_address_mod)
-		end
-		spawn_version_refresh(CLASHNIVO_CORE_VERSION_LOCK, command)
-	end
-
 	return read_core_latest_cached()
+end
+
+function refresh_core_latest_version()
+	return refresh_core_latest_now()
 end
 
 function start_core_update()
@@ -376,11 +393,11 @@ function core_update_status()
 end
 
 function package_latest_version()
-	if not file_is_fresh(CLASHNIVO_PACKAGE_VERSION_FILE, VERSION_CACHE_TTL) then
-		spawn_version_refresh(CLASHNIVO_PACKAGE_VERSION_LOCK, shellquote(CLASHNIVO_PACKAGE_VERSION_SCRIPT))
-	end
-
 	return read_package_latest_cached()
+end
+
+function refresh_package_latest_version()
+	return refresh_package_latest_now()
 end
 
 function start_package_update()

@@ -26,6 +26,7 @@ vi.mock('$lib/queries/luci', () => ({
   useConfigSetActive: vi.fn(),
   useConfigPreview: vi.fn(),
   useConfigValidate: vi.fn(),
+  useServiceStatus: vi.fn(),
   useServiceRestart: vi.fn(),
   useProxyGroups: vi.fn(),
   useDeleteProxyGroup: vi.fn(),
@@ -56,6 +57,7 @@ import {
   useConfigSetActive,
   useConfigPreview,
   useConfigValidate,
+  useServiceStatus,
   useServiceRestart,
   useProxyGroups,
   useDeleteProxyGroup,
@@ -112,6 +114,7 @@ function setupMocks({
   overwrite?: FileReadResult
 } = {}) {
   vi.mocked(useConfigs).mockReturnValue(makeQuery(configs) as never)
+  vi.mocked(useServiceStatus).mockReturnValue(makeQuery({ busy: false, busy_command: null }) as never)
   vi.mocked(useConfigSetActive).mockReturnValue(makeMutation(vi.fn().mockResolvedValue(undefined)) as never)
   vi.mocked(useConfigPreview).mockReturnValue(makeMutation(vi.fn().mockResolvedValue(preview)) as never)
   vi.mocked(useConfigValidate).mockReturnValue(makeMutation(vi.fn().mockResolvedValue(validation)) as never)

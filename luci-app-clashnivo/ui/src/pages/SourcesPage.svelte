@@ -18,6 +18,7 @@
     useSubscriptionUpdate,
     useSubscriptionUpdateAll,
     useSubscriptionEdit,
+    useServiceStatus,
     useConfigs,
     useConfigSetActive,
     useConfigDelete,
@@ -25,6 +26,7 @@
   } from '$lib/queries/luci'
 
   const subscriptions = useSubscriptions()
+  const serviceStatus = useServiceStatus('clashnivo', { refetchInterval: 5000 })
   const subscriptionAdd = useSubscriptionAdd()
   const subscriptionDelete = useSubscriptionDelete()
   const subscriptionUpdate = useSubscriptionUpdate()
@@ -37,6 +39,8 @@
   const configWrite = useConfigWrite()
 
   const activeSource = $derived(configs.data?.find((config) => config.active) ?? null)
+  const globalBusy = $derived(serviceStatus.data?.busy ?? false)
+  const busyCommand = $derived(serviceStatus.data?.busy_command ?? null)
 
   let addOpen = $state(false)
   let addUrl = $state('')
@@ -71,6 +75,10 @@
   const sourceSwitchPending = $derived(
     Boolean(pendingSourceName && pendingSourceName !== activeSource?.name)
   )
+  const busyMessage = $derived.by(() => {
+    if (!busyCommand) return null
+    return `Clash Nivo is busy with ${busyCommand}. Source changes are temporarily disabled.`
+  })
 
   $effect(() => {
     pendingSourceName = activeSource?.name ?? ''
@@ -277,6 +285,12 @@
     {/snippet}
   </PageIntro>
 
+  {#if busyMessage}
+    <div class="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+      {busyMessage}
+    </div>
+  {/if}
+
   <section class="space-y-4" aria-labelledby="sources-selected-heading">
     <SectionHeader title="Selected source" />
 
@@ -286,7 +300,7 @@
           <select
             class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm"
             value={pendingSourceName}
-            disabled={!configs.data?.length || configSetActive.isPending}
+            disabled={globalBusy || !configs.data?.length || configSetActive.isPending}
             aria-label="Selected source"
             onchange={(event) => {
               pendingSourceName = (event.target as HTMLSelectElement).value
@@ -304,7 +318,7 @@
             class="sm:self-start"
             variant="outline"
             onclick={handleSourceSwitch}
-            disabled={!sourceSwitchPending || configSetActive.isPending}
+            disabled={globalBusy || !sourceSwitchPending || configSetActive.isPending}
           >
             {configSetActive.isPending ? 'Switching…' : 'Switch'}
           </Button>
@@ -320,11 +334,11 @@
           variant="outline"
           size="sm"
           onclick={() => subscriptionUpdateAll.mutate()}
-          disabled={subscriptionUpdateAll.isPending}
+          disabled={globalBusy || subscriptionUpdateAll.isPending}
         >
           {subscriptionUpdateAll.isPending ? 'Refreshing all…' : 'Refresh all'}
         </Button>
-        <Button variant="outline" size="sm" onclick={openAdd}>Add subscription</Button>
+        <Button variant="outline" size="sm" onclick={openAdd} disabled={globalBusy}>Add subscription</Button>
       {/snippet}
     </SectionHeader>
 
@@ -349,6 +363,7 @@
             onEdit={openEdit}
             onDelete={handleDeleteSubscription}
             updating={updatingNames.has(subscription.name)}
+            disabled={globalBusy}
           />
         {/each}
       </div>
@@ -358,7 +373,7 @@
   <section class="space-y-4" aria-labelledby="sources-configs-heading">
     <SectionHeader title="Uploaded sources">
       {#snippet actions()}
-        <Button variant="outline" size="sm" onclick={openUploadConfig}>Upload config</Button>
+        <Button variant="outline" size="sm" onclick={openUploadConfig} disabled={globalBusy}>Upload config</Button>
       {/snippet}
     </SectionHeader>
 
@@ -397,7 +412,7 @@
                       size="sm"
                       variant="outline"
                       onclick={() => handleSelectSource(config.name)}
-                      disabled={selectingNames.has(config.name)}
+                      disabled={globalBusy || selectingNames.has(config.name)}
                     >
                       {selectingNames.has(config.name) ? 'Selecting…' : 'Select'}
                     </Button>
@@ -416,7 +431,7 @@
                         confirmSelectName = config.name
                         if (confirmDeleteName === config.name) confirmDeleteName = null
                       }}
-                      disabled={selectingNames.has(config.name)}
+                      disabled={globalBusy || selectingNames.has(config.name)}
                     >
                       {selectingNames.has(config.name) ? 'Selecting…' : 'Select source'}
                     </Button>
@@ -445,7 +460,7 @@
                     size="sm"
                     variant="ghost"
                     onclick={() => handleDeleteConfig(config.name)}
-                    disabled={deletingConfigNames.has(config.name)}
+                    disabled={globalBusy || deletingConfigNames.has(config.name)}
                   >
                     {deletingConfigNames.has(config.name) ? 'Deleting…' : 'Delete'}
                   </Button>
@@ -464,7 +479,7 @@
                       confirmDeleteName = config.name
                       if (confirmSelectName === config.name) confirmSelectName = null
                     }}
-                    disabled={deletingConfigNames.has(config.name)}
+                    disabled={globalBusy || deletingConfigNames.has(config.name)}
                   >
                     Delete
                   </Button>
@@ -535,7 +550,7 @@
       <Input id="add-name" type="text" placeholder="My VPN" bind:value={addName} />
     </div>
 
-    <Button type="submit" class="w-full" disabled={subscriptionAdd.isPending}>
+    <Button type="submit" class="w-full" disabled={globalBusy || subscriptionAdd.isPending}>
       {subscriptionAdd.isPending ? 'Adding source…' : 'Add subscription'}
     </Button>
   </form>
@@ -579,7 +594,7 @@
         </select>
       </div>
 
-      <Button type="submit" class="w-full" disabled={subscriptionEdit.isPending}>
+      <Button type="submit" class="w-full" disabled={globalBusy || subscriptionEdit.isPending}>
         {subscriptionEdit.isPending ? 'Saving subscription…' : 'Save subscription'}
       </Button>
     </form>
@@ -608,7 +623,7 @@
       <div class="flex-1 overflow-hidden" style="min-height: 24rem;">
         <YamlEditor content={editConfigContent} onChange={(value) => (editConfigContent = value)} />
       </div>
-      <Button class="w-full shrink-0" disabled={configWrite.isPending} onclick={handleSaveConfig}>
+      <Button class="w-full shrink-0" disabled={globalBusy || configWrite.isPending} onclick={handleSaveConfig}>
         {configWrite.isPending ? 'Saving…' : 'Save source file'}
       </Button>
     {/if}
@@ -644,7 +659,7 @@
       />
     </div>
 
-    <Button type="submit" class="w-full" disabled={configWrite.isPending || !uploadConfigContent}>
+    <Button type="submit" class="w-full" disabled={globalBusy || configWrite.isPending || !uploadConfigContent}>
       {configWrite.isPending ? 'Uploading source…' : 'Upload source'}
     </Button>
   </form>

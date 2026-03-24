@@ -7,10 +7,13 @@
     useDashboardSelect,
     useDashboardUpdate,
     useDashboardUpdateStatus,
+    useServiceStatus,
     useCoreLatestVersion,
+    useCoreRefreshLatestVersion,
     useCoreUpdate,
     useCoreUpdateStatus,
     usePackageLatestVersion,
+    usePackageRefreshLatestVersion,
     usePackageUpdate,
     usePackageUpdateStatus,
     useSetUciConfig,
@@ -24,24 +27,39 @@
   import ExplainerSheet from '$lib/components/ExplainerSheet.svelte'
 
   const config = useUciConfig('clashnivo')
+  const serviceStatus = useServiceStatus('clashnivo', { refetchInterval: 5000 })
 
   const currentCore = useClashVersion()
   const latestCore = useCoreLatestVersion()
-  const coreUpdateStatus = useCoreUpdateStatus({
-    refetchInterval: (query) => isPendingState(query.state.data?.status) ? 2000 : false
-  } as never)
-  const coreUpdate = useCoreUpdate()
-
+  const refreshLatestCore = useCoreRefreshLatestVersion()
   const latestPackage = usePackageLatestVersion()
-  const packageUpdateStatus = usePackageUpdateStatus({
-    refetchInterval: (query) => isPendingState(query.state.data?.status) ? 2000 : false
-  } as never)
+  const refreshLatestPackage = usePackageRefreshLatestVersion()
+  const busyCommand = $derived(serviceStatus.data?.busy_command ?? '')
+  const globalBusy = $derived(serviceStatus.data?.busy ?? false)
+  const coreUpdate = useCoreUpdate()
   const packageUpdate = usePackageUpdate()
-
-  const assetsUpdateStatus = useAssetsUpdateStatus('all', {
-    refetchInterval: (query) => isPendingState(query.state.data?.status) ? 2000 : false
-  } as never)
   const assetsUpdate = useAssetsUpdate('all')
+  function coreStatusQueryEnabled() {
+    return coreUpdate.isPending || (globalBusy && busyCommand === 'core:core')
+  }
+  const coreUpdateStatus = useCoreUpdateStatus({
+    enabled: coreStatusQueryEnabled(),
+    refetchInterval: (query) => coreStatusQueryEnabled() && isPendingState(query.state.data?.status) ? 2000 : false
+  } as never)
+  function packageStatusQueryEnabled() {
+    return packageUpdate.isPending || (globalBusy && busyCommand === 'package:package')
+  }
+  const packageUpdateStatus = usePackageUpdateStatus({
+    enabled: packageStatusQueryEnabled(),
+    refetchInterval: (query) => packageStatusQueryEnabled() && isPendingState(query.state.data?.status) ? 2000 : false
+  } as never)
+  function assetsStatusQueryEnabled() {
+    return assetsUpdate.isPending || (globalBusy && busyCommand === 'assets:all')
+  }
+  const assetsUpdateStatus = useAssetsUpdateStatus('all', {
+    enabled: assetsStatusQueryEnabled(),
+    refetchInterval: (query) => assetsStatusQueryEnabled() && isPendingState(query.state.data?.status) ? 2000 : false
+  } as never)
   const dashboards = useDashboards()
   const setDashboardForwardSsl = useSetUciConfig('clashnivo', 'config', 'dashboard_forward_ssl')
   const dashboardSelect = useDashboardSelect()
@@ -76,17 +94,43 @@
     dashboardOptions.find((option) => option.selected) ?? dashboardOptions[0] ?? null
   )
   const selectedDashboardId = $derived(selectedDashboard?.id ?? '')
-  const dashboardUpdateStatus = useDashboardUpdateStatus(() => selectedDashboard?.id ?? '', {
-    refetchInterval: (query) =>
-      (selectedDashboard?.id ?? '') && isPendingState(query.state.data?.status) ? 2000 : false
-  } as never)
   const dashboardUpdate = useDashboardUpdate()
+  function dashboardStatusQueryEnabled() {
+    return !!selectedDashboardId &&
+      (dashboardUpdate.isPending || (globalBusy && busyCommand === `dashboard:${selectedDashboardId}`))
+  }
+  const dashboardUpdateStatus = useDashboardUpdateStatus(() => selectedDashboard?.id ?? '', {
+    enabled: dashboardStatusQueryEnabled(),
+    refetchInterval: (query) =>
+      dashboardStatusQueryEnabled() && isPendingState(query.state.data?.status) ? 2000 : false
+  } as never)
   const dashboardSelectBusy = $derived(dashboardSelect.isPending)
   const dashboardBusy = $derived(
     dashboardSelectBusy ||
     isPendingState(dashboardUpdateStatus.data?.status) ||
     dashboardUpdate.isPending
   )
+  const busyLabel = $derived.by(() => {
+    if (!globalBusy || !busyCommand) return null
+    switch (busyCommand) {
+      case 'start':
+        return 'Clash Nivo is starting.'
+      case 'stop':
+        return 'Clash Nivo is stopping.'
+      case 'restart':
+        return 'Clash Nivo is restarting.'
+      case 'reload':
+        return 'Clash Nivo is reloading.'
+      case 'core:core':
+        return 'A core update is already running.'
+      case 'package:package':
+        return 'A package update is already running.'
+      case 'assets:all':
+        return 'An asset refresh is already running.'
+      default:
+        return `Clash Nivo is busy with ${busyCommand}.`
+    }
+  })
 
   function isPendingState(status?: string) {
     return status === 'accepted' || status === 'running'
@@ -137,6 +181,12 @@
   </PageIntro>
 
   <div class="space-y-6">
+      {#if busyLabel}
+        <div class="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          {busyLabel}
+        </div>
+      {/if}
+
       <Card>
         <CardHeader>
           <div class="flex items-center justify-between gap-3">
@@ -167,7 +217,7 @@
                     <Button
                       variant="default"
                       size="sm"
-                      disabled={coreBusy || latestCore.isPending}
+                      disabled={globalBusy || coreBusy || latestCore.isPending || refreshLatestCore.isPending}
                       onclick={() => coreUpdate.mutateAsync()}
                     >
                       {#if coreBusy}
@@ -181,7 +231,7 @@
                   {/if}
                 </div>
                 <div class="mt-2 flex items-baseline gap-2">
-                  {#if latestCore.isPending}
+                  {#if latestCore.isPending || refreshLatestCore.isPending}
                     <span class="text-sm text-muted-foreground">Checking…</span>
                   {:else}
                     <span class="text-lg font-semibold tabular-nums">
@@ -190,15 +240,27 @@
                     <span class="text-xs text-muted-foreground">{latestCoreType}</span>
                   {/if}
                 </div>
-                {#if !latestCore.isPending && !coreUpdateAvailable}
+                {#if !latestCore.isPending && !refreshLatestCore.isPending && !coreUpdateAvailable}
                   <p class="mt-2 text-xs text-muted-foreground">
-                    {#if coreBusy}
+                    {#if !latestCoreVersion}
+                      Latest version has not been checked yet.
+                    {:else if coreBusy}
                       {formatStatus(coreUpdateStatus.data?.status)}
                     {:else}
                       Current
                     {/if}
                   </p>
                 {/if}
+                <div class="mt-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={globalBusy || refreshLatestCore.isPending}
+                    onclick={() => refreshLatestCore.mutateAsync()}
+                  >
+                    {refreshLatestCore.isPending ? 'Checking latest…' : 'Check latest'}
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -222,7 +284,7 @@
                   </div>
                   <Button
                     variant="default"
-                    disabled={packageBusy || latestPackage.isPending}
+                    disabled={globalBusy || packageBusy || latestPackage.isPending || refreshLatestPackage.isPending}
                     onclick={() => packageUpdate.mutateAsync()}
                   >
                     {#if packageBusy}
@@ -236,6 +298,14 @@
                 {#if packageUpdateStatus.data?.message}
                   <p class="text-sm text-muted-foreground">{packageUpdateStatus.data.message}</p>
                 {/if}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={globalBusy || refreshLatestPackage.isPending}
+                  onclick={() => refreshLatestPackage.mutateAsync()}
+                >
+                  {refreshLatestPackage.isPending ? 'Checking latest…' : 'Check latest'}
+                </Button>
               </section>
 
               <section class="space-y-4 border-t border-border pt-6">
@@ -251,7 +321,7 @@
                       <span class="font-medium text-foreground">{formatStatus(assetsUpdateStatus.data?.status)}</span>
                     </div>
                   </div>
-                  <Button variant="default" disabled={assetsBusy} onclick={() => assetsUpdate.mutateAsync()}>
+                  <Button variant="default" disabled={globalBusy || assetsBusy} onclick={() => assetsUpdate.mutateAsync()}>
                     {#if assetsBusy}
                       Refreshing assets…
                     {:else}
@@ -286,7 +356,7 @@
                       role="switch"
                       aria-checked={dashboardForwardSsl}
                       aria-label="Dashboard forwarding SSL"
-                      disabled={setDashboardForwardSsl.isPending}
+                      disabled={globalBusy || setDashboardForwardSsl.isPending}
                       onclick={() => setDashboardForwardSsl.mutateAsync(dashboardForwardSsl ? '0' : '1')}
                     >
                       <span class={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform ${dashboardForwardSsl ? 'translate-x-4' : 'translate-x-0'}`}></span>
@@ -325,7 +395,7 @@
                           <Button
                             variant="outline"
                             size="sm"
-                            disabled={dashboardSelectBusy || option.selected}
+                            disabled={globalBusy || dashboardSelectBusy || option.selected}
                             onclick={() => dashboardSelect.mutateAsync(option.id)}
                           >
                             {option.selected ? 'Active' : 'Use'}
@@ -333,7 +403,7 @@
                           <Button
                             variant={option.installed ? 'outline' : 'default'}
                             size="sm"
-                            disabled={dashboardBusy}
+                            disabled={globalBusy || dashboardBusy}
                             onclick={() => dashboardUpdate.mutateAsync(option.id)}
                           >
                             {dashboardActionLabel(option.id, option.installed)}

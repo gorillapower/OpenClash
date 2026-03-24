@@ -10,9 +10,10 @@
     onEdit?: (subscription: Subscription) => void
     onDelete?: (name: string) => void
     updating?: boolean
+    disabled?: boolean
   }
 
-  let { subscription, onUpdate, onEdit, onDelete, updating = false }: Props = $props()
+  let { subscription, onUpdate, onEdit, onDelete, updating = false, disabled = false }: Props = $props()
 
   let confirmingDelete = $state(false)
 
@@ -66,7 +67,7 @@
           <button
             class="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
             onclick={() => onUpdate?.(subscription.name)}
-            disabled={updating}
+            disabled={updating || disabled}
             title="Refresh source"
             type="button"
             aria-label="Refresh {subscription.name}"
@@ -81,7 +82,7 @@
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
-              class={updating ? 'animate-spin' : ''}
+            class={updating ? 'animate-spin' : ''}
               aria-hidden="true"
             >
               <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
@@ -95,6 +96,7 @@
           <button
             class="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             onclick={() => onEdit?.(subscription)}
+            disabled={disabled}
             title="Edit subscription"
             type="button"
             aria-label="Edit {subscription.name}"
@@ -122,6 +124,7 @@
               <button
                 class="rounded px-1.5 py-0.5 text-destructive transition-colors hover:bg-destructive/10 font-medium"
                 onclick={() => { confirmingDelete = false; onDelete?.(subscription.name) }}
+                disabled={disabled}
                 type="button"
                 aria-label="Confirm delete {subscription.name}"
               >
@@ -130,6 +133,7 @@
               <button
                 class="rounded px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted"
                 onclick={() => (confirmingDelete = false)}
+                disabled={disabled}
                 type="button"
                 aria-label="Cancel delete"
               >
@@ -140,6 +144,7 @@
             <button
               class="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
               onclick={() => (confirmingDelete = true)}
+              disabled={disabled}
               title="Delete subscription"
               type="button"
               aria-label="Delete {subscription.name}"

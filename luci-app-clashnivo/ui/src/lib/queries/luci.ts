@@ -1014,11 +1014,25 @@ export function useCoreLatestVersion(opts?: Partial<CreateQueryOptions<CoreVersi
   return createQuery<CoreVersionResult>(() => ({
     queryKey: luciKeys.coreLatestVersion,
     queryFn: () => luciRpc.coreLatestVersion(),
-    // Check once per hour — avoid hammering GitHub on every page load
     staleTime: 60 * 60 * 1000,
     retry: false,
     ...opts
   } as CreateQueryOptions<CoreVersionResult>))
+}
+
+export function useCoreRefreshLatestVersion(
+  opts?: Partial<CreateMutationOptions<CoreVersionResult, unknown, void>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<CoreVersionResult, unknown, void>(() => ({
+    mutationFn: () => luciRpc.coreRefreshLatestVersion(),
+    onSuccess(result) {
+      queryClient.invalidateQueries({ queryKey: luciKeys.coreLatestVersion })
+      toasts.success(result.status === 'error' ? 'Core version check failed' : 'Core version checked')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
 }
 
 export function useCoreUpdateStatus(
@@ -1063,6 +1077,21 @@ export function usePackageLatestVersion(opts?: Partial<CreateQueryOptions<CoreVe
     retry: false,
     ...opts
   } as CreateQueryOptions<CoreVersionResult>))
+}
+
+export function usePackageRefreshLatestVersion(
+  opts?: Partial<CreateMutationOptions<CoreVersionResult, unknown, void>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<CoreVersionResult, unknown, void>(() => ({
+    mutationFn: () => luciRpc.packageRefreshLatestVersion(),
+    onSuccess(result) {
+      queryClient.invalidateQueries({ queryKey: luciKeys.packageLatestVersion })
+      toasts.success(result.status === 'error' ? 'Package version check failed' : 'Package version checked')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
 }
 
 export function usePackageUpdateStatus(

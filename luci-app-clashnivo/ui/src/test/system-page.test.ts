@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte'
 import type { CreateQueryResult, CreateMutationResult } from '@tanstack/svelte-query'
 import type { ClashVersion } from '$lib/api/clash'
-import type { CoreVersionResult, DashboardOption, UpdateStatusResult, UciPackage } from '$lib/api/luci'
+import type { CoreVersionResult, DashboardOption, ServiceStatusResult, UpdateStatusResult, UciPackage } from '$lib/api/luci'
 import SystemPage from '../pages/SystemPage.svelte'
 
 function makeQueryResult<T>(data: T) {
@@ -22,6 +22,7 @@ vi.mock('$lib/queries/clash', () => ({
 }))
 
 vi.mock('$lib/queries/luci', () => ({
+  useServiceStatus: vi.fn(),
   useUciConfig: vi.fn(),
   useSetUciConfig: vi.fn(),
   useSetUciConfigBatch: vi.fn(),
@@ -29,9 +30,11 @@ vi.mock('$lib/queries/luci', () => ({
   useFirewallRules: vi.fn(),
   useSetFirewallRules: vi.fn(),
   useCoreLatestVersion: vi.fn(),
+  useCoreRefreshLatestVersion: vi.fn(),
   useCoreUpdateStatus: vi.fn(),
   useCoreUpdate: vi.fn(),
   usePackageLatestVersion: vi.fn(),
+  usePackageRefreshLatestVersion: vi.fn(),
   usePackageUpdateStatus: vi.fn(),
   usePackageUpdate: vi.fn(),
   useAssetsUpdateStatus: vi.fn(),
@@ -54,15 +57,18 @@ vi.mock('@tanstack/svelte-query', async (importOriginal) => {
 
 import { useClashVersion } from '$lib/queries/clash'
 import {
+  useServiceStatus,
   useAssetsUpdate,
   useAssetsUpdateStatus,
   useDashboards,
   useDashboardSelect,
   useDashboardUpdate,
   useDashboardUpdateStatus,
+  useCoreRefreshLatestVersion,
   useCoreLatestVersion,
   useCoreUpdate,
   useCoreUpdateStatus,
+  usePackageRefreshLatestVersion,
   usePackageLatestVersion,
   usePackageUpdate,
   usePackageUpdateStatus,
@@ -75,6 +81,7 @@ import {
 } from '$lib/queries/luci'
 
 function setupMocks({
+  serviceStatus = { running: false, busy: false } as ServiceStatusResult,
   uciData = {
     config: {
       cn_port: '9093',
@@ -108,6 +115,9 @@ function setupMocks({
   vi.mocked(useUciConfig).mockReturnValue(
     makeQueryResult(uciData) as CreateQueryResult<UciPackage>
   )
+  vi.mocked(useServiceStatus).mockReturnValue(
+    makeQueryResult(serviceStatus) as CreateQueryResult<ServiceStatusResult>
+  )
   vi.mocked(useSetUciConfig).mockReturnValue(
     makeMutationResult() as CreateMutationResult<void, unknown, string | string[], unknown>
   )
@@ -129,6 +139,9 @@ function setupMocks({
   vi.mocked(useCoreLatestVersion).mockReturnValue(
     makeQueryResult(latestCore) as CreateQueryResult<CoreVersionResult>
   )
+  vi.mocked(useCoreRefreshLatestVersion).mockReturnValue(
+    makeMutationResult() as CreateMutationResult<CoreVersionResult, unknown, void, unknown>
+  )
   vi.mocked(useCoreUpdateStatus).mockReturnValue(
     makeQueryResult(coreStatus) as CreateQueryResult<UpdateStatusResult>
   )
@@ -137,6 +150,9 @@ function setupMocks({
   )
   vi.mocked(usePackageLatestVersion).mockReturnValue(
     makeQueryResult(packageLatest) as CreateQueryResult<CoreVersionResult>
+  )
+  vi.mocked(usePackageRefreshLatestVersion).mockReturnValue(
+    makeMutationResult() as CreateMutationResult<CoreVersionResult, unknown, void, unknown>
   )
   vi.mocked(usePackageUpdateStatus).mockReturnValue(
     makeQueryResult(packageStatus) as CreateQueryResult<UpdateStatusResult>
@@ -248,6 +264,27 @@ describe('SystemPage', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: /refresh all assets/i }))
     expect(assetsUpdateMutate).toHaveBeenCalledOnce()
+  })
+
+  it('checks latest versions only on explicit action', async () => {
+    const refreshCoreMutate = vi.fn().mockResolvedValue({ version: '1.19.0', status: 'done' })
+    const refreshPackageMutate = vi.fn().mockResolvedValue({ version: 'v1.2.3', status: 'done' })
+    setupMocks()
+    vi.mocked(useCoreRefreshLatestVersion).mockReturnValue(
+      makeMutationResult(refreshCoreMutate) as CreateMutationResult<CoreVersionResult, unknown, void, unknown>
+    )
+    vi.mocked(usePackageRefreshLatestVersion).mockReturnValue(
+      makeMutationResult(refreshPackageMutate) as CreateMutationResult<CoreVersionResult, unknown, void, unknown>
+    )
+
+    render(SystemPage)
+
+    const buttons = screen.getAllByRole('button', { name: /check latest/i })
+    await fireEvent.click(buttons[0])
+    await fireEvent.click(buttons[1])
+
+    expect(refreshCoreMutate).toHaveBeenCalledOnce()
+    expect(refreshPackageMutate).toHaveBeenCalledOnce()
   })
 
   it('updates dashboard transport from the dashboard section', async () => {

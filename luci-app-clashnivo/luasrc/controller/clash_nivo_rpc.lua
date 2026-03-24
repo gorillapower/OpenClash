@@ -480,6 +480,10 @@ function handlers.core_latest_version()
     return backend.core_latest_version()
 end
 
+function handlers.core_refresh_latest_version()
+    return backend.refresh_core_latest_version()
+end
+
 function handlers.core_update()
     return backend.start_core_update()
 end
@@ -490,6 +494,10 @@ end
 
 function handlers.package_latest_version()
     return backend.package_latest_version()
+end
+
+function handlers.package_refresh_latest_version()
+    return backend.refresh_package_latest_version()
 end
 
 function handlers.package_update()
@@ -569,9 +577,11 @@ local METHOD_MAP = {
     ["config.preview"]           = handlers.config_preview,
     ["config.validate"]          = handlers.config_validate,
     ["core.latestVersion"]       = handlers.core_latest_version,
+    ["core.refreshLatestVersion"]= handlers.core_refresh_latest_version,
     ["core.update"]              = handlers.core_update,
     ["core.updateStatus"]        = handlers.core_update_status,
     ["package.latestVersion"]    = handlers.package_latest_version,
+    ["package.refreshLatestVersion"] = handlers.package_refresh_latest_version,
     ["package.update"]           = handlers.package_update,
     ["package.updateStatus"]     = handlers.package_update_status,
     ["assets.update"]            = handlers.assets_update,

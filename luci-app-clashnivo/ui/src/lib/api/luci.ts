@@ -93,6 +93,8 @@ export interface CoreVersionResult {
   source_policy?: string
   source_branch?: string
   source_base?: string
+  accepted?: boolean
+  status?: 'done' | 'error'
 }
 
 export type UpdateState = 'idle' | 'accepted' | 'running' | 'done' | 'nochange' | 'busy' | 'error'
@@ -360,6 +362,10 @@ export const luciRpc = {
     return rpcCall('core.latestVersion', [])
   },
 
+  coreRefreshLatestVersion(): Promise<CoreVersionResult> {
+    return rpcCall('core.refreshLatestVersion', [])
+  },
+
   coreUpdate(): Promise<UpdateStatusResult> {
     return rpcCall('core.update', [])
   },
@@ -370,6 +376,10 @@ export const luciRpc = {
 
   packageLatestVersion(): Promise<CoreVersionResult> {
     return rpcCall('package.latestVersion', [])
+  },
+
+  packageRefreshLatestVersion(): Promise<CoreVersionResult> {
+    return rpcCall('package.refreshLatestVersion', [])
   },
 
   packageUpdate(): Promise<UpdateStatusResult> {
