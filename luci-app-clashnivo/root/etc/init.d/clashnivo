@@ -4,12 +4,13 @@
 START=99
 STOP=15
 USE_PROCD=1
-EXTRA_COMMANDS="preview validate update_status probe_core_sources update_core update_core_latest update_package update_package_latest update_assets update_dashboard refresh_source refresh_sources"
+EXTRA_COMMANDS="preview validate update_status probe_core_sources cancel_job update_core update_core_latest update_package update_package_latest update_assets update_dashboard refresh_source refresh_sources"
 EXTRA_HELP="\
 \tpreview\tBuild a preview config\n\
 \tvalidate\tValidate the current composed config\n\
 \tupdate_status\tShow async update status\n\
 \tprobe_core_sources\tProbe and select a Clash core source\n\
+\tcancel_job\tCancel the active long-running job\n\
 \tupdate_core\tDownload the selected Clash core\n\
 \tupdate_core_latest\tCheck the latest Clash core version\n\
 \tupdate_package\tUpdate the Clash Nivo package\n\
@@ -46,6 +47,11 @@ update_status()
 probe_core_sources()
 {
    clashnivo_service_probe_core_sources_command
+}
+
+cancel_job()
+{
+   clashnivo_service_cancel_job_command
 }
 
 update_core()

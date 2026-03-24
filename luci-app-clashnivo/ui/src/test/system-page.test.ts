@@ -23,6 +23,7 @@ vi.mock('$lib/queries/clash', () => ({
 
 vi.mock('$lib/queries/luci', () => ({
   useServiceStatus: vi.fn(),
+  useServiceCancelJob: vi.fn(),
   useUciConfig: vi.fn(),
   useSetUciConfig: vi.fn(),
   useSetUciConfigBatch: vi.fn(),
@@ -59,6 +60,7 @@ vi.mock('@tanstack/svelte-query', async (importOriginal) => {
 import { useClashVersion } from '$lib/queries/clash'
 import {
   useServiceStatus,
+  useServiceCancelJob,
   useAssetsUpdate,
   useAssetsUpdateStatus,
   useDashboards,
@@ -119,6 +121,9 @@ function setupMocks({
   )
   vi.mocked(useServiceStatus).mockReturnValue(
     makeQueryResult(serviceStatus) as CreateQueryResult<ServiceStatusResult>
+  )
+  vi.mocked(useServiceCancelJob).mockReturnValue(
+    makeMutationResult() as never
   )
   vi.mocked(useSetUciConfig).mockReturnValue(
     makeMutationResult() as CreateMutationResult<void, unknown, string | string[], unknown>

@@ -85,6 +85,7 @@ clashnivo_service_status_json() {
    local openclash_service_running openclash_watchdog_running openclash_core_running
    local blocked blocked_reason can_start core_pid active_config core_type proxy_mode run_mode openclash_core_pid
    local busy busy_command busy_pid busy_started_at runtime_state runtime_healthy
+   local active_job_kind active_job_target active_job_cancelable active_job_timeout_at active_job_status_path active_job_log_path
 
    enabled="false"
    [ "$(clashnivo_service_uci_get enable)" = "1" ] && enabled="true"
@@ -125,6 +126,13 @@ clashnivo_service_status_json() {
    busy_command="$(clashnivo_service_command_lock_active_context)"
    busy_pid="$(clashnivo_service_command_lock_active_pid)"
    busy_started_at="$(clashnivo_service_command_lock_started_at)"
+   active_job_kind="$(clashnivo_service_command_lock_kind)"
+   active_job_target="$(clashnivo_service_command_lock_target)"
+   active_job_cancelable="false"
+   clashnivo_service_command_lock_is_cancelable && active_job_cancelable="true"
+   active_job_timeout_at="$(clashnivo_service_command_lock_timeout_at)"
+   active_job_status_path="$(clashnivo_service_command_lock_status_path)"
+   active_job_log_path="$(clashnivo_service_command_lock_log_path)"
 
    blocked="false"
    blocked_reason="$(clashnivo_service_read_blocked_reason)"
@@ -166,6 +174,12 @@ clashnivo_service_status_json() {
    printf '"busy_command":%s,' "$(clashnivo_service_json_string "$busy_command")"
    printf '"busy_pid":%s,' "$(clashnivo_service_json_string "$busy_pid")"
    printf '"busy_started_at":%s,' "$(clashnivo_service_json_string "$busy_started_at")"
+   printf '"active_job_kind":%s,' "$(clashnivo_service_json_string "$active_job_kind")"
+   printf '"active_job_target":%s,' "$(clashnivo_service_json_string "$active_job_target")"
+   printf '"active_job_cancelable":%s,' "$(clashnivo_service_json_bool "$active_job_cancelable")"
+   printf '"active_job_timeout_at":%s,' "$(clashnivo_service_json_string "$active_job_timeout_at")"
+   printf '"active_job_status_path":%s,' "$(clashnivo_service_json_string "$active_job_status_path")"
+   printf '"active_job_log_path":%s,' "$(clashnivo_service_json_string "$active_job_log_path")"
    printf '"core_pid":%s,' "$(clashnivo_service_json_string "$core_pid")"
    printf '"openclash_core_pid":%s,' "$(clashnivo_service_json_string "$openclash_core_pid")"
    printf '"active_config":%s,' "$(clashnivo_service_json_string "$active_config")"

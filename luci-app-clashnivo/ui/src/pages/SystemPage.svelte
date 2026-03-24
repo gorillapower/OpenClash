@@ -8,6 +8,7 @@
     useDashboardSelect,
     useDashboardUpdate,
     useDashboardUpdateStatus,
+    useServiceCancelJob,
     useServiceStatus,
     useCoreLatestVersion,
     useCoreRefreshLatestVersion,
@@ -30,6 +31,7 @@
 
   const config = useUciConfig('clashnivo')
   const serviceStatus = useServiceStatus('clashnivo', { refetchInterval: 5000 })
+  const cancelJob = useServiceCancelJob('clashnivo')
 
   const currentCore = useClashVersion()
   const latestCore = useCoreLatestVersion()
@@ -39,6 +41,7 @@
   const refreshLatestPackage = usePackageRefreshLatestVersion()
   const busyCommand = $derived(serviceStatus.data?.busy_command ?? '')
   const globalBusy = $derived(serviceStatus.data?.busy ?? false)
+  const activeJobCancelable = $derived(serviceStatus.data?.active_job_cancelable ?? false)
   const coreUpdate = useCoreUpdate()
   const packageUpdate = usePackageUpdate()
   const assetsUpdate = useAssetsUpdate('all')
@@ -186,6 +189,10 @@
         return 'Completed'
       case 'nochange':
         return 'No change'
+      case 'cancelled':
+        return 'Cancelled'
+      case 'timed_out':
+        return 'Timed out'
       case 'error':
         return 'Failed'
       default:
@@ -247,8 +254,18 @@
 
   <div class="space-y-6">
       {#if busyLabel}
-        <div class="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-          {busyLabel}
+        <div class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          <span>{busyLabel}</span>
+          {#if activeJobCancelable}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={cancelJob.isPending}
+              onclick={() => cancelJob.mutateAsync()}
+            >
+              {cancelJob.isPending ? 'Cancelling…' : 'Cancel'}
+            </Button>
+          {/if}
         </div>
       {/if}
 

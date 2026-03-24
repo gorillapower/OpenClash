@@ -35,6 +35,7 @@ vi.mock('$lib/api/luci', async (importOriginal) => {
 
 vi.mock('$lib/queries/luci', () => ({
   useServiceStatus: vi.fn(),
+  useServiceCancelJob: vi.fn(),
   useSubscriptions: vi.fn(),
   useSubscriptionAdd: vi.fn(),
   useSubscriptionDelete: vi.fn(),
@@ -60,6 +61,7 @@ vi.mock('@tanstack/svelte-query', async (importOriginal) => {
 
 import {
   useServiceStatus,
+  useServiceCancelJob,
   useSubscriptions,
   useSubscriptionAdd,
   useSubscriptionDelete,
@@ -120,6 +122,7 @@ function setupMocks({
   configWriteMutateAsync = vi.fn().mockResolvedValue(undefined)
 } = {}) {
   vi.mocked(useServiceStatus).mockReturnValue(makeQuery({ busy: false, busy_command: null }) as never)
+  vi.mocked(useServiceCancelJob).mockReturnValue(makeMutation() as never)
   vi.mocked(useSubscriptions).mockReturnValue(makeQuery(subs, isPending) as never)
   vi.mocked(useSubscriptionAdd).mockReturnValue(makeMutation(addMutateAsync) as never)
   vi.mocked(useSubscriptionDelete).mockReturnValue(makeMutation(deleteMutateAsync) as never)

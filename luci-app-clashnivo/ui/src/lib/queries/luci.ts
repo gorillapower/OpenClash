@@ -8,6 +8,7 @@ import {
 import {
   luciRpc,
   type ServiceActionResult,
+  type JobCancelResult,
   type UciPackage,
   type UciSection,
   type ServiceStatusResult,
@@ -217,6 +218,32 @@ export function useServiceRestart(
         result.busy
           ? `${titleCaseService(name)} is busy: ${result.active_command ?? 'another command is running'}`
           : `${titleCaseService(name)} restart requested`
+      )
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useServiceCancelJob(
+  name: string,
+  opts?: Partial<CreateMutationOptions<JobCancelResult, unknown, void>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<JobCancelResult, unknown, void>(() => ({
+    mutationFn: () => luciRpc.serviceCancelJob(name),
+    async onSuccess(result) {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) }),
+        queryClient.invalidateQueries({ queryKey: luciKeys.coreUpdateStatus }),
+        queryClient.invalidateQueries({ queryKey: luciKeys.packageUpdateStatus }),
+        queryClient.invalidateQueries({ queryKey: luciKeys.assetsUpdateStatus('all') }),
+        queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+      ])
+      toasts.success(
+        result.accepted
+          ? (result.message ?? 'Cancellation requested')
+          : (result.message ?? 'No cancelable Clash Nivo job is active')
       )
     },
     onError: onMutationError,

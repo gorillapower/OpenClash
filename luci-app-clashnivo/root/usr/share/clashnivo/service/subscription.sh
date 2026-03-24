@@ -61,30 +61,49 @@ clashnivo_service_subscription_emit_refresh_json() {
 clashnivo_service_subscription_refresh_async() {
    local selector="${1:-}"
    local context="refresh_sources"
-   local worker_pid
+   local worker_pid timeout_seconds timeout_at target_name
 
    if [ -n "${selector}" ]; then
-      context="refresh_source:$(clashnivo_service_subscription_resolve_name "${selector}")"
+      target_name="$(clashnivo_service_subscription_resolve_name "${selector}")"
+      context="refresh_source:${target_name}"
+   else
+      target_name="all"
    fi
+
+   timeout_seconds=600
+   timeout_at="$(( $(date +%s) + timeout_seconds ))"
 
    if ! clashnivo_service_command_lock_acquire "${context}"; then
       clashnivo_service_emit_busy_json "${context}"
       return 3
    fi
 
-   if [ -n "${selector}" ]; then
+   (
+      clashnivo_service_command_lock_set_owner "${context}" "$$"
+      clashnivo_service_command_lock_set_job_metadata "subscription" "${target_name}" "true" "$timeout_at" "" "${CLASHNIVO_LOG_FILE}"
+      trap 'clashnivo_service_command_lock_release' EXIT INT TERM
+
+      if [ -n "${selector}" ]; then
+         setsid bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" "${selector}" >/dev/null 2>&1 &
+      else
+         setsid bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" >/dev/null 2>&1 &
+      fi
+      worker_pid=$!
+      clashnivo_service_command_lock_set_owner "${context}" "${worker_pid}"
+
       (
-         clashnivo_service_command_lock_set_owner "${context}" "$$"
-         trap 'clashnivo_service_command_lock_release' EXIT INT TERM
-         bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" "${selector}" >/dev/null 2>&1
+         sleep "${timeout_seconds}"
+         if kill -0 "${worker_pid}" >/dev/null 2>&1; then
+            clashnivo_service_command_lock_set_final_state "timed_out" "Subscription refresh timed out."
+            printf '%s\n' "Subscription refresh timed out after ${timeout_seconds} seconds." >> "${CLASHNIVO_LOG_FILE}"
+            clashnivo_service_command_lock_kill_owner "${worker_pid}" >/dev/null 2>&1
+         fi
       ) &
-   else
-      (
-         clashnivo_service_command_lock_set_owner "${context}" "$$"
-         trap 'clashnivo_service_command_lock_release' EXIT INT TERM
-         bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" >/dev/null 2>&1
-      ) &
-   fi
+      timeout_watcher_pid=$!
+
+      wait "${worker_pid}"
+      kill "${timeout_watcher_pid}" >/dev/null 2>&1
+   ) &
    worker_pid=$!
    clashnivo_service_command_lock_set_owner "${context}" "${worker_pid}"
 }

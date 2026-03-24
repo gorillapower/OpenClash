@@ -116,6 +116,20 @@ clashnivo_service_update_write_status() {
    } > "$status_file"
 }
 
+clashnivo_service_update_timeout_seconds() {
+   local kind="${1:-}"
+   local target="${2:-}"
+
+   case "${kind}:${target}" in
+      core:*|package:*|assets:*|dashboard:*)
+         printf '%s' "600"
+      ;;
+      *)
+         printf '%s' "300"
+      ;;
+   esac
+}
+
 clashnivo_service_update_parse_status() {
    local kind="${1:-}"
    local target="${2:-}"
@@ -140,7 +154,7 @@ clashnivo_service_update_parse_status() {
    second_line="$(printf '%s' "$status_content" | sed -n '2p')"
 
    case "$first_line" in
-      accepted|running|done|error|nochange|idle|busy)
+      accepted|running|done|error|nochange|idle|busy|cancelled|timed_out)
          normalized="$first_line"
       ;;
       *)
@@ -165,7 +179,7 @@ clashnivo_service_update_run_async() {
    local target="${2:-}"
    local command_string="${3:-}"
    local accepted_message="${4:-}"
-   local status_file log_file context worker_pid
+   local status_file log_file context worker_pid timeout_seconds timeout_at
 
    status_file="$(clashnivo_service_update_status_file "$kind" "$target")" || return 1
    log_file="$(clashnivo_service_update_log_file "$kind" "$target")" || return 1
@@ -175,6 +189,8 @@ clashnivo_service_update_run_async() {
 
    context="${kind}"
    [ -n "${target}" ] && context="${kind}:${target}"
+   timeout_seconds="$(clashnivo_service_update_timeout_seconds "$kind" "$target")"
+   timeout_at="$(( $(date +%s) + timeout_seconds ))"
 
    if ! clashnivo_service_command_lock_acquire "${context}"; then
       clashnivo_service_update_write_status "$kind" "$target" busy "Another Clash Nivo command is already running"
@@ -186,12 +202,35 @@ clashnivo_service_update_run_async() {
 
    (
       clashnivo_service_command_lock_set_owner "${context}" "$$"
+      clashnivo_service_command_lock_set_job_metadata "$kind" "$target" "true" "$timeout_at" "$status_file" "$log_file"
       trap 'clashnivo_service_command_lock_release' EXIT INT TERM
       clashnivo_service_update_write_status "$kind" "$target" running "${accepted_message:-Queued}"
-      sh -c "$command_string" >"$log_file" 2>&1
-      rc=$?
+      setsid sh -c "exec ${command_string}" >"$log_file" 2>&1 &
+      worker_pid=$!
+      clashnivo_service_command_lock_set_owner "${context}" "${worker_pid}"
 
-      if [ "$rc" -eq 0 ]; then
+      (
+         sleep "${timeout_seconds}"
+         if kill -0 "${worker_pid}" >/dev/null 2>&1; then
+            clashnivo_service_command_lock_set_final_state "timed_out" "Update timed out."
+            printf '%s\n' "Job timed out after ${timeout_seconds} seconds." >> "$log_file"
+            clashnivo_service_command_lock_kill_owner "${worker_pid}" >/dev/null 2>&1
+         fi
+      ) &
+      timeout_watcher_pid=$!
+
+      wait "${worker_pid}"
+      rc=$?
+      kill "${timeout_watcher_pid}" >/dev/null 2>&1
+
+      final_state="$(clashnivo_service_command_lock_final_state)"
+      final_message="$(clashnivo_service_command_lock_final_message)"
+
+      if [ "${final_state}" = "cancelled" ]; then
+         clashnivo_service_update_write_status "$kind" "$target" cancelled "${final_message:-Cancelled by user.}"
+      elif [ "${final_state}" = "timed_out" ]; then
+         clashnivo_service_update_write_status "$kind" "$target" timed_out "${final_message:-Update timed out.}"
+      elif [ "$rc" -eq 0 ]; then
          if grep -Eiq 'No Change|Has Not Been Updated|Stop Continuing Operation' "$log_file" 2>/dev/null; then
             clashnivo_service_update_write_status "$kind" "$target" nochange "No update was required"
          else
@@ -203,6 +242,44 @@ clashnivo_service_update_run_async() {
    ) &
    worker_pid=$!
    clashnivo_service_command_lock_set_owner "${context}" "${worker_pid}"
+}
+
+clashnivo_service_cancel_job_command() {
+   local active_context active_kind active_target active_status_path active_log_path
+
+   if ! clashnivo_service_command_lock_busy; then
+      printf '{"accepted":false,"status":"idle","message":"No active Clash Nivo job is running."}\n'
+      return 1
+   fi
+
+   active_context="$(clashnivo_service_command_lock_active_context)"
+   active_kind="$(clashnivo_service_command_lock_kind)"
+   active_target="$(clashnivo_service_command_lock_target)"
+   active_status_path="$(clashnivo_service_command_lock_status_path)"
+   active_log_path="$(clashnivo_service_command_lock_log_path)"
+
+   if ! clashnivo_service_command_lock_is_cancelable; then
+      printf '{'
+      printf '"accepted":false,'
+      printf '"status":"error",'
+      printf '"message":"The active Clash Nivo command cannot be cancelled.",'
+      printf '"active_command":%s' "$(clashnivo_service_json_string "${active_context}")"
+      printf '}\n'
+      return 1
+   fi
+
+   clashnivo_service_command_lock_cancel_active_job >/dev/null 2>&1
+
+   printf '{'
+   printf '"accepted":true,'
+   printf '"status":"accepted",'
+   printf '"kind":%s,' "$(clashnivo_service_json_string "${active_kind}")"
+   printf '"target":%s,' "$(clashnivo_service_json_string "${active_target}")"
+   printf '"active_command":%s,' "$(clashnivo_service_json_string "${active_context}")"
+   printf '"status_path":%s,' "$(clashnivo_service_json_string "${active_status_path}")"
+   printf '"log_path":%s,' "$(clashnivo_service_json_string "${active_log_path}")"
+   printf '"message":"Cancellation requested."'
+   printf '}\n'
 }
 
 clashnivo_service_update_package_latest_command() {

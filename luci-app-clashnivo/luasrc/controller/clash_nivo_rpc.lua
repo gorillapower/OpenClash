@@ -232,6 +232,10 @@ function handlers.service_restart()
     return backend.service_action("restart", true)
 end
 
+function handlers.service_cancel_job()
+    return backend.cancel_active_job()
+end
+
 function handlers.file_read(p)
     local path = p[1]
     if not is_allowed_path(path) then
@@ -628,6 +632,7 @@ local METHOD_MAP = {
     ["service.start"]            = handlers.service_start,
     ["service.stop"]             = handlers.service_stop,
     ["service.restart"]          = handlers.service_restart,
+    ["service.cancelJob"]        = handlers.service_cancel_job,
     ["file.read"]                = handlers.file_read,
     ["file.write"]               = handlers.file_write,
     ["log.service"]              = handlers.log_service,

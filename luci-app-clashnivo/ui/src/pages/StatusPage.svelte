@@ -4,6 +4,7 @@
     useServiceStart,
     useServiceStop,
     useServiceRestart,
+    useServiceCancelJob,
     useUciConfig,
     useSubscriptionAdd,
     useSubscriptionUpdate,
@@ -34,6 +35,7 @@
   const startMutation = useServiceStart('clashnivo')
   const stopMutation = useServiceStop('clashnivo')
   const restartMutation = useServiceRestart('clashnivo')
+  const cancelJobMutation = useServiceCancelJob('clashnivo')
   const subscriptionAdd = useSubscriptionAdd()
   const subscriptionUpdate = useSubscriptionUpdate()
 
@@ -59,6 +61,9 @@
     restartMutation.isPending
   )
   const busyCommand = $derived(serviceStatus.data?.busy_command ?? null)
+  const activeJobCancelable = $derived(serviceStatus.data?.active_job_cancelable ?? false)
+  const activeJobKind = $derived(serviceStatus.data?.active_job_kind ?? null)
+  const activeJobTarget = $derived(serviceStatus.data?.active_job_target ?? null)
 
   const activeConfigPath = $derived(
     serviceStatus.data?.active_config ??
@@ -158,6 +163,19 @@
         return `Clash Nivo is busy with ${busyCommand}.`
     }
   })
+  const cancelLabel = $derived.by(() => {
+    if (!activeJobCancelable) return null
+    if (activeJobKind === 'subscription') {
+      return activeJobTarget && activeJobTarget !== 'all'
+        ? `Cancel source refresh: ${activeJobTarget}`
+        : 'Cancel source refresh'
+    }
+    if (activeJobKind === 'core') return 'Cancel core update'
+    if (activeJobKind === 'package') return 'Cancel package update'
+    if (activeJobKind === 'assets') return 'Cancel asset refresh'
+    if (activeJobKind === 'dashboard') return 'Cancel dashboard download'
+    return 'Cancel active job'
+  })
 
   function blockedReasonMessage(reason: string | null): string {
     if (reason === 'openclash_active') {
@@ -252,8 +270,18 @@
   {#if isEmpty}
     <div class="space-y-5 py-2">
       {#if busyMessage}
-        <div class="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-          {busyMessage}
+        <div class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          <span>{busyMessage}</span>
+          {#if activeJobCancelable}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={cancelJobMutation.isPending}
+              onclick={() => cancelJobMutation.mutateAsync()}
+            >
+              {cancelJobMutation.isPending ? 'Cancelling…' : cancelLabel}
+            </Button>
+          {/if}
         </div>
       {/if}
 
@@ -300,8 +328,18 @@
       <Card class="h-full">
         <CardHeader class="space-y-4">
           {#if busyMessage}
-            <div class="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-              {busyMessage}
+            <div class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+              <span>{busyMessage}</span>
+              {#if activeJobCancelable}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={cancelJobMutation.isPending}
+                  onclick={() => cancelJobMutation.mutateAsync()}
+                >
+                  {cancelJobMutation.isPending ? 'Cancelling…' : cancelLabel}
+                </Button>
+              {/if}
             </div>
           {/if}
 

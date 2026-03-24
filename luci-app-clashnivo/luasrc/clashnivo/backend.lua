@@ -481,6 +481,10 @@ function service_action(action, async)
 	}
 end
 
+function cancel_active_job()
+	return update_command("cancel_job")
+end
+
 local function service_arg_command(action, arg, async)
 	local cmd = string.format("%s %s", shellquote(CLASHNIVO_INIT), shellquote(action))
 	if arg and arg ~= "" then

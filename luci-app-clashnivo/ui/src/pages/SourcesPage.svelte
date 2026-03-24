@@ -19,6 +19,7 @@
     useSubscriptionUpdateAll,
     useSubscriptionEdit,
     useSubscriptionPreflight,
+    useServiceCancelJob,
     useServiceStatus,
     useConfigs,
     useConfigSetActive,
@@ -28,6 +29,7 @@
 
   const subscriptions = useSubscriptions()
   const serviceStatus = useServiceStatus('clashnivo', { refetchInterval: 5000 })
+  const cancelJob = useServiceCancelJob('clashnivo')
   const subscriptionAdd = useSubscriptionAdd()
   const subscriptionDelete = useSubscriptionDelete()
   const subscriptionUpdate = useSubscriptionUpdate()
@@ -43,6 +45,7 @@
   const activeSource = $derived(configs.data?.find((config) => config.active) ?? null)
   const globalBusy = $derived(serviceStatus.data?.busy ?? false)
   const busyCommand = $derived(serviceStatus.data?.busy_command ?? null)
+  const activeJobCancelable = $derived(serviceStatus.data?.active_job_cancelable ?? false)
 
   let addOpen = $state(false)
   let addUrl = $state('')
@@ -289,8 +292,18 @@
   </PageIntro>
 
   {#if busyMessage}
-    <div class="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-      {busyMessage}
+    <div class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+      <span>{busyMessage}</span>
+      {#if activeJobCancelable}
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={cancelJob.isPending}
+          onclick={() => cancelJob.mutateAsync()}
+        >
+          {cancelJob.isPending ? 'Cancelling…' : 'Cancel'}
+        </Button>
+      {/if}
     </div>
   {/if}
 

@@ -46,6 +46,17 @@ export interface ServiceActionResult {
   started_at?: string
 }
 
+export interface JobCancelResult {
+  accepted: boolean
+  status: 'accepted' | 'idle' | 'error'
+  kind?: string
+  target?: string
+  active_command?: string
+  status_path?: string
+  log_path?: string
+  message?: string
+}
+
 export interface ServiceStatusResult {
   running: boolean
   state?: 'disabled' | 'stopped' | 'starting' | 'running' | 'degraded' | 'blocked'
@@ -68,6 +79,12 @@ export interface ServiceStatusResult {
   busy_command?: string
   busy_pid?: string
   busy_started_at?: string
+  active_job_kind?: string
+  active_job_target?: string
+  active_job_cancelable?: boolean
+  active_job_timeout_at?: string
+  active_job_status_path?: string
+  active_job_log_path?: string
   core_pid?: number
   active_config?: string
   core_type?: string
@@ -119,7 +136,7 @@ export interface CoreSourceProbeResult {
   latency_ms?: number
 }
 
-export type UpdateState = 'idle' | 'accepted' | 'running' | 'done' | 'nochange' | 'busy' | 'error'
+export type UpdateState = 'idle' | 'accepted' | 'running' | 'done' | 'nochange' | 'busy' | 'cancelled' | 'timed_out' | 'error'
 
 export interface UpdateStatusResult {
   kind?: string
@@ -339,6 +356,10 @@ export const luciRpc = {
 
   serviceRestart(name: string): Promise<ServiceActionResult> {
     return rpcCall('service.restart', [name])
+  },
+
+  serviceCancelJob(name: string): Promise<JobCancelResult> {
+    return rpcCall('service.cancelJob', [name])
   },
 
   serviceStatus(name: string): Promise<ServiceStatusResult> {
