@@ -48,6 +48,7 @@ export interface ServiceActionResult {
 
 export interface ServiceStatusResult {
   running: boolean
+  state?: 'disabled' | 'stopped' | 'starting' | 'running' | 'degraded' | 'blocked'
   pid?: number
   enabled?: boolean
   service_running?: boolean

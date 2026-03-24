@@ -241,9 +241,9 @@ function service_status()
 	local parsed = json.parse(output)
 
 	if parsed and type(parsed) == "table" then
-		local enabled = parsed.enabled == true
-		local active = parsed.service_running == true or parsed.core_running == true or parsed.watchdog_running == true
-		parsed.running = enabled and active
+		if parsed.running ~= true and parsed.running ~= false then
+			parsed.running = parsed.state == "running"
+		end
 
 		if parsed.core_pid and parsed.core_pid ~= "" then
 			parsed.pid = tonumber(parsed.core_pid) or parsed.core_pid
@@ -256,10 +256,16 @@ function service_status()
 
 	local pid = core_process_pid()
 	if pid then
-		return { running = true, service_running = true, core_running = true, pid = pid }
+		return {
+			running = false,
+			state = "degraded",
+			service_running = false,
+			core_running = true,
+			pid = pid,
+		}
 	end
 
-	return { running = false, service_running = false, core_running = false }
+	return { running = false, state = "disabled", service_running = false, core_running = false }
 end
 
 local function file_mtime(path)

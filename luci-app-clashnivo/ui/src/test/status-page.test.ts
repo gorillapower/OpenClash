@@ -55,6 +55,8 @@ import {
 function setupMocks({
   serviceStatus = {
     running: true,
+    state: 'running',
+    enabled: true,
     service_running: true,
     core_running: true,
     watchdog_running: true,
@@ -137,7 +139,7 @@ describe('StatusPage reset', () => {
   })
 
   it('uses clearer service control enablement', () => {
-    setupMocks({ serviceStatus: { running: false, can_start: true, blocked: false } })
+    setupMocks({ serviceStatus: { running: false, state: 'stopped', enabled: true, can_start: true, blocked: false } })
     render(StatusPage)
 
     expect(screen.getByRole('button', { name: 'Start' })).not.toBeDisabled()
@@ -149,6 +151,8 @@ describe('StatusPage reset', () => {
     setupMocks({
       serviceStatus: {
         running: false,
+        state: 'blocked',
+        enabled: true,
         can_start: false,
         blocked: true,
         blocked_reason: 'openclash_active',
@@ -170,7 +174,7 @@ describe('StatusPage reset', () => {
     const stopMutate = vi.fn().mockResolvedValue(undefined)
     const restartMutate = vi.fn().mockResolvedValue(undefined)
 
-    setupMocks({ serviceStatus: { running: true, can_start: true, blocked: false } })
+    setupMocks({ serviceStatus: { running: true, state: 'running', enabled: true, can_start: true, blocked: false } })
     vi.mocked(useServiceStart).mockReturnValue(makeMutationResult(startMutate) as never)
     vi.mocked(useServiceStop).mockReturnValue(makeMutationResult(stopMutate) as never)
     vi.mocked(useServiceRestart).mockReturnValue(makeMutationResult(restartMutate) as never)

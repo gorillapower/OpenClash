@@ -19,6 +19,7 @@ vi.mock('$lib/queries/luci', () => ({
   useServiceRestart: vi.fn(),
   useUciConfig: vi.fn(),
   useSubscriptionAdd: vi.fn(),
+  useSubscriptionUpdate: vi.fn(),
   useProxyGroups: vi.fn(),
   useRuleProviders: vi.fn(),
   useCustomProxies: vi.fn(),
@@ -42,6 +43,7 @@ import {
   useServiceRestart,
   useUciConfig,
   useSubscriptionAdd,
+  useSubscriptionUpdate,
   useProxyGroups,
   useRuleProviders,
   useCustomProxies,
@@ -51,7 +53,7 @@ import {
 
 function setupEmptyState(addMutate = vi.fn().mockResolvedValue(undefined), addPending = false) {
   vi.mocked(useServiceStatus).mockReturnValue(
-    makeQueryResult({ running: false, can_start: true, blocked: false } as ServiceStatusResult) as CreateQueryResult<ServiceStatusResult>
+    makeQueryResult({ running: false, state: 'disabled', enabled: false, can_start: true, blocked: false } as ServiceStatusResult) as CreateQueryResult<ServiceStatusResult>
   )
   vi.mocked(useUciConfig).mockReturnValue(
     { data: { config: {} }, isPending: false, isError: false, isSuccess: true } as unknown as CreateQueryResult<UciPackage>
@@ -67,6 +69,7 @@ function setupEmptyState(addMutate = vi.fn().mockResolvedValue(undefined), addPe
   vi.mocked(useSubscriptionAdd).mockReturnValue(
     makeMutationResult(addMutate, { isPending: addPending }) as unknown as ReturnType<typeof useSubscriptionAdd>
   )
+  vi.mocked(useSubscriptionUpdate).mockReturnValue(makeMutationResult() as never)
 }
 
 describe('StatusPage empty state', () => {
@@ -77,7 +80,7 @@ describe('StatusPage empty state', () => {
     render(StatusPage)
 
     expect(screen.getByText('Add a subscription')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /add subscription/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /save and refresh/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /open sources/i })).toHaveAttribute('href', '#/sources')
   })
 
@@ -94,7 +97,7 @@ describe('StatusPage empty state', () => {
     setupEmptyState()
     render(StatusPage)
 
-    await fireEvent.click(screen.getByRole('button', { name: /add subscription/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /save and refresh/i }))
     await waitFor(() => {
       expect(screen.getByText(/please enter a subscription url/i)).toBeInTheDocument()
     })
@@ -102,7 +105,7 @@ describe('StatusPage empty state', () => {
     const input = screen.getByRole('textbox', { name: /subscription url/i }) as HTMLInputElement
     input.value = 'not a url'
     await fireEvent.input(input)
-    await fireEvent.click(screen.getByRole('button', { name: /add subscription/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /save and refresh/i }))
 
     await waitFor(() => {
       expect(screen.getByText(/please enter a valid url/i)).toBeInTheDocument()
@@ -117,7 +120,7 @@ describe('StatusPage empty state', () => {
     const input = screen.getByRole('textbox', { name: /subscription url/i }) as HTMLInputElement
     input.value = 'https://example.com/sub?token=abc'
     await fireEvent.input(input)
-    await fireEvent.click(screen.getByRole('button', { name: /add subscription/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /save and refresh/i }))
 
     await waitFor(() => {
       expect(addMutate).toHaveBeenCalledWith({ url: 'https://example.com/sub?token=abc' })

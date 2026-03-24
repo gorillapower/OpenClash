@@ -46,7 +46,12 @@
   )
   const dashboardUrl = $derived(`http://${window.location.hostname}:${controllerPort}/ui`)
 
-  const isRunning = $derived(optimisticRunning ?? serviceStatus.data?.running ?? false)
+  const serviceState = $derived.by(() => {
+    if (optimisticRunning === true) return 'starting'
+    if (optimisticRunning === false) return 'stopped'
+    return serviceStatus.data?.state ?? (serviceStatus.data?.running ? 'running' : 'disabled')
+  })
+  const isRunning = $derived(serviceState === 'running')
   const isBusy = $derived(
     (serviceStatus.data?.busy ?? false) ||
     startMutation.isPending ||
@@ -72,7 +77,8 @@
   const blockedReason = $derived(serviceStatus.data?.blocked_reason ?? null)
   const openclashInstalled = $derived(serviceStatus.data?.openclash_installed ?? false)
   const openclashActive = $derived(serviceStatus.data?.openclash_active ?? false)
-  const coreRunning = $derived(serviceStatus.data?.core_running ?? isRunning)
+  const coreRunning = $derived(serviceStatus.data?.core_running ?? false)
+  const serviceManaged = $derived(serviceStatus.data?.service_running ?? false)
   const watchdogRunning = $derived(serviceStatus.data?.watchdog_running ?? false)
 
   const isEmpty = $derived(uciConfig.isSuccess && !activeConfigPath)
@@ -83,33 +89,60 @@
   const customRuleCount = $derived(customRules.data?.length ?? 0)
   const hasOverwrite = $derived(Boolean(configOverwrite.data?.content?.trim()))
 
-  const stateLabel = $derived(
-    isBlocked && !isRunning ? 'Blocked' : isRunning ? 'Running' : 'Stopped'
-  )
+  const stateLabel = $derived.by(() => {
+    switch (serviceState) {
+      case 'blocked':
+        return 'Blocked'
+      case 'starting':
+        return 'Starting'
+      case 'running':
+        return 'Running'
+      case 'degraded':
+        return 'Degraded'
+      case 'stopped':
+        return 'Stopped'
+      default:
+        return 'Disabled'
+    }
+  })
   const stateToneClass = $derived(
-    isBlocked && !isRunning
+    serviceState === 'blocked'
       ? 'bg-amber-500'
-      : isRunning
+      : serviceState === 'running'
         ? 'bg-green-500'
-        : 'bg-slate-400'
+        : serviceState === 'starting'
+          ? 'bg-sky-500'
+          : serviceState === 'degraded'
+            ? 'bg-orange-500'
+            : serviceState === 'stopped'
+              ? 'bg-slate-500'
+              : 'bg-slate-400'
   )
   const stateMessage = $derived.by(() => {
-    if (isBlocked && !isRunning) {
+    if (serviceState === 'blocked') {
       return blockedReasonMessage(blockedReason)
     }
-    if (isRunning && !coreRunning) {
-      return 'Clash Nivo service is up, but the core does not appear healthy.'
+    if (serviceState === 'starting') {
+      return 'Clash Nivo is applying the active config and bringing the runtime online.'
     }
-    if (isRunning) {
+    if (serviceState === 'degraded') {
+      return 'Clash Nivo is in a partial runtime state. Service ownership and core health do not currently agree.'
+    }
+    if (serviceState === 'running') {
       return 'Clash Nivo is active and owns the runtime.'
     }
-    return 'Clash Nivo is installed but not currently running.'
+    if (serviceState === 'stopped') {
+      return 'Clash Nivo is enabled but not currently running.'
+    }
+    return 'Clash Nivo is installed but currently disabled.'
   })
 
   const nextActionLabel = $derived.by(() => {
-    if (isBlocked && !isRunning) return 'Stop OpenClash, then start Clash Nivo.'
+    if (serviceState === 'blocked') return 'Stop OpenClash, then start Clash Nivo.'
     if (!activeConfigPath) return 'Add a source to create your first active config.'
-    if (!isRunning && canStart) return 'Start Clash Nivo to apply the active generated config.'
+    if (serviceState === 'disabled') return 'Enable and start Clash Nivo to apply the active generated config.'
+    if (serviceState === 'stopped' && canStart) return 'Start Clash Nivo to apply the active generated config.'
+    if (serviceState === 'degraded') return 'Check logs before restarting. The service and core do not currently agree on runtime ownership.'
     return 'Use Compose to preview, validate, and activate changes before restarting.'
   })
   const busyMessage = $derived.by(() => {
@@ -287,21 +320,21 @@
             <div class="flex flex-wrap gap-2">
               <Button
                 variant="default"
-                disabled={isBusy || isRunning || !canStart}
+                disabled={isBusy || serviceState === 'running' || serviceState === 'starting' || !canStart}
                 onclick={handleStart}
               >
                 Start
               </Button>
               <Button
                 variant="outline"
-                disabled={isBusy || !isRunning}
+                disabled={isBusy || (serviceState !== 'running' && serviceState !== 'degraded')}
                 onclick={handleStop}
               >
                 Stop
               </Button>
               <Button
                 variant="outline"
-                disabled={isBusy || !isRunning}
+                disabled={isBusy || (serviceState !== 'running' && serviceState !== 'degraded')}
                 onclick={handleRestart}
               >
                 Restart
@@ -380,15 +413,19 @@
             </div>
             <div class="flex items-start justify-between gap-4">
               <span class="text-muted-foreground">Service</span>
-              <span class="text-right font-medium">{isRunning ? 'Running' : 'Stopped'}</span>
+              <span class="text-right font-medium">{stateLabel}</span>
             </div>
             <div class="flex items-start justify-between gap-4">
               <span class="text-muted-foreground">Core</span>
-              <span class="text-right font-medium">{coreRunning ? 'Healthy' : 'Not running'}</span>
+              <span class="text-right font-medium">{coreRunning ? 'Running' : 'Not running'}</span>
+            </div>
+            <div class="flex items-start justify-between gap-4">
+              <span class="text-muted-foreground">Service ownership</span>
+              <span class="text-right font-medium">{serviceManaged ? 'Managed' : 'Not managed'}</span>
             </div>
             <div class="flex items-start justify-between gap-4">
               <span class="text-muted-foreground">Activation</span>
-              <span class="text-right font-medium">{isBlocked && !isRunning ? 'Blocked' : 'Available'}</span>
+              <span class="text-right font-medium">{serviceState === 'blocked' ? 'Blocked' : 'Available'}</span>
             </div>
           </CardContent>
         </Card>

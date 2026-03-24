@@ -42,11 +42,49 @@ clashnivo_service_core_running() {
    [ -n "$(clashnivo_service_core_pid)" ]
 }
 
+clashnivo_service_runtime_state() {
+   local enabled="$1"
+   local service_running="$2"
+   local core_running="$3"
+   local watchdog_running="$4"
+   local blocked="$5"
+   local busy="$6"
+   local busy_command="$7"
+
+   if [ "$blocked" = "true" ] && [ "$service_running" != "true" ] && [ "$core_running" != "true" ]; then
+      printf 'blocked'
+      return
+   fi
+
+   if [ "$enabled" = "true" ] && [ "$busy" = "true" ] && \
+      { [ "$busy_command" = "start" ] || [ "$busy_command" = "restart" ] || [ "$busy_command" = "reload" ]; }; then
+      printf 'starting'
+      return
+   fi
+
+   if [ "$enabled" = "true" ] && [ "$service_running" = "true" ] && [ "$core_running" = "true" ]; then
+      printf 'running'
+      return
+   fi
+
+   if [ "$service_running" = "true" ] || [ "$core_running" = "true" ] || [ "$watchdog_running" = "true" ]; then
+      printf 'degraded'
+      return
+   fi
+
+   if [ "$enabled" = "true" ]; then
+      printf 'stopped'
+      return
+   fi
+
+   printf 'disabled'
+}
+
 clashnivo_service_status_json() {
    local enabled service_running watchdog_running core_running openclash_installed openclash_enabled openclash_active
    local openclash_service_running openclash_watchdog_running openclash_core_running
    local blocked blocked_reason can_start core_pid active_config core_type proxy_mode run_mode openclash_core_pid
-   local busy busy_command busy_pid busy_started_at
+   local busy busy_command busy_pid busy_started_at runtime_state runtime_healthy
 
    enabled="false"
    [ "$(clashnivo_service_uci_get enable)" = "1" ] && enabled="true"
@@ -99,6 +137,10 @@ clashnivo_service_status_json() {
       blocked_reason=""
    fi
 
+   runtime_state="$(clashnivo_service_runtime_state "$enabled" "$service_running" "$core_running" "$watchdog_running" "$blocked" "$busy" "$busy_command")"
+   runtime_healthy="false"
+   [ "$runtime_state" = "running" ] && runtime_healthy="true"
+
    active_config="$(clashnivo_service_uci_get config_path)"
    core_type="$(clashnivo_service_uci_get core_type)"
    proxy_mode="$(clashnivo_service_uci_get proxy_mode)"
@@ -118,6 +160,8 @@ clashnivo_service_status_json() {
    printf '"blocked":%s,' "$(clashnivo_service_json_bool "$blocked")"
    printf '"blocked_reason":%s,' "$(clashnivo_service_json_string "$blocked_reason")"
    printf '"can_start":%s,' "$(clashnivo_service_json_bool "$can_start")"
+   printf '"running":%s,' "$(clashnivo_service_json_bool "$runtime_healthy")"
+   printf '"state":%s,' "$(clashnivo_service_json_string "$runtime_state")"
    printf '"busy":%s,' "$(clashnivo_service_json_bool "$busy")"
    printf '"busy_command":%s,' "$(clashnivo_service_json_string "$busy_command")"
    printf '"busy_pid":%s,' "$(clashnivo_service_json_string "$busy_pid")"

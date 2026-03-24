@@ -19,6 +19,7 @@ vi.mock('$lib/queries/luci', () => ({
   useServiceRestart: vi.fn(),
   useUciConfig: vi.fn(),
   useSubscriptionAdd: vi.fn(),
+  useSubscriptionUpdate: vi.fn(),
   useProxyGroups: vi.fn(),
   useRuleProviders: vi.fn(),
   useCustomProxies: vi.fn(),
@@ -42,6 +43,7 @@ import {
   useServiceRestart,
   useUciConfig,
   useSubscriptionAdd,
+  useSubscriptionUpdate,
   useProxyGroups,
   useRuleProviders,
   useCustomProxies,
@@ -65,6 +67,7 @@ function setupMocks(serviceStatus: ServiceStatusResult) {
   vi.mocked(useServiceStop).mockReturnValue(makeMutationResult() as never)
   vi.mocked(useServiceRestart).mockReturnValue(makeMutationResult() as never)
   vi.mocked(useSubscriptionAdd).mockReturnValue(makeMutationResult() as never)
+  vi.mocked(useSubscriptionUpdate).mockReturnValue(makeMutationResult() as never)
 }
 
 describe('StatusPage cards', () => {
@@ -73,6 +76,9 @@ describe('StatusPage cards', () => {
   it('shows activation as available when not blocked', () => {
     setupMocks({
       running: true,
+      state: 'running',
+      enabled: true,
+      service_running: true,
       core_running: true,
       can_start: true,
       blocked: false,
@@ -87,6 +93,8 @@ describe('StatusPage cards', () => {
   it('shows activation as blocked when guard state is active', () => {
     setupMocks({
       running: false,
+      state: 'blocked',
+      enabled: true,
       core_running: false,
       can_start: false,
       blocked: true,
@@ -104,6 +112,9 @@ describe('StatusPage cards', () => {
   it('shows core health and selected source in the runtime summary', () => {
     setupMocks({
       running: true,
+      state: 'running',
+      enabled: true,
+      service_running: true,
       core_running: true,
       can_start: true,
       blocked: false,
@@ -113,6 +124,7 @@ describe('StatusPage cards', () => {
 
     expect(screen.getByText('Selected source')).toBeInTheDocument()
     expect(screen.getByText('work')).toBeInTheDocument()
-    expect(screen.getByText('Healthy')).toBeInTheDocument()
+    expect(screen.getAllByText('Running').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('Managed')).toBeInTheDocument()
   })
 })
