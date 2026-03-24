@@ -205,7 +205,11 @@ clashnivo_service_update_run_async() {
       clashnivo_service_command_lock_set_job_metadata "$kind" "$target" "true" "$timeout_at" "$status_file" "$log_file"
       trap 'clashnivo_service_command_lock_release' EXIT INT TERM
       clashnivo_service_update_write_status "$kind" "$target" running "${accepted_message:-Queued}"
-      setsid env LOG_FILE="$log_file" MIRROR_LOG_FILE="$CLASHNIVO_UPDATE_LOG_FILE" sh -c "exec ${command_string}" >"$log_file" 2>&1 &
+      if command -v setsid >/dev/null 2>&1; then
+         setsid env LOG_FILE="$log_file" MIRROR_LOG_FILE="$CLASHNIVO_UPDATE_LOG_FILE" sh -c "exec ${command_string}" >"$log_file" 2>&1 &
+      else
+         env LOG_FILE="$log_file" MIRROR_LOG_FILE="$CLASHNIVO_UPDATE_LOG_FILE" sh -c "exec ${command_string}" >"$log_file" 2>&1 &
+      fi
       worker_pid=$!
       clashnivo_service_command_lock_set_owner "${context}" "${worker_pid}"
 

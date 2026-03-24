@@ -4,8 +4,9 @@
 START=99
 STOP=15
 USE_PROCD=1
-EXTRA_COMMANDS="preview validate update_status probe_core_sources cancel_job update_core update_core_latest update_package update_package_latest update_assets update_dashboard refresh_source refresh_sources"
+EXTRA_COMMANDS="status_json preview validate update_status probe_core_sources cancel_job update_core update_core_latest update_package update_package_latest update_assets update_dashboard refresh_source refresh_sources"
 EXTRA_HELP="\
+\tstatus_json\tShow Clash Nivo JSON runtime status\n\
 \tpreview\tBuild a preview config\n\
 \tvalidate\tValidate the current composed config\n\
 \tupdate_status\tShow async update status\n\
@@ -27,6 +28,11 @@ status()
 {
    clashnivo_service_status_json
    clashnivo_service_status_exit_code
+}
+
+status_json()
+{
+   clashnivo_service_status_json
 }
 
 preview()

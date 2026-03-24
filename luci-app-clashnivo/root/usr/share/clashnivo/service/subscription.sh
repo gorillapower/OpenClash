@@ -84,10 +84,18 @@ clashnivo_service_subscription_refresh_async() {
       clashnivo_service_command_lock_set_job_metadata "subscription" "${target_name}" "true" "$timeout_at" "" "${CLASHNIVO_SUBSCRIPTION_UPDATE_LOG_FILE}"
       trap 'clashnivo_service_command_lock_release' EXIT INT TERM
 
-      if [ -n "${selector}" ]; then
-         setsid env LOG_FILE="${CLASHNIVO_SUBSCRIPTION_UPDATE_LOG_FILE}" MIRROR_LOG_FILE="${CLASHNIVO_UPDATE_LOG_FILE}" bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" "${selector}" >/dev/null 2>&1 &
+      if command -v setsid >/dev/null 2>&1; then
+         if [ -n "${selector}" ]; then
+            setsid env LOG_FILE="${CLASHNIVO_SUBSCRIPTION_UPDATE_LOG_FILE}" MIRROR_LOG_FILE="${CLASHNIVO_UPDATE_LOG_FILE}" bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" "${selector}" >/dev/null 2>&1 &
+         else
+            setsid env LOG_FILE="${CLASHNIVO_SUBSCRIPTION_UPDATE_LOG_FILE}" MIRROR_LOG_FILE="${CLASHNIVO_UPDATE_LOG_FILE}" bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" >/dev/null 2>&1 &
+         fi
       else
-         setsid env LOG_FILE="${CLASHNIVO_SUBSCRIPTION_UPDATE_LOG_FILE}" MIRROR_LOG_FILE="${CLASHNIVO_UPDATE_LOG_FILE}" bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" >/dev/null 2>&1 &
+         if [ -n "${selector}" ]; then
+            env LOG_FILE="${CLASHNIVO_SUBSCRIPTION_UPDATE_LOG_FILE}" MIRROR_LOG_FILE="${CLASHNIVO_UPDATE_LOG_FILE}" bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" "${selector}" >/dev/null 2>&1 &
+         else
+            env LOG_FILE="${CLASHNIVO_SUBSCRIPTION_UPDATE_LOG_FILE}" MIRROR_LOG_FILE="${CLASHNIVO_UPDATE_LOG_FILE}" bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" >/dev/null 2>&1 &
+         fi
       fi
       worker_pid=$!
       clashnivo_service_command_lock_set_owner "${context}" "${worker_pid}"

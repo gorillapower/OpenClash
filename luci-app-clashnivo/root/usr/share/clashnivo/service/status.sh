@@ -32,10 +32,30 @@ clashnivo_service_watchdog_running() {
    clashnivo_service_instance_running "${CLASHNIVO_WATCHDOG_SERVICE_NAME}"
 }
 
+clashnivo_service_pid_matches_runtime() {
+   local pid="${1:-}"
+   local cmdline=""
+
+   [ -z "$pid" ] && return 1
+   [ -r "/proc/${pid}/cmdline" ] || return 1
+
+   cmdline="$(tr '\000' ' ' < "/proc/${pid}/cmdline" 2>/dev/null)"
+   [ -n "$cmdline" ] || return 1
+
+   printf '%s' "$cmdline" | grep -F -q '/etc/clashnivo/'
+}
+
 clashnivo_service_core_pid() {
    local pid
-   pid=$(pidof clash mihomo 2>/dev/null | awk '{print $1}')
-   [ -n "$pid" ] && printf '%s' "$pid"
+
+   for pid in $(pidof clash mihomo 2>/dev/null); do
+      if clashnivo_service_pid_matches_runtime "$pid"; then
+         printf '%s' "$pid"
+         return 0
+      fi
+   done
+
+   return 1
 }
 
 clashnivo_service_core_running() {

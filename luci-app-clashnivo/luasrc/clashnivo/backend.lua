@@ -229,16 +229,20 @@ function command_busy(context)
 end
 
 function core_process_pid()
-	local pid_str = sys.exec("pidof clash mihomo 2>/dev/null | tr -d '\\n'")
-	if pid_str and pid_str ~= "" then
-		return tonumber(pid_str:match("%d+"))
+	local pid_lines = sys.exec("pidof clash mihomo 2>/dev/null | tr ' ' '\\n'") or ""
+
+	for pid in pid_lines:gmatch("%d+") do
+		local cmdline = sys.exec(string.format("tr '\\000' ' ' < /proc/%s/cmdline 2>/dev/null", shellquote(pid))) or ""
+		if cmdline:find("/etc/clashnivo/", 1, true) then
+			return tonumber(pid)
+		end
 	end
 
 	return nil
 end
 
 function service_status()
-	local output = sys.exec(string.format("%s status 2>/dev/null", shellquote(CLASHNIVO_INIT))) or ""
+	local output = sys.exec(string.format("%s status_json 2>/dev/null", shellquote(CLASHNIVO_INIT))) or ""
 	local parsed = json.parse(output)
 
 	if parsed and type(parsed) == "table" then
