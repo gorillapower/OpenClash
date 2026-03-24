@@ -57,7 +57,8 @@ let mockConfig: Record<string, string> = {
   yacd_type: 'Meta',
   dashboard_forward_ssl: '0',
   cn_port: '9093',
-  github_address_mod: '0',
+  core_source: 'auto',
+  core_custom_base_url: '',
 }
 
 let mockDashboardUpdateStatus: Record<string, { status: string; message?: string }> = {}
@@ -277,7 +278,40 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
     core_version: 'mihomo v1.18.3',
     running: MOCK_STATE === 'running'
   }),
-  'core.latestVersion': () => ({ version: 'v1.18.5' }),
+  'core.latestVersion': () => ({
+    version: 'v1.18.5',
+    core_type: 'Meta',
+    source_policy: mockConfig.core_source ?? 'auto',
+    selected_source: mockConfig.core_source === 'auto' ? 'testingcf' : mockConfig.core_source,
+    selected_source_label: mockConfig.core_source === 'auto' ? 'TestingCF jsDelivr' : 'Official GitHub',
+    source_base:
+      mockConfig.core_source === 'custom'
+        ? mockConfig.core_custom_base_url
+        : mockConfig.core_source === 'testingcf'
+          ? 'https://testingcf.jsdelivr.net/gh/vernesong/OpenClash@core'
+          : mockConfig.core_source === 'jsdelivr'
+            ? 'https://cdn.jsdelivr.net/gh/vernesong/OpenClash@core'
+            : 'https://raw.githubusercontent.com/vernesong/OpenClash/core',
+    latency_ms: 142
+  }),
+  'core.probeSources': () => ({
+    accepted: true,
+    status: 'done',
+    source_policy: mockConfig.core_source ?? 'auto',
+    source_policy_label: mockConfig.core_source === 'auto' ? 'Auto' : 'Official GitHub',
+    selected_source: mockConfig.core_source === 'auto' ? 'testingcf' : mockConfig.core_source,
+    selected_source_label: mockConfig.core_source === 'auto' ? 'TestingCF jsDelivr' : 'Official GitHub',
+    selected_base:
+      mockConfig.core_source === 'custom'
+        ? mockConfig.core_custom_base_url
+        : mockConfig.core_source === 'testingcf'
+          ? 'https://testingcf.jsdelivr.net/gh/vernesong/OpenClash@core'
+          : mockConfig.core_source === 'jsdelivr'
+            ? 'https://cdn.jsdelivr.net/gh/vernesong/OpenClash@core'
+            : 'https://raw.githubusercontent.com/vernesong/OpenClash/core',
+    probe_url: 'https://testingcf.jsdelivr.net/gh/vernesong/OpenClash@core/master/core_version',
+    latency_ms: 142
+  }),
   'core.update': () => {
     console.log('[mock] core.update triggered')
     return true

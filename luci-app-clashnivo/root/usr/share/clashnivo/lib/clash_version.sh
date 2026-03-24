@@ -18,17 +18,26 @@ set_lock
 
 DOWNLOAD_FILE="/tmp/clash_last_version"
 RELEASE_BRANCH=$(uci_get_config "release_branch" || echo "master")
-github_address_mod=$(uci_get_config "github_address_mod" || echo 0)
-if [ -n "$1" ]; then
-   github_address_mod="$1"
-fi
+SOURCE_RESOLUTION="$(clashnivo_core_source_resolve "${1:-0}")" || {
+   LOG_ERROR "Clash core version check could not select a healthy source."
+   del_lock
+   exit 1
+}
 
-DOWNLOAD_URL="$(clashnivo_core_source_version_url "$github_address_mod")" || {
+SELECTED_SOURCE="$(printf '%s' "$SOURCE_RESOLUTION" | cut -d'|' -f1)"
+SELECTED_BASE="$(printf '%s' "$SOURCE_RESOLUTION" | cut -d'|' -f2)"
+SELECTED_LATENCY_MS="$(printf '%s' "$SOURCE_RESOLUTION" | cut -d'|' -f3)"
+PROBE_URL="$(printf '%s' "$SOURCE_RESOLUTION" | cut -d'|' -f4-)"
+
+DOWNLOAD_URL="$(clashnivo_core_source_url_for_mode "$SELECTED_SOURCE" "$(clashnivo_core_source_version_path)")" || {
    LOG_ERROR "Clash core version check could not resolve a source URL."
    del_lock
    exit 1
 }
 
+LOG_INFO "Clash core source selected: $(clashnivo_core_source_label "$SELECTED_SOURCE") (${SELECTED_LATENCY_MS:-0} ms)"
+LOG_INFO "Clash core source base: ${SELECTED_BASE}"
+LOG_INFO "Clash core source probe URL: ${PROBE_URL}"
 LOG_INFO "Clash core version check URL: ${DOWNLOAD_URL}"
 DOWNLOAD_FILE_CURL "$DOWNLOAD_URL" "$DOWNLOAD_FILE" "$DOWNLOAD_FILE"
 del_lock

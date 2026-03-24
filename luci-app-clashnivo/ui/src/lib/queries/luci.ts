@@ -17,6 +17,7 @@ import {
   type FileReadResult,
   type ConfigCompositionResult,
   type CoreVersionResult,
+  type CoreSourceProbeResult,
   type UpdateStatusResult,
   type DashboardOption
 } from '$lib/api/luci'
@@ -1029,6 +1030,28 @@ export function useCoreRefreshLatestVersion(
     onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.coreLatestVersion })
       toasts.success(result.status === 'error' ? 'Core version check failed' : 'Core version checked')
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useCoreProbeSources(
+  opts?: Partial<CreateMutationOptions<CoreSourceProbeResult, unknown, void>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<CoreSourceProbeResult, unknown, void>(() => ({
+    mutationFn: () => luciRpc.coreProbeSources(),
+    onSuccess(result) {
+      queryClient.invalidateQueries({ queryKey: luciKeys.coreLatestVersion })
+      queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
+      if (result.status === 'busy') {
+        toasts.success(`Core source check blocked: ${result.active_command ?? 'another command is running'}`)
+      } else if (result.status === 'error') {
+        toasts.error('No healthy core source was found')
+      } else {
+        toasts.success(`Core source checked: ${result.selected_source_label ?? result.selected_source ?? 'selected'}`)
+      }
     },
     onError: onMutationError,
     ...opts

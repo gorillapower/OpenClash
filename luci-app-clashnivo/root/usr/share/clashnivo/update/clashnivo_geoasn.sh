@@ -3,6 +3,7 @@
 . /usr/share/clashnivo/log.sh
 . /usr/share/clashnivo/clashnivo_curl.sh
 . /usr/share/clashnivo/uci.sh
+. /usr/share/clashnivo/core_source.sh
 
 set_lock() {
    exec 874>"/tmp/lock/clashnivo_geoasn.lock" 2>/dev/null
@@ -19,7 +20,6 @@ inc_job_counter
 
 small_flash_memory=$(uci_get_config "small_flash_memory")
 GEOASN_CUSTOM_URL=$(uci_get_config "geoasn_custom_url")
-github_address_mod=$(uci_get_config "github_address_mod" || echo 0)
 restart=0
 
 if [ "$small_flash_memory" != "1" ]; then
@@ -31,15 +31,13 @@ else
 fi
 LOG_OUT "Downloading Geo ASN database..."
 if [ -z "$GEOASN_CUSTOM_URL" ]; then
-   if [ "$github_address_mod" != "0" ]; then
-      if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
-         DOWNLOAD_URL="${github_address_mod}gh/xishang0128/geoip@release/GeoLite2-ASN.mmdb"
-      else
-         DOWNLOAD_URL="${github_address_mod}https://github.com/xishang0128/geoip/releases/latest/download/GeoLite2-ASN.mmdb"
-      fi
-   else
-      DOWNLOAD_URL="https://github.com/xishang0128/geoip/releases/latest/download/GeoLite2-ASN.mmdb"
-   fi
+   DOWNLOAD_URL="$(clashnivo_download_source_url "https://github.com/xishang0128/geoip/releases/latest/download/GeoLite2-ASN.mmdb")" || {
+      LOG_OUT "Geo ASN database update failed because no healthy download source is available."
+      SLOG_CLEAN
+      dec_job_counter_and_restart "$restart"
+      del_lock
+      exit 0
+   }
 else
    DOWNLOAD_URL=$GEOASN_CUSTOM_URL
 fi

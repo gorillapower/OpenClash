@@ -20,19 +20,6 @@ set_lock
 inc_job_counter
 
 restart=0
-github_address_mod=$(uci_get_config "github_address_mod" || echo 0)
-if [ "$github_address_mod" = "0" ] && [ -z "$(echo $2 2>/dev/null |grep -E 'http|one_key_update')" ] && [ -z "$(echo $3 2>/dev/null |grep 'http')" ]; then
-   LOG_TIP "If the Clash core download fails, try a GitHub mirror in System advanced settings."
-fi
-if [ -n "$3" ] && [ "$2" = "one_key_update" ]; then
-   github_address_mod="$3"
-fi
-if [ -n "$2" ] && [ "$2" = "one_key_update" ] && [ -z "$3" ]; then
-   github_address_mod=0
-fi
-if [ -n "$2" ] && [ "$2" != "one_key_update" ]; then
-   github_address_mod="$2"
-fi
 CORE_TYPE="$1"
 C_CORE_TYPE=$(uci_get_config "core_type")
 SMART_ENABLE=$(uci_get_config "smart_enable" || echo 0)
@@ -42,11 +29,7 @@ small_flash_memory=$(uci_get_config "small_flash_memory")
 CPU_MODEL=$(uci_get_config "core_version")
 RELEASE_BRANCH=$(uci_get_config "release_branch" || echo "master")
 
-if [ "$github_address_mod" != "0" ]; then
-   /usr/share/clashnivo/clash_version.sh "$github_address_mod" 2>/dev/null
-else
-   /usr/share/clashnivo/clash_version.sh 2>/dev/null
-fi
+/usr/share/clashnivo/clash_version.sh 1 2>/dev/null
 if [ ! -f "/tmp/clash_last_version" ]; then
    LOG_ERROR "Could not check the latest 【$CORE_TYPE】 Clash core version."
    SLOG_CLEAN
@@ -80,13 +63,26 @@ fi
 if [ "$CORE_CV" != "$CORE_LV" ] || [ -z "$CORE_CV" ]; then
    if [ "$CPU_MODEL" != 0 ]; then
       LOG_TIP "Clash core update: downloading the latest 【$CORE_TYPE】 core."
-      DOWNLOAD_URL="$(clashnivo_core_source_artifact_url "$CORE_URL_PATH" "$CPU_MODEL" "$github_address_mod")"
+      SOURCE_RESOLUTION="$(clashnivo_core_source_resolve 0)" || {
+         LOG_ERROR "Clash core update aborted because no healthy source is available."
+         SLOG_CLEAN
+         del_lock
+         exit 0
+      }
+      SELECTED_SOURCE="$(printf '%s' "$SOURCE_RESOLUTION" | cut -d'|' -f1)"
+      SELECTED_BASE="$(printf '%s' "$SOURCE_RESOLUTION" | cut -d'|' -f2)"
+      SELECTED_LATENCY_MS="$(printf '%s' "$SOURCE_RESOLUTION" | cut -d'|' -f3)"
+      PROBE_URL="$(printf '%s' "$SOURCE_RESOLUTION" | cut -d'|' -f4-)"
+      DOWNLOAD_URL="$(clashnivo_core_source_url_for_mode "$SELECTED_SOURCE" "$(clashnivo_core_source_artifact_path "$CORE_URL_PATH" "$CPU_MODEL")")"
       if [ $? -ne 0 ] || [ -z "$DOWNLOAD_URL" ]; then
          LOG_ERROR "Clash core update aborted because the core source policy is invalid."
          SLOG_CLEAN
          del_lock
          exit 0
       fi
+      LOG_INFO "Clash core source selected: $(clashnivo_core_source_label "$SELECTED_SOURCE") (${SELECTED_LATENCY_MS:-0} ms)"
+      LOG_INFO "Clash core source base: ${SELECTED_BASE}"
+      LOG_INFO "Clash core source probe URL: ${PROBE_URL}"
       LOG_INFO "Clash core update URL: ${DOWNLOAD_URL}"
 
       retry_count=0

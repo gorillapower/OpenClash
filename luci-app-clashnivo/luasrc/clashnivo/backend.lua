@@ -12,6 +12,7 @@ local CLASHNIVO_INIT = "/etc/init.d/clashnivo"
 local CLASHNIVO_CORE_VERSION_SCRIPT = "/usr/share/clashnivo/clash_version.sh"
 local CLASHNIVO_PACKAGE_VERSION_SCRIPT = "/usr/share/clashnivo/clashnivo_version.sh"
 local CLASHNIVO_CORE_VERSION_FILE = "/tmp/clash_last_version"
+local CLASHNIVO_CORE_SOURCE_PROBE_FILE = "/tmp/clashnivo_core_source_probe"
 local CLASHNIVO_PACKAGE_VERSION_FILE = "/tmp/clashnivo_last_version"
 local CLASHNIVO_CORE_VERSION_LOCK = "/tmp/clashnivo_core_latest.lock"
 local CLASHNIVO_PACKAGE_VERSION_LOCK = "/tmp/clashnivo_package_latest.lock"
@@ -160,11 +161,90 @@ local function file_is_fresh(path, ttl)
 	return (os.time() - mtime) < ttl
 end
 
+local function core_source_mode(cursor)
+	local raw = cursor:get("clashnivo", "config", "core_source") or "auto"
+
+	if raw == "openclash" or raw == "clashnivo" then
+		return "official"
+	end
+
+	if raw == "auto" or raw == "official" or raw == "jsdelivr" or raw == "fastly" or raw == "testingcf" or raw == "custom" then
+		return raw
+	end
+
+	return "auto"
+end
+
+local function core_source_label(mode)
+	if mode == "auto" then
+		return "Auto"
+	elseif mode == "official" then
+		return "Official GitHub"
+	elseif mode == "jsdelivr" then
+		return "jsDelivr"
+	elseif mode == "fastly" then
+		return "Fastly jsDelivr"
+	elseif mode == "testingcf" then
+		return "TestingCF jsDelivr"
+	elseif mode == "custom" then
+		return "Custom"
+	end
+
+	return "Unknown"
+end
+
+local function core_source_custom_base(cursor)
+	local base = cursor:get("clashnivo", "config", "core_custom_base_url") or ""
+	base = base:gsub("/+$", "")
+	return base
+end
+
+local function core_source_base_for_mode(cursor, mode)
+	if mode == "official" then
+		return "https://raw.githubusercontent.com/vernesong/OpenClash/core"
+	elseif mode == "jsdelivr" then
+		return "https://cdn.jsdelivr.net/gh/vernesong/OpenClash@core"
+	elseif mode == "fastly" then
+		return "https://fastly.jsdelivr.net/gh/vernesong/OpenClash@core"
+	elseif mode == "testingcf" then
+		return "https://testingcf.jsdelivr.net/gh/vernesong/OpenClash@core"
+	elseif mode == "custom" then
+		local prefix = core_source_custom_base(cursor)
+		if prefix == "" then
+			return ""
+		end
+		return string.format("%s/https://raw.githubusercontent.com/vernesong/OpenClash/core", prefix)
+	end
+
+	return ""
+end
+
+local function read_probe_cache()
+	local content = read_trimmed_file(CLASHNIVO_CORE_SOURCE_PROBE_FILE)
+	if content == "" then
+		return nil
+	end
+
+	local lines = util.split(content, "\n", nil, true)
+	local checked_at = tonumber(lines[5] or "")
+
+	return {
+		selected_source = (lines[1] or ""):gsub("%s+$", ""),
+		selected_base = (lines[2] or ""):gsub("%s+$", ""),
+		latency_ms = tonumber(lines[3] or ""),
+		probe_url = (lines[4] or ""):gsub("%s+$", ""),
+		checked_at = checked_at,
+	}
+end
+
 local function read_core_latest_cached()
 	local cursor = uci_mod.cursor()
-	local github_address_mod = cursor:get("clashnivo", "config", "github_address_mod") or "0"
 	local core_type = cursor:get("clashnivo", "config", "core_type") or "Meta"
 	local smart_enable = cursor:get("clashnivo", "config", "smart_enable") or "0"
+	local configured_source = core_source_mode(cursor)
+	local probe_cache = read_probe_cache()
+	local selected_source = configured_source ~= "auto" and configured_source or nil
+	local selected_base = configured_source ~= "auto" and core_source_base_for_mode(cursor, configured_source) or nil
 	if smart_enable == "1" then
 		core_type = "Smart"
 	end
@@ -177,22 +257,24 @@ local function read_core_latest_cached()
 		version = (lines[line_number] or ""):gsub("%s+$", "")
 	end
 
-	local source_mode = "openclash"
 	local source_branch = cursor:get("clashnivo", "config", "release_branch") or "master"
-	local source_base
-	if github_address_mod ~= "0" and github_address_mod ~= "" then
-		source_base = string.format("%sgh/vernesong/OpenClash@core", github_address_mod)
-	else
-		source_base = "https://raw.githubusercontent.com/vernesong/OpenClash/core"
+	if configured_source == "auto" and probe_cache and probe_cache.selected_source and probe_cache.selected_source ~= "" then
+		selected_source = probe_cache.selected_source
+		selected_base = probe_cache.selected_base
 	end
 
 	return {
 		kind = "core",
 		version = version,
 		core_type = core_type,
-		source_policy = source_mode,
+		source_policy = configured_source,
+		source_policy_label = core_source_label(configured_source),
+		selected_source = selected_source,
+		selected_source_label = selected_source and core_source_label(selected_source) or nil,
 		source_branch = source_branch,
-		source_base = source_base,
+		source_base = selected_base,
+		latency_ms = probe_cache and probe_cache.latency_ms or nil,
+		probe_url = probe_cache and probe_cache.probe_url or nil,
 	}
 end
 
@@ -225,19 +307,17 @@ local function spawn_version_refresh(lock_file, command)
 end
 
 local function refresh_core_latest_now()
-	local cursor = uci_mod.cursor()
-	local github_address_mod = cursor:get("clashnivo", "config", "github_address_mod") or "0"
 	local command = shellquote(CLASHNIVO_CORE_VERSION_SCRIPT)
-
-	if github_address_mod ~= "0" and github_address_mod ~= "" then
-		command = command .. " " .. shellquote(github_address_mod)
-	end
 
 	local rc = sys.call(command .. " >/dev/null 2>&1")
 	local result = read_core_latest_cached()
 	result.accepted = rc == 0
 	result.status = rc == 0 and "done" or "error"
 	return result
+end
+
+function probe_core_sources()
+	return update_command("probe_core_sources")
 end
 
 local function refresh_package_latest_now()

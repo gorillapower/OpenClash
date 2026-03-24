@@ -20,7 +20,6 @@
    DASH_TYPE="$2"
    DASH_FILE_DIR="/tmp/dash.zip"
    DASH_FILE_TMP="/tmp/dash/"
-   github_address_mod=$(uci_get_config "github_address_mod" || echo 0)
    if [ "$DASH_NAME" == "Dashboard" ]; then
       UNPACK_FILE_DIR="/usr/share/clashnivo/ui/dashboard/"
       BACKUP_FILE_DIR="/usr/share/clashnivo/ui/dashboard_backup/"

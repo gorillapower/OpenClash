@@ -91,10 +91,31 @@ export interface CoreVersionResult {
   kind?: string
   core_type?: string
   source_policy?: string
+  source_policy_label?: string
+  selected_source?: string
+  selected_source_label?: string
   source_branch?: string
   source_base?: string
+  probe_url?: string
+  latency_ms?: number
   accepted?: boolean
   status?: 'done' | 'error'
+}
+
+export interface CoreSourceProbeResult {
+  accepted: boolean
+  status: 'done' | 'error' | 'busy'
+  busy?: boolean
+  context?: string
+  active_command?: string
+  active_pid?: string
+  source_policy?: string
+  source_policy_label?: string
+  selected_source?: string
+  selected_source_label?: string
+  selected_base?: string
+  probe_url?: string
+  latency_ms?: number
 }
 
 export type UpdateState = 'idle' | 'accepted' | 'running' | 'done' | 'nochange' | 'busy' | 'error'
@@ -364,6 +385,10 @@ export const luciRpc = {
 
   coreRefreshLatestVersion(): Promise<CoreVersionResult> {
     return rpcCall('core.refreshLatestVersion', [])
+  },
+
+  coreProbeSources(): Promise<CoreSourceProbeResult> {
+    return rpcCall('core.probeSources', [])
   },
 
   coreUpdate(): Promise<UpdateStatusResult> {

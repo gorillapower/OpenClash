@@ -5,6 +5,7 @@
 . /usr/share/clashnivo/log.sh
 . /usr/share/clashnivo/clashnivo_curl.sh
 . /usr/share/clashnivo/uci.sh
+. /usr/share/clashnivo/core_source.sh
 
 set_lock() {
    exec 877>"/tmp/lock/clashnivo_rule.lock" 2>/dev/null
@@ -39,15 +40,12 @@ yml_other_rules_dl()
 
    LOG_OUT "Rule refresh: downloading the active third-party rule set."
    if [ "$rule_name" = "lhie1" ]; then
-      if [ "$github_address_mod" != "0" ]; then
-         if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
-            DOWNLOAD_URL="${github_address_mod}gh/dler-io/Rules@master/Clash/Rule.yaml"
-         else
-            DOWNLOAD_URL="${github_address_mod}https://raw.githubusercontent.com/dler-io/Rules/master/Clash/Rule.yaml"
-         fi
-      else
-         DOWNLOAD_URL="https://raw.githubusercontent.com/dler-io/Rules/master/Clash/Rule.yaml"
-      fi
+      DOWNLOAD_URL="$(clashnivo_download_source_url "https://raw.githubusercontent.com/dler-io/Rules/master/Clash/Rule.yaml")" || {
+         LOG_OUT "Rule refresh failed because no healthy download source is available."
+         SLOG_CLEAN
+         del_lock
+         exit 0
+      }
    fi
    DOWNLOAD_FILE_CURL "$DOWNLOAD_URL" "/tmp/rules.yaml"
    if [ "$?" -eq 0 ] && [ -s "/tmp/rules.yaml" ]; then
@@ -121,7 +119,6 @@ yml_other_rules_dl()
 
 LOG_FILE="/tmp/clashnivo.log"
 RUlE_SOURCE=$(uci_get_config "rule_source")
-github_address_mod=$(uci_get_config "github_address_mod" || echo 0)
 restart=0
 
 if [ "$RUlE_SOURCE" = "0" ]; then

@@ -3,6 +3,7 @@
 . /usr/share/clashnivo/uci.sh
 . /usr/share/clashnivo/clashnivo_curl.sh
 . /usr/share/clashnivo/clashnivo_ps.sh
+. /usr/share/clashnivo/core_source.sh
 
 set_lock() {
    exec 878>"/tmp/lock/clashnivo_update.lock" 2>/dev/null
@@ -18,13 +19,7 @@ set_lock
 inc_job_counter
 restart=0
 
-if [ -n "$1" ] && [ "$1" != "one_key_update" ]; then
-   /usr/share/clashnivo/clashnivo_version.sh "$1" 2>/dev/null
-elif [ -n "$2" ]; then
-   /usr/share/clashnivo/clashnivo_version.sh "$2" 2>/dev/null
-else
-   /usr/share/clashnivo/clashnivo_version.sh 2>/dev/null
-fi
+/usr/share/clashnivo/clashnivo_version.sh 2>/dev/null
 
 if [ ! -f "/tmp/clashnivo_last_version" ]; then
    LOG_ERROR "Could not fetch the latest Clash Nivo package version."
@@ -61,57 +56,30 @@ elif [ -x "/usr/bin/apk" ]; then
 fi
 OP_LV=$(sed -n 1p "$LAST_OPVER" 2>/dev/null |sed "s/^v//g" |tr -d "\n")
 RELEASE_BRANCH=$(uci_get_config "release_branch" || echo "master")
-github_address_mod=$(uci_get_config "github_address_mod" || echo 0)
 
 #一键更新
 if [ "$1" = "one_key_update" ]; then
-   if [ "$github_address_mod" = "0" ] && [ -z "$2" ]; then
-      LOG_TIP "If the package download fails, try a GitHub mirror in System advanced settings."
-   fi
-   if [ -n "$2" ]; then
-      /usr/share/clashnivo/clashnivo_core.sh "Meta" "$1" "$2" >/dev/null 2>&1 &
-      github_address_mod="$2"
-   else
-      /usr/share/clashnivo/clashnivo_core.sh "Meta" "$1" >/dev/null 2>&1 &
-      github_address_mod=0
-   fi
-
+   /usr/share/clashnivo/clashnivo_core.sh "Meta" "$1" >/dev/null 2>&1 &
    wait
-else
-   if [ "$github_address_mod" = "0" ]; then
-      LOG_TIP "If the package download fails, try a GitHub mirror in System advanced settings."
-   fi
 fi
 
 if [ -n "$OP_CV" ] && [ -n "$OP_LV" ] && version_compare "$OP_CV" "$OP_LV" && [ -f "$LAST_OPVER" ]; then
    LOG_TIP "Package update: downloading Clash Nivo v$LAST_VER."
-   if [ "$github_address_mod" != "0" ]; then
-      if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
-         if [ -x "/bin/opkg" ]; then
-            DOWNLOAD_URL="${github_address_mod}gh/gorillapower/OpenClash@package/${RELEASE_BRANCH}/luci-app-clashnivo_${LAST_VER}_all.ipk"
-            DOWNLOAD_PATH="/tmp/clashnivo.ipk"
-         elif [ -x "/usr/bin/apk" ]; then
-            DOWNLOAD_URL="${github_address_mod}gh/gorillapower/OpenClash@package/${RELEASE_BRANCH}/luci-app-clashnivo-${LAST_VER}.apk"
-            DOWNLOAD_PATH="/tmp/clashnivo.apk"
-         fi
-      else
-         if [ -x "/bin/opkg" ]; then
-            DOWNLOAD_URL="${github_address_mod}https://raw.githubusercontent.com/gorillapower/OpenClash/package/${RELEASE_BRANCH}/luci-app-clashnivo_${LAST_VER}_all.ipk"
-            DOWNLOAD_PATH="/tmp/clashnivo.ipk"
-         elif [ -x "/usr/bin/apk" ]; then
-            DOWNLOAD_URL="${github_address_mod}https://raw.githubusercontent.com/gorillapower/OpenClash/package/${RELEASE_BRANCH}/luci-app-clashnivo-${LAST_VER}.apk"
-            DOWNLOAD_PATH="/tmp/clashnivo.apk"
-         fi
-      fi
-   else
-      if [ -x "/bin/opkg" ]; then
-         DOWNLOAD_URL="https://raw.githubusercontent.com/gorillapower/OpenClash/package/${RELEASE_BRANCH}/luci-app-clashnivo_${LAST_VER}_all.ipk"
-         DOWNLOAD_PATH="/tmp/clashnivo.ipk"
-      elif [ -x "/usr/bin/apk" ]; then
-         DOWNLOAD_URL="https://raw.githubusercontent.com/gorillapower/OpenClash/package/${RELEASE_BRANCH}/luci-app-clashnivo-${LAST_VER}.apk"
-         DOWNLOAD_PATH="/tmp/clashnivo.apk"
-      fi
+   if [ -x "/bin/opkg" ]; then
+      DOWNLOAD_PATH="/tmp/clashnivo.ipk"
+      OFFICIAL_DOWNLOAD_URL="https://raw.githubusercontent.com/gorillapower/OpenClash/package/${RELEASE_BRANCH}/luci-app-clashnivo_${LAST_VER}_all.ipk"
+   elif [ -x "/usr/bin/apk" ]; then
+      DOWNLOAD_PATH="/tmp/clashnivo.apk"
+      OFFICIAL_DOWNLOAD_URL="https://raw.githubusercontent.com/gorillapower/OpenClash/package/${RELEASE_BRANCH}/luci-app-clashnivo-${LAST_VER}.apk"
    fi
+
+   DOWNLOAD_URL="$(clashnivo_download_source_url "$OFFICIAL_DOWNLOAD_URL")" || {
+      LOG_ERROR "Package update aborted because no healthy download source is available."
+      SLOG_CLEAN
+      dec_job_counter_and_restart "$restart"
+      del_lock
+      exit 0
+   }
 
    retry_count=0
    max_retries=3

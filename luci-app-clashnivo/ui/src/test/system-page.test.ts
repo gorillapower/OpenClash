@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte'
 import type { CreateQueryResult, CreateMutationResult } from '@tanstack/svelte-query'
 import type { ClashVersion } from '$lib/api/clash'
-import type { CoreVersionResult, DashboardOption, ServiceStatusResult, UpdateStatusResult, UciPackage } from '$lib/api/luci'
+import type { CoreSourceProbeResult, CoreVersionResult, DashboardOption, ServiceStatusResult, UpdateStatusResult, UciPackage } from '$lib/api/luci'
 import SystemPage from '../pages/SystemPage.svelte'
 
 function makeQueryResult<T>(data: T) {
@@ -31,6 +31,7 @@ vi.mock('$lib/queries/luci', () => ({
   useSetFirewallRules: vi.fn(),
   useCoreLatestVersion: vi.fn(),
   useCoreRefreshLatestVersion: vi.fn(),
+  useCoreProbeSources: vi.fn(),
   useCoreUpdateStatus: vi.fn(),
   useCoreUpdate: vi.fn(),
   usePackageLatestVersion: vi.fn(),
@@ -65,6 +66,7 @@ import {
   useDashboardUpdate,
   useDashboardUpdateStatus,
   useCoreRefreshLatestVersion,
+  useCoreProbeSources,
   useCoreLatestVersion,
   useCoreUpdate,
   useCoreUpdateStatus,
@@ -93,7 +95,7 @@ function setupMocks({
   latestCore = {
     version: '1.19.0',
     core_type: 'Meta',
-    source_policy: 'openclash',
+    source_policy: 'auto',
     source_branch: 'master',
     source_base: 'https://raw.githubusercontent.com/vernesong/OpenClash/core'
   } as CoreVersionResult,
@@ -141,6 +143,9 @@ function setupMocks({
   )
   vi.mocked(useCoreRefreshLatestVersion).mockReturnValue(
     makeMutationResult() as CreateMutationResult<CoreVersionResult, unknown, void, unknown>
+  )
+  vi.mocked(useCoreProbeSources).mockReturnValue(
+    makeMutationResult() as CreateMutationResult<CoreSourceProbeResult, unknown, void, unknown>
   )
   vi.mocked(useCoreUpdateStatus).mockReturnValue(
     makeQueryResult(coreStatus) as CreateQueryResult<UpdateStatusResult>
@@ -201,14 +206,14 @@ describe('SystemPage', () => {
     setupMocks({
       latestCore: {
         version: '1.19.0',
-        source_policy: 'clashnivo',
+        source_policy: 'official',
         source_branch: 'master',
-        source_base: 'https://raw.githubusercontent.com/gorillapower/OpenClash/core'
+        source_base: 'https://raw.githubusercontent.com/vernesong/OpenClash/core'
       }
     })
     render(SystemPage)
 
-    expect(screen.getAllByText('Clash Nivo').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Official GitHub').length).toBeGreaterThan(0)
     expect(screen.getByText('Core runtime')).toBeInTheDocument()
     expect(screen.getByText('Dashboards')).toBeInTheDocument()
   })
@@ -216,12 +221,32 @@ describe('SystemPage', () => {
   it('shows current and latest core versions', () => {
     setupMocks({
       currentVersion: { version: '1.18.3', meta: true },
-      latestCore: { version: '1.19.0', core_type: 'Meta', source_policy: 'openclash' }
+      latestCore: { version: '1.19.0', core_type: 'Meta', source_policy: 'auto' }
     })
     render(SystemPage)
 
     expect(screen.getByText('1.18.3')).toBeInTheDocument()
     expect(screen.getByText('1.19.0')).toBeInTheDocument()
+  })
+
+  it('shows install core when no current core is present', () => {
+    setupMocks({
+      currentVersion: { version: '', meta: true },
+      latestCore: {
+        version: '1.19.0',
+        core_type: 'Meta',
+        source_policy: 'auto',
+        selected_source_label: 'TestingCF jsDelivr',
+        source_base: 'https://testingcf.jsdelivr.net/gh/vernesong/OpenClash@core'
+      }
+    })
+    render(SystemPage)
+
+    expect(screen.getByRole('button', { name: 'Install core' })).toBeInTheDocument()
+    expect(screen.getByText('No core is installed yet.')).toBeInTheDocument()
+    expect(screen.getByText(/Selected: TestingCF jsDelivr/)).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Download source' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Check source' })).toBeInTheDocument()
   })
 
   it('shows dashboard link using configured transport', () => {

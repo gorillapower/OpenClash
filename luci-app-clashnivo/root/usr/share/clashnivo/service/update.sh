@@ -19,22 +19,39 @@ clashnivo_service_core_source_mode() {
    clashnivo_core_source_mode
 }
 
+clashnivo_service_core_source_selected_mode() {
+   local selected
+
+   selected="$(clashnivo_core_source_selected_mode)"
+   if [ -n "$selected" ]; then
+      printf '%s' "$selected"
+      return 0
+   fi
+
+   clashnivo_service_core_source_mode
+}
+
 clashnivo_service_core_source_branch() {
    clashnivo_core_source_branch
 }
 
 clashnivo_service_core_source_base_url() {
-   local mode
+   local mode selected
 
    mode="$(clashnivo_service_core_source_mode)"
    case "$mode" in
-      custom)
-         clashnivo_core_source_custom_base_url
+      auto)
+         selected="$(clashnivo_core_source_selected_base_url)"
+         [ -n "$selected" ] && printf '%s' "$selected"
       ;;
-      openclash|clashnivo)
-         printf 'https://raw.githubusercontent.com/%s/core' "$(clashnivo_core_source_repo "$mode")"
+      official|jsdelivr|fastly|testingcf|custom)
+         clashnivo_core_source_base_url_for_mode "$mode"
       ;;
    esac
+}
+
+clashnivo_service_core_source_selected_label() {
+   clashnivo_core_source_label "$(clashnivo_service_core_source_selected_mode)"
 }
 
 clashnivo_service_update_status_file() {
@@ -219,15 +236,51 @@ clashnivo_service_update_package_command() {
    printf '}\n'
 }
 
-clashnivo_service_update_core_latest_command() {
-   local github_address_mod latest_version core_type line_number source_mode source_base source_branch
+clashnivo_service_probe_core_sources_command() {
+   local context="probe_core_sources" resolution source_mode selected_mode selected_base selected_latency probe_url configured_label selected_label
 
-   github_address_mod="$(uci_get_config "github_address_mod" || echo 0)"
-   if [ "$github_address_mod" != "0" ]; then
-      "$CLASHNIVO_UPDATE_CORE_VERSION_SCRIPT" "$github_address_mod" >/dev/null 2>&1
-   else
-      "$CLASHNIVO_UPDATE_CORE_VERSION_SCRIPT" >/dev/null 2>&1
+   if ! clashnivo_service_command_lock_acquire "${context}"; then
+      clashnivo_service_emit_busy_json "${context}"
+      return 3
    fi
+
+   trap 'clashnivo_service_command_lock_release' EXIT INT TERM
+   clashnivo_service_command_lock_set_owner "${context}" "$$"
+
+   resolution="$(clashnivo_core_source_resolve 1)" || {
+      printf '{'
+      printf '"accepted":false,'
+      printf '"status":"error",'
+      printf '"source_policy":%s' "$(clashnivo_service_json_string "$(clashnivo_service_core_source_mode)")"
+      printf '}\n'
+      return 1
+   }
+
+   source_mode="$(clashnivo_service_core_source_mode)"
+   selected_mode="$(printf '%s' "$resolution" | cut -d'|' -f1)"
+   selected_base="$(printf '%s' "$resolution" | cut -d'|' -f2)"
+   selected_latency="$(printf '%s' "$resolution" | cut -d'|' -f3)"
+   probe_url="$(printf '%s' "$resolution" | cut -d'|' -f4-)"
+   configured_label="$(clashnivo_core_source_label "$source_mode")"
+   selected_label="$(clashnivo_core_source_label "$selected_mode")"
+
+   printf '{'
+   printf '"accepted":true,'
+   printf '"status":"done",'
+   printf '"source_policy":%s,' "$(clashnivo_service_json_string "$source_mode")"
+   printf '"source_policy_label":%s,' "$(clashnivo_service_json_string "$configured_label")"
+   printf '"selected_source":%s,' "$(clashnivo_service_json_string "$selected_mode")"
+   printf '"selected_source_label":%s,' "$(clashnivo_service_json_string "$selected_label")"
+   printf '"selected_base":%s,' "$(clashnivo_service_json_string "$selected_base")"
+   printf '"probe_url":%s,' "$(clashnivo_service_json_string "$probe_url")"
+   printf '"latency_ms":%s' "${selected_latency:-0}"
+   printf '}\n'
+}
+
+clashnivo_service_update_core_latest_command() {
+   local latest_version core_type line_number source_mode source_base source_branch selected_source selected_label
+
+   "$CLASHNIVO_UPDATE_CORE_VERSION_SCRIPT" >/dev/null 2>&1
 
    core_type="$(uci_get_config "core_type")"
    [ "$(uci_get_config "smart_enable" || echo 0)" = "1" ] && core_type="Smart"
@@ -239,12 +292,16 @@ clashnivo_service_update_core_latest_command() {
    source_mode="$(clashnivo_service_core_source_mode)"
    source_base="$(clashnivo_service_core_source_base_url)"
    source_branch="$(clashnivo_service_core_source_branch)"
+   selected_source="$(clashnivo_service_core_source_selected_mode)"
+   selected_label="$(clashnivo_service_core_source_selected_label)"
 
    printf '{'
    printf '"kind":"core",'
    printf '"version":%s,' "$(clashnivo_service_json_string "$latest_version")"
    printf '"core_type":%s,' "$(clashnivo_service_json_string "$core_type")"
    printf '"source_policy":%s,' "$(clashnivo_service_json_string "$source_mode")"
+    printf '"selected_source":%s,' "$(clashnivo_service_json_string "$selected_source")"
+    printf '"selected_source_label":%s,' "$(clashnivo_service_json_string "$selected_label")"
    printf '"source_branch":%s,' "$(clashnivo_service_json_string "$source_branch")"
    printf '"source_base":%s' "$(clashnivo_service_json_string "$source_base")"
    printf '}\n'

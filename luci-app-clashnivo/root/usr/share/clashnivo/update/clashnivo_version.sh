@@ -1,6 +1,7 @@
 #!/bin/bash
 . /usr/share/clashnivo/clashnivo_curl.sh
 . /usr/share/clashnivo/uci.sh
+. /usr/share/clashnivo/core_source.sh
 
 set_lock() {
    exec 869>"/tmp/lock/clashnivo_version.lock" 2>/dev/null
@@ -40,20 +41,11 @@ elif [ -x "/usr/bin/apk" ]; then
    OP_CV=$(apk list luci-app-clashnivo 2>/dev/null|grep 'installed' | grep -oE '[0-9]+(\.[0-9]+)*' | head -1 2>/dev/null)
 fi
 OP_LV=$(sed -n 1p "$DOWNLOAD_FILE" 2>/dev/null |sed "s/^v//g" |tr -d "\n")
-github_address_mod=$(uci_get_config "github_address_mod" || echo 0)
-if [ -n "$1" ]; then
-   github_address_mod="$1"
-fi
-
-if [ "$github_address_mod" != "0" ]; then
-   if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
-      DOWNLOAD_URL="${github_address_mod}gh/vernesong/OpenClash@package/${RELEASE_BRANCH}/version"
-   else
-      DOWNLOAD_URL="${github_address_mod}https://raw.githubusercontent.com/gorillapower/OpenClash/package/${RELEASE_BRANCH}/version"
-   fi
-else
-   DOWNLOAD_URL="https://raw.githubusercontent.com/gorillapower/OpenClash/package/${RELEASE_BRANCH}/version"
-fi
+OFFICIAL_URL="https://raw.githubusercontent.com/gorillapower/OpenClash/package/${RELEASE_BRANCH}/version"
+DOWNLOAD_URL="$(clashnivo_download_source_url "$OFFICIAL_URL")" || {
+   del_lock
+   exit 1
+}
 
 DOWNLOAD_FILE_CURL "$DOWNLOAD_URL" "$DOWNLOAD_FILE" "$DOWNLOAD_FILE"
 

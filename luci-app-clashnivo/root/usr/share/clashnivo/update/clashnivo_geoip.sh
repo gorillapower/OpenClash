@@ -3,6 +3,7 @@
 . /usr/share/clashnivo/log.sh
 . /usr/share/clashnivo/clashnivo_curl.sh
 . /usr/share/clashnivo/uci.sh
+. /usr/share/clashnivo/core_source.sh
 
 set_lock() {
    exec 873>"/tmp/lock/clashnivo_geoip.lock" 2>/dev/null
@@ -19,7 +20,6 @@ inc_job_counter
 
 small_flash_memory=$(uci_get_config "small_flash_memory")
 GEOIP_CUSTOM_URL=$(uci_get_config "geoip_custom_url")
-github_address_mod=$(uci_get_config "github_address_mod" || echo 0)
 restart=0
 
 if [ "$small_flash_memory" != "1" ]; then
@@ -31,15 +31,13 @@ else
 fi
 LOG_OUT "Downloading GeoIP database..."
 if [ -z "$GEOIP_CUSTOM_URL" ]; then
-   if [ "$github_address_mod" != "0" ]; then
-      if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
-         DOWNLOAD_URL="${github_address_mod}gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat"
-      else
-         DOWNLOAD_URL="${github_address_mod}https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat"
-      fi
-   else
-      DOWNLOAD_URL="https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat"
-   fi
+   DOWNLOAD_URL="$(clashnivo_download_source_url "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat")" || {
+      LOG_OUT "GeoIP database update failed because no healthy download source is available."
+      SLOG_CLEAN
+      dec_job_counter_and_restart "$restart"
+      del_lock
+      exit 0
+   }
 else
    DOWNLOAD_URL=$GEOIP_CUSTOM_URL
 fi

@@ -3,6 +3,7 @@
   import {
     useAssetsUpdate,
     useAssetsUpdateStatus,
+    useCoreProbeSources,
     useDashboards,
     useDashboardSelect,
     useDashboardUpdate,
@@ -16,6 +17,7 @@
     usePackageRefreshLatestVersion,
     usePackageUpdate,
     usePackageUpdateStatus,
+    useSetUciConfigBatch,
     useSetUciConfig,
     useUciConfig
   } from '$lib/queries/luci'
@@ -32,6 +34,7 @@
   const currentCore = useClashVersion()
   const latestCore = useCoreLatestVersion()
   const refreshLatestCore = useCoreRefreshLatestVersion()
+  const probeCoreSources = useCoreProbeSources()
   const latestPackage = usePackageLatestVersion()
   const refreshLatestPackage = usePackageRefreshLatestVersion()
   const busyCommand = $derived(serviceStatus.data?.busy_command ?? '')
@@ -62,12 +65,15 @@
   } as never)
   const dashboards = useDashboards()
   const setDashboardForwardSsl = useSetUciConfig('clashnivo', 'config', 'dashboard_forward_ssl')
+  const setCoreSourceConfig = useSetUciConfigBatch('clashnivo', 'config')
   const dashboardSelect = useDashboardSelect()
 
   const cfg = $derived(config.data?.config ?? {})
   const controllerPort = $derived(((cfg['cn_port'] as string | undefined) ?? '9093').trim() || '9093')
   const dashboardForwardSsl = $derived((cfg['dashboard_forward_ssl'] as string | undefined) === '1')
-  const coreSourcePolicy = $derived(latestCore.data?.source_policy ?? 'openclash')
+  const rawCoreSourceMode = $derived((cfg['core_source'] as string | undefined) ?? 'auto')
+  const coreCustomBaseUrl = $derived((cfg['core_custom_base_url'] as string | undefined) ?? '')
+  const coreSourcePolicy = $derived(latestCore.data?.source_policy ?? 'auto')
   const dashboardUrl = $derived(
     `${dashboardForwardSsl ? 'https' : 'http'}://${window.location.hostname}:${controllerPort}/ui`
   )
@@ -76,11 +82,41 @@
   const latestCoreVersion = $derived(latestCore.data?.version ?? null)
   const currentCoreType = $derived(currentCore.data?.meta ? 'Mihomo' : 'Clash')
   const latestCoreType = $derived(latestCore.data?.core_type ?? currentCoreType)
+  const selectedCoreSourceLabel = $derived(latestCore.data?.selected_source_label ?? null)
+  const selectedCoreSourceBase = $derived(latestCore.data?.source_base ?? null)
+  const selectedCoreSourceLatency = $derived(latestCore.data?.latency_ms ?? null)
+  const coreMissing = $derived(!currentCoreVersion)
   const latestPackageVersion = $derived(latestPackage.data?.version ?? null)
   const coreUpdateAvailable = $derived(
     !!latestCoreVersion && !!currentCoreVersion && latestCoreVersion !== currentCoreVersion
   )
   let explainerOpen = $state(false)
+  let localCoreCustomBaseUrl = $state('')
+
+  const CORE_SOURCE_OPTIONS = {
+    auto: 'Auto (recommended)',
+    official: 'Official GitHub',
+    jsdelivr: 'jsDelivr',
+    fastly: 'Fastly jsDelivr',
+    testingcf: 'TestingCF jsDelivr',
+    custom: 'Custom URL'
+  } as const
+
+  type CoreSourceMode = keyof typeof CORE_SOURCE_OPTIONS
+
+  const coreSourceMode = $derived.by<CoreSourceMode>(() => {
+    if (rawCoreSourceMode === 'openclash' || rawCoreSourceMode === 'clashnivo') return 'official'
+    if (
+      rawCoreSourceMode === 'official' ||
+      rawCoreSourceMode === 'jsdelivr' ||
+      rawCoreSourceMode === 'fastly' ||
+      rawCoreSourceMode === 'testingcf' ||
+      rawCoreSourceMode === 'custom'
+    ) {
+      return rawCoreSourceMode
+    }
+    return 'auto'
+  })
 
   const coreBusy = $derived(isPendingState(coreUpdateStatus.data?.status) || coreUpdate.isPending)
   const packageBusy = $derived(
@@ -136,6 +172,10 @@
     return status === 'accepted' || status === 'running'
   }
 
+  $effect(() => {
+    localCoreCustomBaseUrl = coreCustomBaseUrl
+  })
+
   function formatStatus(status?: string) {
     switch (status) {
       case 'accepted':
@@ -155,9 +195,13 @@
 
   function titleCasePolicy(policy?: string) {
     if (!policy) return 'Unknown'
-    if (policy === 'openclash') return 'OpenClash'
-    if (policy === 'clashnivo') return 'Clash Nivo'
-    return 'Custom'
+    if (policy === 'auto') return 'Auto'
+    if (policy === 'official' || policy === 'openclash' || policy === 'clashnivo') return 'Official GitHub'
+    if (policy === 'jsdelivr') return 'jsDelivr'
+    if (policy === 'fastly') return 'Fastly jsDelivr'
+    if (policy === 'testingcf') return 'TestingCF jsDelivr'
+    if (policy === 'custom') return 'Custom'
+    return policy
   }
 
   function dashboardActionLabel(optionId: string, installed: boolean) {
@@ -165,6 +209,27 @@
       return installed ? 'Updating…' : 'Downloading…'
     }
     return installed ? 'Update' : 'Download'
+  }
+
+  async function handleCoreSourceModeChange(e: Event) {
+    const value = (e.target as HTMLSelectElement).value as CoreSourceMode
+    if (value === 'custom') {
+      if (!localCoreCustomBaseUrl) localCoreCustomBaseUrl = 'https://'
+      return
+    }
+    await setCoreSourceConfig.mutateAsync([
+      { option: 'core_source', value },
+      { option: 'core_custom_base_url', value: '' }
+    ])
+  }
+
+  async function saveCustomCoreSource() {
+    const trimmed = localCoreCustomBaseUrl.trim()
+    const normalised = trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed
+    await setCoreSourceConfig.mutateAsync([
+      { option: 'core_source', value: 'custom' },
+      { option: 'core_custom_base_url', value: normalised }
+    ])
   }
 </script>
 
@@ -213,7 +278,7 @@
               <div class="rounded-lg border border-border bg-card px-4 py-3">
                 <div class="flex items-start justify-between gap-4">
                   <div class="text-xs uppercase tracking-wider text-muted-foreground">Latest</div>
-                  {#if coreBusy || coreUpdateAvailable}
+                  {#if coreBusy || coreUpdateAvailable || coreMissing}
                     <Button
                       variant="default"
                       size="sm"
@@ -222,6 +287,8 @@
                     >
                       {#if coreBusy}
                         Updating…
+                      {:else if coreMissing}
+                        Install core
                       {:else if coreUpdateAvailable}
                         Update available
                       {:else}
@@ -244,6 +311,8 @@
                   <p class="mt-2 text-xs text-muted-foreground">
                     {#if !latestCoreVersion}
                       Latest version has not been checked yet.
+                    {:else if coreMissing}
+                      No core is installed yet.
                     {:else if coreBusy}
                       {formatStatus(coreUpdateStatus.data?.status)}
                     {:else}
@@ -261,6 +330,74 @@
                     {refreshLatestCore.isPending ? 'Checking latest…' : 'Check latest'}
                   </Button>
                 </div>
+              </div>
+            </div>
+
+            <div class="rounded-lg border border-border bg-card px-4 py-4">
+              <div class="flex flex-col gap-3">
+                <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div class="text-xs uppercase tracking-wider text-muted-foreground">Download source</div>
+                    <p class="mt-1 text-sm text-muted-foreground">
+                      Controls GitHub-backed downloads for core, package, assets, and managed rules.
+                    </p>
+                  </div>
+                  {#if selectedCoreSourceLabel}
+                    <span class="text-xs text-muted-foreground">
+                      {#if coreSourceMode === 'auto'}
+                        Selected: {selectedCoreSourceLabel}{#if selectedCoreSourceLatency !== null} ({selectedCoreSourceLatency} ms){/if}
+                      {:else}
+                        Current: {selectedCoreSourceLabel}
+                      {/if}
+                    </span>
+                  {/if}
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                  <select
+                    class="rounded-md border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                    value={coreSourceMode}
+                    onchange={handleCoreSourceModeChange}
+                    disabled={globalBusy || setCoreSourceConfig.isPending || probeCoreSources.isPending}
+                    aria-label="Download source"
+                  >
+                    {#each Object.entries(CORE_SOURCE_OPTIONS) as [value, label]}
+                      <option value={value}>{label}</option>
+                    {/each}
+                  </select>
+                  {#if coreSourceMode === 'custom'}
+                    <input
+                      class="min-w-[16rem] flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                      bind:value={localCoreCustomBaseUrl}
+                      aria-label="Custom download source prefix"
+                      placeholder="https://mirror.example.com"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onclick={saveCustomCoreSource}
+                      disabled={globalBusy || setCoreSourceConfig.isPending || probeCoreSources.isPending}
+                    >
+                      Save
+                    </Button>
+                  {/if}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onclick={() => probeCoreSources.mutateAsync()}
+                    disabled={globalBusy || setCoreSourceConfig.isPending || probeCoreSources.isPending}
+                  >
+                    {probeCoreSources.isPending ? 'Checking…' : 'Check source'}
+                  </Button>
+                </div>
+
+                {#if selectedCoreSourceBase}
+                  <p class="break-all text-xs text-muted-foreground">{selectedCoreSourceBase}</p>
+                {:else if coreSourceMode === 'auto'}
+                  <p class="text-xs text-muted-foreground">
+                    Run Check source before the first install or update so Clash Nivo can pick a healthy source.
+                  </p>
+                {/if}
               </div>
             </div>
 
@@ -432,7 +569,7 @@
           </div>
         </CardHeader>
         <CardContent>
-          <SystemAdvancedSettings />
+          <SystemAdvancedSettings showDownloadSourceSection={false} />
         </CardContent>
       </Card>
   </div>

@@ -3,9 +3,12 @@
 . /usr/share/clashnivo/ruby.sh
 . /usr/share/clashnivo/log.sh
 . /usr/share/clashnivo/uci.sh
+. /usr/share/clashnivo/core_source.sh
 
 LOG_FILE="/tmp/clashnivo.log"
-github_address_mod=$(uci_get_config "github_address_mod" || echo 0)
+download_source_mode=$(clashnivo_download_source_selected_mode)
+[ -z "$download_source_mode" ] && download_source_mode=$(clashnivo_download_source_mode)
+download_source_prefix=$(clashnivo_download_source_mirror_prefix_for_mode "$download_source_mode" 2>/dev/null)
 urltest_address_mod=$(uci_get_config "urltest_address_mod" || echo 0)
 tolerance=$(uci_get_config "tolerance" || echo 0)
 urltest_interval_mod=$(uci_get_config "urltest_interval_mod" || echo 0)
@@ -290,23 +293,23 @@ yml_other_set()
                            config['path'] = './'+path_prefix+'/'+name;
                         end;
 
-                        # CDN
-                        if '$github_address_mod' != '0' and config['url'] then
+                        # Download source rewrite
+                        if '$download_source_mode' != 'official' and config['url'] then
                            if config['url'] =~ /^https:\/\/raw.githubusercontent.com/ then
-                              if '$github_address_mod' == 'https://cdn.jsdelivr.net/' or 
-                                 '$github_address_mod' == 'https://fastly.jsdelivr.net/' or 
-                                 '$github_address_mod' == 'https://testingcf.jsdelivr.net/' then
+                              if '$download_source_mode' == 'jsdelivr' or 
+                                 '$download_source_mode' == 'fastly' or 
+                                 '$download_source_mode' == 'testingcf' then
                                  url_parts = config['url'].split('/');
                                  if url_parts.length >= 5 then
-                                    config['url'] = '$github_address_mod' + 'gh/' + url_parts[3] + '/' + 
+                                    config['url'] = '$download_source_prefix' + 'gh/' + url_parts[3] + '/' + 
                                                    url_parts[4] + '@' + config['url'].split(url_parts[2] + 
                                                    '/' + url_parts[3] + '/' + url_parts[4] + '/')[1];
                                  end;
                               else
-                                 config['url'] = '$github_address_mod' + config['url'];
+                                 config['url'] = '$download_source_prefix' + '/' + config['url'];
                               end;
                            elsif config['url'] =~ /^https:\/\/(raw.|gist.)(githubusercontent.com|github.com)/ then
-                              config['url'] = '$github_address_mod' + config['url'];
+                              config['url'] = '$download_source_prefix' + '/' + config['url'];
                            end;
                         end;
                      };

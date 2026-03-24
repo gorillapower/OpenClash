@@ -3,6 +3,7 @@
 . /lib/functions.sh
 . /usr/share/clashnivo/clashnivo_curl.sh
 . /usr/share/clashnivo/uci.sh
+. /usr/share/clashnivo/core_source.sh
 
    urlencode() {
       if [ "$#" -eq 1 ]; then
@@ -24,7 +25,6 @@
 
    RULE_FILE_NAME="$1"
    RELEASE_BRANCH=$(uci_get_config "release_branch" || echo "master")
-   github_address_mod=$(uci_get_config "github_address_mod" || echo 0)
    if [ -z "$(grep "$RULE_FILE_NAME" /usr/share/clashnivo/res/rule_providers.list 2>/dev/null)" ]; then
       DOWNLOAD_PATH=$(grep -F "$RULE_FILE_NAME" /usr/share/clashnivo/res/game_rules.list |awk -F ',' '{print $2}' 2>/dev/null)
       RULE_FILE_DIR="/etc/clashnivo/game_rules/$RULE_FILE_NAME"
@@ -47,25 +47,17 @@
    DOWNLOAD_PATH=$(urlencode "$DOWNLOAD_PATH")
 
    if [ "$RULE_TYPE" = "game" ]; then
-      if [ "$github_address_mod" != "0" ]; then
-         if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
-            DOWNLOAD_URL="${github_address_mod}gh/FQrabbit/SSTap-Rule@master/rules/${DOWNLOAD_PATH}"
-         else
-            DOWNLOAD_URL="${github_address_mod}https://raw.githubusercontent.com/FQrabbit/SSTap-Rule/master/rules/${DOWNLOAD_PATH}"
-         fi
-      else
-         DOWNLOAD_URL="https://raw.githubusercontent.com/FQrabbit/SSTap-Rule/master/rules/${DOWNLOAD_PATH}"
-      fi
+      DOWNLOAD_URL="$(clashnivo_download_source_url "https://raw.githubusercontent.com/FQrabbit/SSTap-Rule/master/rules/${DOWNLOAD_PATH}")" || {
+         LOG_OUT "Rule list update failed for 【$RULE_FILE_NAME】 because no healthy download source is available." && SLOG_CLEAN
+         del_lock
+         exit 0
+      }
    elif [ "$RULE_TYPE" = "provider" ]; then
-      if [ "$github_address_mod" != "0" ]; then
-         if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ] || [ "$github_address_mod" == "https://fastly.jsdelivr.net/" ] || [ "$github_address_mod" == "https://testingcf.jsdelivr.net/" ]; then
-            DOWNLOAD_URL="${github_address_modgh}/$(echo ${DOWNLOAD_PATH} |awk -F '/master' '{print $1}' 2>/dev/null)@master$(echo ${DOWNLOAD_PATH} |awk -F 'master' '{print $2}')"
-         else
-            DOWNLOAD_URL="${github_address_mod}https://raw.githubusercontent.com/${DOWNLOAD_PATH}"
-         fi
-      else
-         DOWNLOAD_URL="https://raw.githubusercontent.com/${DOWNLOAD_PATH}"
-      fi
+      DOWNLOAD_URL="$(clashnivo_download_source_url "https://raw.githubusercontent.com/${DOWNLOAD_PATH}")" || {
+         LOG_OUT "Rule list update failed for 【$RULE_FILE_NAME】 because no healthy download source is available." && SLOG_CLEAN
+         del_lock
+         exit 0
+      }
    fi
 
    DOWNLOAD_FILE_CURL "$DOWNLOAD_URL" "$TMP_RULE_DIR"
