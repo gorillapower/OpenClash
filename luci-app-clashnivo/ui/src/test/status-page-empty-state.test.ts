@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte'
 import type { CreateQueryResult, CreateMutationResult } from '@tanstack/svelte-query'
-import type { ServiceStatusResult, UciPackage } from '$lib/api/luci'
+import type { ServiceActionResult, ServiceStatusResult, UciPackage } from '$lib/api/luci'
 import StatusPage from '../pages/StatusPage.svelte'
 
 function makeQueryResult<T>(data: T, isSuccess = true) {
@@ -61,9 +61,9 @@ function setupEmptyState(addMutate = vi.fn().mockResolvedValue(undefined), addPe
   vi.mocked(useCustomProxies).mockReturnValue(makeQueryResult([]) as never)
   vi.mocked(useCustomRules).mockReturnValue(makeQueryResult([]) as never)
   vi.mocked(useConfigOverwrite).mockReturnValue(makeQueryResult({ content: '' }) as never)
-  vi.mocked(useServiceStart).mockReturnValue(makeMutationResult() as CreateMutationResult<void, unknown, void, unknown>)
-  vi.mocked(useServiceStop).mockReturnValue(makeMutationResult() as CreateMutationResult<void, unknown, void, unknown>)
-  vi.mocked(useServiceRestart).mockReturnValue(makeMutationResult() as CreateMutationResult<void, unknown, void, unknown>)
+  vi.mocked(useServiceStart).mockReturnValue(makeMutationResult() as CreateMutationResult<ServiceActionResult, unknown, void, unknown>)
+  vi.mocked(useServiceStop).mockReturnValue(makeMutationResult() as CreateMutationResult<ServiceActionResult, unknown, void, unknown>)
+  vi.mocked(useServiceRestart).mockReturnValue(makeMutationResult() as CreateMutationResult<ServiceActionResult, unknown, void, unknown>)
   vi.mocked(useSubscriptionAdd).mockReturnValue(
     makeMutationResult(addMutate, { isPending: addPending }) as unknown as ReturnType<typeof useSubscriptionAdd>
   )

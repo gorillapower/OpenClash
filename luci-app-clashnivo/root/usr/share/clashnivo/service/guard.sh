@@ -1,5 +1,81 @@
 #!/bin/sh
 
+clashnivo_service_command_lock_active_pid() {
+   [ -f "${COMMAND_LOCK_PID_FILE}" ] && sed -n '1p' "${COMMAND_LOCK_PID_FILE}" 2>/dev/null
+}
+
+clashnivo_service_command_lock_active_context() {
+   [ -f "${COMMAND_LOCK_CONTEXT_FILE}" ] && sed -n '1p' "${COMMAND_LOCK_CONTEXT_FILE}" 2>/dev/null
+}
+
+clashnivo_service_command_lock_started_at() {
+   [ -f "${COMMAND_LOCK_STARTED_AT_FILE}" ] && sed -n '1p' "${COMMAND_LOCK_STARTED_AT_FILE}" 2>/dev/null
+}
+
+clashnivo_service_command_lock_cleanup_stale() {
+   local pid
+
+   [ -d "${COMMAND_LOCK_DIR}" ] || return 0
+
+   pid="$(clashnivo_service_command_lock_active_pid)"
+   if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
+      return 0
+   fi
+
+   rm -rf "${COMMAND_LOCK_DIR}"
+}
+
+clashnivo_service_command_lock_busy() {
+   clashnivo_service_command_lock_cleanup_stale
+   [ -d "${COMMAND_LOCK_DIR}" ]
+}
+
+clashnivo_service_command_lock_set_owner() {
+   local context="${1:-unknown}"
+   local pid="${2:-$$}"
+
+   mkdir -p "${COMMAND_LOCK_DIR}" 2>/dev/null || return 1
+   printf '%s\n' "${pid}" > "${COMMAND_LOCK_PID_FILE}"
+   printf '%s\n' "${context}" > "${COMMAND_LOCK_CONTEXT_FILE}"
+   date +%s > "${COMMAND_LOCK_STARTED_AT_FILE}" 2>/dev/null
+}
+
+clashnivo_service_command_lock_acquire() {
+   local context="${1:-unknown}"
+
+   clashnivo_service_command_lock_cleanup_stale
+   mkdir "${COMMAND_LOCK_DIR}" 2>/dev/null || return 1
+   clashnivo_service_command_lock_set_owner "${context}" "$$"
+}
+
+clashnivo_service_command_lock_release() {
+   local owner
+
+   owner="$(clashnivo_service_command_lock_active_pid)"
+   if [ -n "${owner}" ] && [ "${owner}" != "$$" ] && kill -0 "${owner}" 2>/dev/null; then
+      return 0
+   fi
+
+   rm -rf "${COMMAND_LOCK_DIR}"
+}
+
+clashnivo_service_emit_busy_json() {
+   local context="${1:-unknown}"
+   local active_context active_pid
+
+   active_context="$(clashnivo_service_command_lock_active_context)"
+   active_pid="$(clashnivo_service_command_lock_active_pid)"
+
+   printf '{'
+   printf '"accepted":false,'
+   printf '"busy":true,'
+   printf '"status":"busy",'
+   printf '"context":"%s",' "${context}"
+   printf '"active_command":"%s",' "${active_context}"
+   printf '"active_pid":"%s"' "${active_pid}"
+   printf '}\n'
+}
+
 clashnivo_service_read_blocked_reason() {
    [ -f "${BLOCKED_REASON_FILE}" ] && sed -n '1p' "${BLOCKED_REASON_FILE}" 2>/dev/null
 }

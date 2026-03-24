@@ -32,6 +32,19 @@ export type UciPackage = Record<string, UciSection>
 // ---------------------------------------------------------------------------
 
 export type ServiceAction = 'start' | 'stop' | 'restart'
+export type ServiceActionState = 'accepted' | 'done' | 'busy' | 'error'
+
+export interface ServiceActionResult {
+  accepted: boolean
+  busy?: boolean
+  status: ServiceActionState
+  action?: ServiceAction
+  async?: boolean
+  context?: string
+  active_command?: string
+  active_pid?: string
+  started_at?: string
+}
 
 export interface ServiceStatusResult {
   running: boolean
@@ -50,6 +63,10 @@ export interface ServiceStatusResult {
   blocked?: boolean
   blocked_reason?: string
   can_start?: boolean
+  busy?: boolean
+  busy_command?: string
+  busy_pid?: string
+  busy_started_at?: string
   core_pid?: number
   active_config?: string
   core_type?: string
@@ -78,7 +95,7 @@ export interface CoreVersionResult {
   source_base?: string
 }
 
-export type UpdateState = 'idle' | 'accepted' | 'running' | 'done' | 'nochange' | 'error'
+export type UpdateState = 'idle' | 'accepted' | 'running' | 'done' | 'nochange' | 'busy' | 'error'
 
 export interface UpdateStatusResult {
   kind?: string
@@ -93,6 +110,11 @@ export interface UpdateStatusResult {
   source_base?: string
   status_path?: string
   log_path?: string
+  busy?: boolean
+  context?: string
+  active_command?: string
+  active_pid?: string
+  started_at?: string
 }
 
 export interface DashboardOption {
@@ -253,15 +275,15 @@ export const luciRpc = {
   },
 
   // Service control
-  serviceStart(name: string): Promise<void> {
+  serviceStart(name: string): Promise<ServiceActionResult> {
     return rpcCall('service.start', [name])
   },
 
-  serviceStop(name: string): Promise<void> {
+  serviceStop(name: string): Promise<ServiceActionResult> {
     return rpcCall('service.stop', [name])
   },
 
-  serviceRestart(name: string): Promise<void> {
+  serviceRestart(name: string): Promise<ServiceActionResult> {
     return rpcCall('service.restart', [name])
   },
 
@@ -292,11 +314,11 @@ export const luciRpc = {
     return rpcCall('subscription.delete', [name])
   },
 
-  subscriptionUpdate(name: string): Promise<void> {
+  subscriptionUpdate(name: string): Promise<UpdateStatusResult> {
     return rpcCall('subscription.update', [name])
   },
 
-  subscriptionUpdateAll(): Promise<void> {
+  subscriptionUpdateAll(): Promise<UpdateStatusResult> {
     return rpcCall('subscription.updateAll', [])
   },
 

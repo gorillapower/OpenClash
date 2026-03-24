@@ -15,6 +15,10 @@ local CLASHNIVO_CORE_VERSION_FILE = "/tmp/clash_last_version"
 local CLASHNIVO_PACKAGE_VERSION_FILE = "/tmp/clashnivo_last_version"
 local CLASHNIVO_CORE_VERSION_LOCK = "/tmp/clashnivo_core_latest.lock"
 local CLASHNIVO_PACKAGE_VERSION_LOCK = "/tmp/clashnivo_package_latest.lock"
+local CLASHNIVO_COMMAND_LOCK_DIR = "/tmp/clashnivo_command.lock"
+local CLASHNIVO_COMMAND_LOCK_PID_FILE = CLASHNIVO_COMMAND_LOCK_DIR .. "/pid"
+local CLASHNIVO_COMMAND_LOCK_CONTEXT_FILE = CLASHNIVO_COMMAND_LOCK_DIR .. "/context"
+local CLASHNIVO_COMMAND_LOCK_STARTED_AT_FILE = CLASHNIVO_COMMAND_LOCK_DIR .. "/started_at"
 local VERSION_CACHE_TTL = 900
 local DASHBOARD_UI_BASE = "/usr/share/clashnivo/ui"
 local DASHBOARD_OPTIONS = {
@@ -54,6 +58,55 @@ end
 function tail_file(path, lines, max_lines)
 	lines = math.min(tonumber(lines) or 100, max_lines or 500)
 	return sys.exec(string.format("tail -n %d %s 2>/dev/null", lines, shellquote(path))) or ""
+end
+
+local function command_lock_pid()
+	return read_trimmed_file(CLASHNIVO_COMMAND_LOCK_PID_FILE)
+end
+
+local function command_lock_context()
+	return read_trimmed_file(CLASHNIVO_COMMAND_LOCK_CONTEXT_FILE)
+end
+
+local function command_lock_started_at()
+	return read_trimmed_file(CLASHNIVO_COMMAND_LOCK_STARTED_AT_FILE)
+end
+
+local function command_lock_busy()
+	if not fs.access(CLASHNIVO_COMMAND_LOCK_DIR) then
+		return false
+	end
+
+	local pid = command_lock_pid()
+	if pid ~= "" and sys.call(string.format("kill -0 %s >/dev/null 2>&1", shellquote(pid))) == 0 then
+		return true
+	end
+
+	fs.remove(CLASHNIVO_COMMAND_LOCK_PID_FILE)
+	fs.remove(CLASHNIVO_COMMAND_LOCK_CONTEXT_FILE)
+	fs.remove(CLASHNIVO_COMMAND_LOCK_STARTED_AT_FILE)
+	fs.rmdir(CLASHNIVO_COMMAND_LOCK_DIR)
+	return false
+end
+
+local function busy_response(context)
+	return {
+		accepted = false,
+		busy = true,
+		status = "busy",
+		context = context,
+		active_command = command_lock_context(),
+		active_pid = command_lock_pid(),
+		started_at = command_lock_started_at(),
+	}
+end
+
+function command_busy(context)
+	if command_lock_busy() then
+		return busy_response(context)
+	end
+
+	return nil
 end
 
 function core_process_pid()
@@ -172,14 +225,33 @@ local function spawn_version_refresh(lock_file, command)
 end
 
 function service_action(action, async)
+	if command_lock_busy() then
+		return busy_response(action)
+	end
+
 	if async then
-		return sys.call(string.format(
+		sys.call(string.format(
 			"nohup %s %s </dev/null >/dev/null 2>&1 &",
 			shellquote(CLASHNIVO_INIT),
 			shellquote(action)
 		))
+		return {
+			accepted = true,
+			busy = false,
+			status = "accepted",
+			action = action,
+			async = true,
+		}
 	end
-	return sys.call(string.format("%s %s >/dev/null 2>&1", shellquote(CLASHNIVO_INIT), shellquote(action)))
+
+	local rc = sys.call(string.format("%s %s >/dev/null 2>&1", shellquote(CLASHNIVO_INIT), shellquote(action)))
+	return {
+		accepted = rc == 0,
+		busy = false,
+		status = rc == 0 and "done" or "error",
+		action = action,
+		async = false,
+	}
 end
 
 local function service_arg_command(action, arg, async)
@@ -230,7 +302,7 @@ end
 
 function start_subscription_update(name)
 	local action = (name and name ~= "") and "refresh_source" or "refresh_sources"
-	return service_arg_command(action, name, true)
+	return update_command(action, name)
 end
 
 function list_yaml_files(config_dir)

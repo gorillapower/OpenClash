@@ -60,12 +60,33 @@ clashnivo_service_subscription_emit_refresh_json() {
 
 clashnivo_service_subscription_refresh_async() {
    local selector="${1:-}"
+   local context="refresh_sources"
+   local worker_pid
 
    if [ -n "${selector}" ]; then
-      bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" "${selector}" >/dev/null 2>&1 &
-   else
-      bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" >/dev/null 2>&1 &
+      context="refresh_source:$(clashnivo_service_subscription_resolve_name "${selector}")"
    fi
+
+   if ! clashnivo_service_command_lock_acquire "${context}"; then
+      clashnivo_service_emit_busy_json "${context}"
+      return 3
+   fi
+
+   if [ -n "${selector}" ]; then
+      (
+         clashnivo_service_command_lock_set_owner "${context}" "$$"
+         trap 'clashnivo_service_command_lock_release' EXIT INT TERM
+         bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" "${selector}" >/dev/null 2>&1
+      ) &
+   else
+      (
+         clashnivo_service_command_lock_set_owner "${context}" "$$"
+         trap 'clashnivo_service_command_lock_release' EXIT INT TERM
+         bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" >/dev/null 2>&1
+      ) &
+   fi
+   worker_pid=$!
+   clashnivo_service_command_lock_set_owner "${context}" "${worker_pid}"
 }
 
 clashnivo_service_subscription_refresh_command() {
@@ -76,6 +97,8 @@ clashnivo_service_subscription_refresh_command() {
       mode="single"
    fi
 
-   clashnivo_service_subscription_refresh_async "${selector}"
+   if ! clashnivo_service_subscription_refresh_async "${selector}"; then
+      return 3
+   fi
    clashnivo_service_subscription_emit_refresh_json "${mode}" "${selector}"
 }

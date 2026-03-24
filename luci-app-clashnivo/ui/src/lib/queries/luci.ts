@@ -7,6 +7,7 @@ import {
 } from '@tanstack/svelte-query'
 import {
   luciRpc,
+  type ServiceActionResult,
   type UciPackage,
   type UciSection,
   type ServiceStatusResult,
@@ -163,14 +164,18 @@ export function useServiceStatus(
 
 export function useServiceStart(
   name: string,
-  opts?: Partial<CreateMutationOptions<void, unknown, void>>
+  opts?: Partial<CreateMutationOptions<ServiceActionResult, unknown, void>>
 ) {
   const queryClient = useQueryClient()
-  return createMutation<void, unknown, void>(() => ({
-    mutationFn: () => luciRpc.serviceStart(name) as Promise<void>,
-    onSuccess() {
+  return createMutation<ServiceActionResult, unknown, void>(() => ({
+    mutationFn: () => luciRpc.serviceStart(name),
+    onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
-      toasts.success(`${titleCaseService(name)} started`)
+      toasts.success(
+        result.busy
+          ? `${titleCaseService(name)} is busy: ${result.active_command ?? 'another command is running'}`
+          : `${titleCaseService(name)} start requested`
+      )
     },
     onError: onMutationError,
     ...opts
@@ -179,14 +184,18 @@ export function useServiceStart(
 
 export function useServiceStop(
   name: string,
-  opts?: Partial<CreateMutationOptions<void, unknown, void>>
+  opts?: Partial<CreateMutationOptions<ServiceActionResult, unknown, void>>
 ) {
   const queryClient = useQueryClient()
-  return createMutation<void, unknown, void>(() => ({
-    mutationFn: () => luciRpc.serviceStop(name) as Promise<void>,
-    onSuccess() {
+  return createMutation<ServiceActionResult, unknown, void>(() => ({
+    mutationFn: () => luciRpc.serviceStop(name),
+    onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
-      toasts.success(`${titleCaseService(name)} stopped`)
+      toasts.success(
+        result.busy
+          ? `${titleCaseService(name)} is busy: ${result.active_command ?? 'another command is running'}`
+          : `${titleCaseService(name)} stop requested`
+      )
     },
     onError: onMutationError,
     ...opts
@@ -195,14 +204,18 @@ export function useServiceStop(
 
 export function useServiceRestart(
   name: string,
-  opts?: Partial<CreateMutationOptions<void, unknown, void>>
+  opts?: Partial<CreateMutationOptions<ServiceActionResult, unknown, void>>
 ) {
   const queryClient = useQueryClient()
-  return createMutation<void, unknown, void>(() => ({
-    mutationFn: () => luciRpc.serviceRestart(name) as Promise<void>,
-    onSuccess() {
+  return createMutation<ServiceActionResult, unknown, void>(() => ({
+    mutationFn: () => luciRpc.serviceRestart(name),
+    onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
-      toasts.success(`${titleCaseService(name)} restarted`)
+      toasts.success(
+        result.busy
+          ? `${titleCaseService(name)} is busy: ${result.active_command ?? 'another command is running'}`
+          : `${titleCaseService(name)} restart requested`
+      )
     },
     onError: onMutationError,
     ...opts
@@ -294,14 +307,18 @@ export function useSubscriptionDelete(
 }
 
 export function useSubscriptionUpdate(
-  opts?: Partial<CreateMutationOptions<void, unknown, string>>
+  opts?: Partial<CreateMutationOptions<UpdateStatusResult, unknown, string>>
 ) {
   const queryClient = useQueryClient()
-  return createMutation<void, unknown, string>(() => ({
+  return createMutation<UpdateStatusResult, unknown, string>(() => ({
     mutationFn: (name: string) => luciRpc.subscriptionUpdate(name),
-    onSuccess(_, name) {
+    onSuccess(result, name) {
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
-      toasts.success(`Source refreshed: ${name}`)
+      toasts.success(
+        result.status === 'busy'
+          ? `Sources are busy: ${result.active_command ?? 'another command is running'}`
+          : `Source refresh requested: ${name}`
+      )
     },
     onError: onMutationError,
     ...opts
@@ -309,14 +326,18 @@ export function useSubscriptionUpdate(
 }
 
 export function useSubscriptionUpdateAll(
-  opts?: Partial<CreateMutationOptions<void, unknown, void>>
+  opts?: Partial<CreateMutationOptions<UpdateStatusResult, unknown, void>>
 ) {
   const queryClient = useQueryClient()
-  return createMutation<void, unknown, void>(() => ({
+  return createMutation<UpdateStatusResult, unknown, void>(() => ({
     mutationFn: () => luciRpc.subscriptionUpdateAll(),
-    onSuccess() {
+    onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
-      toasts.success('All sources refreshed')
+      toasts.success(
+        result.status === 'busy'
+          ? `Sources are busy: ${result.active_command ?? 'another command is running'}`
+          : 'All-source refresh requested'
+      )
     },
     onError: onMutationError,
     ...opts
@@ -1022,9 +1043,11 @@ export function useCoreUpdate(
       queryClient.invalidateQueries({ queryKey: luciKeys.coreLatestVersion })
       queryClient.invalidateQueries({ queryKey: luciKeys.coreUpdateStatus })
       toasts.success(
-        result.status === 'accepted' || result.status === 'running'
-          ? 'Core update started'
-          : 'Core update requested'
+        result.status === 'busy'
+          ? `Core update blocked: ${result.active_command ?? 'another command is running'}`
+          : result.status === 'accepted' || result.status === 'running'
+            ? 'Core update started'
+            : 'Core update requested'
       )
     },
     onError: onMutationError,
@@ -1063,9 +1086,11 @@ export function usePackageUpdate(
       queryClient.invalidateQueries({ queryKey: luciKeys.packageLatestVersion })
       queryClient.invalidateQueries({ queryKey: luciKeys.packageUpdateStatus })
       toasts.success(
-        result.status === 'accepted' || result.status === 'running'
-          ? 'Package update started'
-          : 'Package update requested'
+        result.status === 'busy'
+          ? `Package update blocked: ${result.active_command ?? 'another command is running'}`
+          : result.status === 'accepted' || result.status === 'running'
+            ? 'Package update started'
+            : 'Package update requested'
       )
     },
     onError: onMutationError,
@@ -1095,9 +1120,11 @@ export function useAssetsUpdate(
     onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.assetsUpdateStatus(target) })
       toasts.success(
-        result.status === 'accepted' || result.status === 'running'
-          ? (target === 'all' ? 'Asset refresh started' : `Asset refresh started: ${target}`)
-          : (target === 'all' ? 'Asset refresh requested' : `Asset refresh requested: ${target}`)
+        result.status === 'busy'
+          ? `Asset refresh blocked: ${result.active_command ?? 'another command is running'}`
+          : result.status === 'accepted' || result.status === 'running'
+            ? (target === 'all' ? 'Asset refresh started' : `Asset refresh started: ${target}`)
+            : (target === 'all' ? 'Asset refresh requested' : `Asset refresh requested: ${target}`)
       )
     },
     onError: onMutationError,
@@ -1147,10 +1174,14 @@ export function useDashboardUpdate(
   const queryClient = useQueryClient()
   return createMutation<UpdateStatusResult, unknown, string>(() => ({
     mutationFn: (id: string) => luciRpc.dashboardUpdate(id),
-    onSuccess(_, id) {
+    onSuccess(result, id) {
       queryClient.invalidateQueries({ queryKey: luciKeys.dashboardUpdateStatus(id) })
       queryClient.invalidateQueries({ queryKey: luciKeys.dashboards })
-      toasts.success('Dashboard download requested')
+      toasts.success(
+        result.status === 'busy'
+          ? `Dashboard update blocked: ${result.active_command ?? 'another command is running'}`
+          : 'Dashboard download requested'
+      )
     },
     onError: onMutationError,
     ...opts

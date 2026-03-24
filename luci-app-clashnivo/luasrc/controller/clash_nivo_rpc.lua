@@ -183,28 +183,37 @@ end
 
 function handlers.service_start()
     -- The init script checks clashnivo.config.enable=1 before starting
+    local busy = backend.command_busy("start")
+    if busy then
+        return busy
+    end
     local cursor = uci_mod.cursor()
     cursor:set("clashnivo", "config", "enable", "1")
     cursor:commit("clashnivo")
-    backend.service_action("start", true)
-    return true
+    return backend.service_action("start", true)
 end
 
 function handlers.service_stop()
+    local busy = backend.command_busy("stop")
+    if busy then
+        return busy
+    end
     local cursor = uci_mod.cursor()
     cursor:set("clashnivo", "config", "enable", "0")
     cursor:commit("clashnivo")
-    backend.service_action("stop")
-    return true
+    return backend.service_action("stop")
 end
 
 function handlers.service_restart()
     -- Ensure enabled, then run async so the HTTP response returns before restart tears down Clash
+    local busy = backend.command_busy("restart")
+    if busy then
+        return busy
+    end
     local cursor = uci_mod.cursor()
     cursor:set("clashnivo", "config", "enable", "1")
     cursor:commit("clashnivo")
-    backend.service_action("restart", true)
-    return true
+    return backend.service_action("restart", true)
 end
 
 function handlers.file_read(p)
@@ -272,8 +281,7 @@ end
 
 function handlers.subscription_update(p)
     local name = p[1]
-    backend.start_subscription_update(name)
-    return true
+    return backend.start_subscription_update(name)
 end
 
 function handlers.subscription_add(p)
@@ -378,8 +386,7 @@ function handlers.subscription_edit(p)
 end
 
 function handlers.subscription_update_all()
-    backend.start_subscription_update()
-    return true
+    return backend.start_subscription_update()
 end
 
 -- ── config file handlers ───────────────────────────────────────────────────

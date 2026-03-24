@@ -123,7 +123,7 @@ clashnivo_service_update_parse_status() {
    second_line="$(printf '%s' "$status_content" | sed -n '2p')"
 
    case "$first_line" in
-      accepted|running|done|error|nochange|idle)
+      accepted|running|done|error|nochange|idle|busy)
          normalized="$first_line"
       ;;
       *)
@@ -148,16 +148,28 @@ clashnivo_service_update_run_async() {
    local target="${2:-}"
    local command_string="${3:-}"
    local accepted_message="${4:-}"
-   local status_file log_file
+   local status_file log_file context worker_pid
 
    status_file="$(clashnivo_service_update_status_file "$kind" "$target")" || return 1
    log_file="$(clashnivo_service_update_log_file "$kind" "$target")" || return 1
 
    mkdir -p "$(dirname "$status_file")" >/dev/null 2>&1
    : > "$log_file"
+
+   context="${kind}"
+   [ -n "${target}" ] && context="${kind}:${target}"
+
+   if ! clashnivo_service_command_lock_acquire "${context}"; then
+      clashnivo_service_update_write_status "$kind" "$target" busy "Another Clash Nivo command is already running"
+      clashnivo_service_emit_busy_json "${context}"
+      return 3
+   fi
+
    clashnivo_service_update_write_status "$kind" "$target" accepted "${accepted_message:-Queued}"
 
    (
+      clashnivo_service_command_lock_set_owner "${context}" "$$"
+      trap 'clashnivo_service_command_lock_release' EXIT INT TERM
       clashnivo_service_update_write_status "$kind" "$target" running "${accepted_message:-Queued}"
       sh -c "$command_string" >"$log_file" 2>&1
       rc=$?
@@ -172,6 +184,8 @@ clashnivo_service_update_run_async() {
          clashnivo_service_update_write_status "$kind" "$target" error "Update failed"
       fi
    ) &
+   worker_pid=$!
+   clashnivo_service_command_lock_set_owner "${context}" "${worker_pid}"
 }
 
 clashnivo_service_update_package_latest_command() {

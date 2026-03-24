@@ -54,7 +54,7 @@ clashnivo_service_run_start() {
       add_cron
 
       LOG_OUT "Step 6: Core Status Checking and Firewall Rules Setting..."
-      check_core_status "start" &
+      check_core_status "start"
 
       clashnivo_service_network_ensure_loaded
       if [ "$ipv6_enable" -eq 0 ] && [ "${CLASHNIVO_NETWORK_LAN_DHCPV6}" != "disabled" ] && [ -n "${CLASHNIVO_NETWORK_LAN_DHCPV6}" ]; then
@@ -125,6 +125,23 @@ clashnivo_service_run_restart() {
    clashnivo_service_run_start
 }
 
+clashnivo_service_run_serialized() {
+   local context="${1:-unknown}"
+   shift
+
+   clashnivo_service_command_lock_acquire "${context}" || {
+      clashnivo_service_emit_busy_json "${context}"
+      return 3
+   }
+
+   trap 'clashnivo_service_command_lock_release' EXIT INT TERM
+   "$@"
+   local rc=$?
+   trap - EXIT INT TERM
+   clashnivo_service_command_lock_release
+   return $rc
+}
+
 clashnivo_service_run_reload() {
    enable=$(uci_get_config "enable")
    MAX_RELOAD=10
@@ -159,14 +176,14 @@ clashnivo_service_run_reload() {
       clashnivo_service_network_cleanup_firewall_only
       do_run_mode
       get_config
-      check_core_status &
+      check_core_status
    fi
    if pidof clash >/dev/null && [ "$enable" == "1" ] && [ "$1" == "manual" ]; then
       LOG_OUT "Manually Reload Firewall Rules..."
       clashnivo_service_network_cleanup_firewall_only
       do_run_mode
       get_config
-      check_core_status &
+      check_core_status
    fi
    if pidof clash >/dev/null && [ "$enable" == "1" ] && [ "$1" == "revert" ]; then
       clashnivo_service_network_cleanup_runtime
@@ -192,17 +209,17 @@ clashnivo_service_run_boot() {
 
 start_service()
 {
-   clashnivo_service_run_start
+   clashnivo_service_run_serialized "start" clashnivo_service_run_start
 }
 
 stop_service()
 {
-   clashnivo_service_run_stop
+   clashnivo_service_run_serialized "stop" clashnivo_service_run_stop
 }
 
 restart()
 {
-   clashnivo_service_run_restart
+   clashnivo_service_run_serialized "restart" clashnivo_service_run_restart
 }
 
 start_watchdog()
@@ -212,7 +229,7 @@ start_watchdog()
 
 reload_service()
 {
-   clashnivo_service_run_reload "$@"
+   clashnivo_service_run_serialized "reload:${1:-manual}" clashnivo_service_run_reload "$@"
 }
 
 boot()
