@@ -108,12 +108,12 @@ clashnivo_service_subscription_refresh_async() {
             printf '%s\n' "Subscription refresh timed out after ${timeout_seconds} seconds." >> "${CLASHNIVO_UPDATE_LOG_FILE}"
             clashnivo_service_command_lock_kill_owner "${worker_pid}" >/dev/null 2>&1
          fi
-      ) &
+      ) </dev/null >/dev/null 2>&1 &
       timeout_watcher_pid=$!
 
       wait "${worker_pid}"
       kill "${timeout_watcher_pid}" >/dev/null 2>&1
-   ) &
+   ) </dev/null >/dev/null 2>&1 &
    worker_pid=$!
    clashnivo_service_command_lock_set_owner "${context}" "${worker_pid}"
 }

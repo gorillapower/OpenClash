@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useQueryClient } from '@tanstack/svelte-query'
   import type { Subscription, ConfigFile } from '$lib/api/luci'
   import { luciRpc } from '$lib/api/luci'
   import { Sheet } from '$lib/components/ui/sheet'
@@ -23,9 +24,11 @@
     useConfigs,
     useConfigSetActive,
     useConfigDelete,
-    useConfigWrite
+    useConfigWrite,
+    luciKeys
   } from '$lib/queries/luci'
 
+  const queryClient = useQueryClient()
   const subscriptions = useSubscriptions()
   const serviceStatus = useServiceStatus('clashnivo', { refetchInterval: 5000 })
   const cancelJob = useServiceCancelJob('clashnivo')
@@ -45,6 +48,12 @@
   const globalBusy = $derived(serviceStatus.data?.busy ?? false)
   const busyCommand = $derived(serviceStatus.data?.busy_command ?? null)
   const activeJobCancelable = $derived(serviceStatus.data?.active_job_cancelable ?? false)
+  const activeJobKind = $derived(serviceStatus.data?.active_job_kind ?? null)
+  const sourceJobActive = $derived(
+    activeJobKind === 'subscription' ||
+      busyCommand === 'refresh_sources' ||
+      Boolean(busyCommand?.startsWith('refresh_source:'))
+  )
 
   let addOpen = $state(false)
   let addUrl = $state('')
@@ -85,6 +94,24 @@
 
   $effect(() => {
     pendingSourceName = activeSource?.name ?? ''
+  })
+
+  $effect(() => {
+    if (!sourceJobActive) return
+
+    const syncSources = () => {
+      void queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
+      void queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+      void queryClient.invalidateQueries({ queryKey: luciKeys.configs })
+    }
+
+    syncSources()
+    const timer = window.setInterval(syncSources, 2000)
+
+    return () => {
+      window.clearInterval(timer)
+      syncSources()
+    }
   })
 
   function validateUrl(value: string): string {

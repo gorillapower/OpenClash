@@ -220,7 +220,7 @@ clashnivo_service_update_run_async() {
             printf '%s\n' "Job timed out after ${timeout_seconds} seconds." >> "$log_file"
             clashnivo_service_command_lock_kill_owner "${worker_pid}" >/dev/null 2>&1
          fi
-      ) &
+      ) </dev/null >/dev/null 2>&1 &
       timeout_watcher_pid=$!
 
       wait "${worker_pid}"
@@ -243,7 +243,7 @@ clashnivo_service_update_run_async() {
       else
          clashnivo_service_update_write_status "$kind" "$target" error "Update failed"
       fi
-   ) &
+   ) </dev/null >/dev/null 2>&1 &
    worker_pid=$!
    clashnivo_service_command_lock_set_owner "${context}" "${worker_pid}"
 }

@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-clashnivo
-PKG_VERSION:=0.1.23
+PKG_VERSION:=0.1.24
 PKG_MAINTAINER:=gorillapower <https://github.com/gorillapower>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
@@ -121,6 +121,10 @@ endef
 
 define Package/$(PKG_NAME)/postinst
 #!/bin/sh
+	rm -f /tmp/luci-indexcache >/dev/null 2>&1
+	rm -f /tmp/luci-indexcache.* >/dev/null 2>&1
+	rm -f /tmp/luci-modulecache/6C7563692E636F6E74726F6C6C65722E636C6173685F6E69766F5F727063 >/dev/null 2>&1
+	rm -f /tmp/luci-modulecache/6C7563692E636C6173686E69766F2E6261636B656E64 >/dev/null 2>&1
 	exit 0
 endef
 
@@ -157,6 +161,8 @@ define Package/$(PKG_NAME)/postrm
 	}
 	rm -f /tmp/luci-indexcache >/dev/null 2>&1
 	rm -f /tmp/luci-indexcache.* >/dev/null 2>&1
+	rm -f /tmp/luci-modulecache/6C7563692E636F6E74726F6C6C65722E636C6173685F6E69766F5F727063 >/dev/null 2>&1
+	rm -f /tmp/luci-modulecache/6C7563692E636C6173686E69766F2E6261636B656E64 >/dev/null 2>&1
 	exit 0
 endef
 

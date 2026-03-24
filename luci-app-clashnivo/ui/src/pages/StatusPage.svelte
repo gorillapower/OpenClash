@@ -61,6 +61,7 @@
 
   let optimisticRunning = $state<boolean | null>(null)
   let subscriptionUrl = $state('')
+  let subscriptionName = $state('')
   let urlError = $state<string | null>(null)
   let localCoreCustomBaseUrl = $state('')
 
@@ -92,6 +93,11 @@
   const activeJobCancelable = $derived(serviceStatus.data?.active_job_cancelable ?? false)
   const activeJobKind = $derived(serviceStatus.data?.active_job_kind ?? null)
   const activeJobTarget = $derived(serviceStatus.data?.active_job_target ?? null)
+  const sourceJobActive = $derived(
+    activeJobKind === 'subscription' ||
+      busyCommand === 'refresh_sources' ||
+      Boolean(busyCommand?.startsWith('refresh_source:'))
+  )
 
   const activeConfigPath = $derived(
     serviceStatus.data?.active_config ??
@@ -257,6 +263,24 @@
     localCoreCustomBaseUrl = coreCustomBaseUrl
   })
 
+  $effect(() => {
+    if (!sourceJobActive) return
+
+    const syncSources = () => {
+      void queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
+      void queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+      void queryClient.invalidateQueries({ queryKey: luciKeys.configs })
+    }
+
+    syncSources()
+    const timer = window.setInterval(syncSources, 2000)
+
+    return () => {
+      window.clearInterval(timer)
+      syncSources()
+    }
+  })
+
   function validateUrl(url: string): string | null {
     if (!url.trim()) return 'Please enter a subscription URL'
     try {
@@ -279,17 +303,15 @@
     }
 
     try {
-      const result = await subscriptionAdd.mutateAsync({ url: subscriptionUrl.trim() })
+      const result = await subscriptionAdd.mutateAsync({
+        url: subscriptionUrl.trim(),
+        name: subscriptionName.trim() || undefined
+      })
       if (result?.name) {
         await subscriptionUpdate.mutateAsync(result.name)
       }
-
-      const interval = setInterval(async () => {
-        await queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
-        if (activeConfigPath) clearInterval(interval)
-      }, 2000)
-
-      setTimeout(() => clearInterval(interval), 120_000)
+      subscriptionUrl = ''
+      subscriptionName = ''
     } catch {
       // Error toast handled by mutation onError
     }
@@ -477,7 +499,7 @@
 
             {#if !activeConfigPath}
               <div class="mt-4 space-y-2">
-                <div class="flex gap-2">
+                <div class="space-y-2">
                   <Input
                     type="url"
                     placeholder="https://example.com/subscribe?token=..."
@@ -486,6 +508,15 @@
                     aria-label="Subscription URL"
                     aria-invalid={urlError ? 'true' : undefined}
                   />
+                  <Input
+                    type="text"
+                    placeholder="Custom name"
+                    bind:value={subscriptionName}
+                    disabled={subscriptionAdd.isPending || subscriptionUpdate.isPending || isBusy}
+                    aria-label="Subscription name"
+                  />
+                </div>
+                <div class="flex gap-2">
                   <Button
                     variant="default"
                     disabled={subscriptionAdd.isPending || subscriptionUpdate.isPending || isBusy}
