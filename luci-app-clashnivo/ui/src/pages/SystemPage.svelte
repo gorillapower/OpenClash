@@ -73,10 +73,6 @@
   const dashboardForwardSsl = $derived((cfg['dashboard_forward_ssl'] as string | undefined) === '1')
   const rawCoreSourceMode = $derived((cfg['core_source'] as string | undefined) ?? 'auto')
   const coreCustomBaseUrl = $derived((cfg['core_custom_base_url'] as string | undefined) ?? '')
-  const dashboardUrl = $derived(
-    `${dashboardForwardSsl ? 'https' : 'http'}://${window.location.hostname}:${controllerPort}/ui`
-  )
-
   const currentCoreVersion = $derived(currentCore.data?.version ?? null)
   const latestCoreVersion = $derived(latestCore.data?.version ?? null)
   const currentCoreType = $derived(currentCore.data?.meta ? 'Mihomo' : 'Clash')
@@ -382,8 +378,7 @@
           <h2 class="text-sm font-semibold">Dashboard</h2>
         </CardHeader>
         <CardContent class="space-y-4">
-          <div class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-3 text-sm text-muted-foreground">
+          <div class="flex items-center gap-3 text-sm text-muted-foreground">
               <span>Transport</span>
               <span class="font-medium text-foreground">{dashboardForwardSsl ? 'HTTPS' : 'HTTP'}</span>
               <button
@@ -397,15 +392,6 @@
               >
                 <span class={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform ${dashboardForwardSsl ? 'translate-x-4' : 'translate-x-0'}`}></span>
               </button>
-            </div>
-            <a
-              class="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-              href={dashboardUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open
-            </a>
           </div>
 
           <div class="space-y-3">
@@ -421,6 +407,16 @@
                     </div>
                   </div>
                   <div class="flex items-center gap-2">
+                    {#if option.installed && option.url}
+                      <a
+                        class="inline-flex h-9 items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                        href={option.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open
+                      </a>
+                    {/if}
                     <Button
                       variant={option.installed ? 'outline' : 'default'}
                       size="sm"

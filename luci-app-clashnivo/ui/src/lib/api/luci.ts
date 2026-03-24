@@ -168,6 +168,7 @@ export interface DashboardOption {
   variant: string
   installed: boolean
   selected: boolean
+  url?: string | null
 }
 
 // ---------------------------------------------------------------------------

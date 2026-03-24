@@ -64,6 +64,9 @@ let mockConfig: Record<string, string> = {
 let mockDashboardUpdateStatus: Record<string, { status: string; message?: string }> = {}
 
 function dashboardOptions() {
+  const controllerPort = (mockConfig.cn_port ?? '9093').trim() || '9093'
+  const scheme = mockConfig.dashboard_forward_ssl === '1' ? 'https' : 'http'
+  const baseUrl = `${scheme}://localhost:${controllerPort}/ui`
   const selectedDashboard = mockConfig.default_dashboard ?? 'metacubexd'
   const dashboardType = mockConfig.dashboard_type ?? 'Official'
   const yacdType = mockConfig.yacd_type ?? 'Meta'
@@ -81,12 +84,12 @@ function dashboardOptions() {
           : 'metacubexd'
 
   return [
-    { id: 'dashboard_official', key: 'dashboard', name: 'Dashboard', label: 'Clash Dashboard', variant: 'Official', installed: true, selected: selectedId === 'dashboard_official' },
-    { id: 'dashboard_meta', key: 'dashboard', name: 'Dashboard', label: 'Razord Meta', variant: 'Meta', installed: true, selected: selectedId === 'dashboard_meta' },
-    { id: 'yacd_official', key: 'yacd', name: 'Yacd', label: 'Yacd', variant: 'Official', installed: false, selected: selectedId === 'yacd_official' },
-    { id: 'yacd_meta', key: 'yacd', name: 'Yacd', label: 'Yacd Meta', variant: 'Meta', installed: true, selected: selectedId === 'yacd_meta' },
-    { id: 'metacubexd', key: 'metacubexd', name: 'MetaCubeXD', label: 'MetaCubeXD', variant: 'Official', installed: true, selected: selectedId === 'metacubexd' },
-    { id: 'zashboard', key: 'zashboard', name: 'Zashboard', label: 'Zashboard', variant: 'Official', installed: false, selected: selectedId === 'zashboard' }
+    { id: 'dashboard_official', key: 'dashboard', name: 'Dashboard', label: 'Clash Dashboard', variant: 'Official', installed: true, selected: selectedId === 'dashboard_official', url: `${baseUrl}/dashboard/` },
+    { id: 'dashboard_meta', key: 'dashboard', name: 'Dashboard', label: 'Razord Meta', variant: 'Meta', installed: true, selected: selectedId === 'dashboard_meta', url: `${baseUrl}/dashboard/` },
+    { id: 'yacd_official', key: 'yacd', name: 'Yacd', label: 'Yacd', variant: 'Official', installed: false, selected: selectedId === 'yacd_official', url: null },
+    { id: 'yacd_meta', key: 'yacd', name: 'Yacd', label: 'Yacd Meta', variant: 'Meta', installed: true, selected: selectedId === 'yacd_meta', url: `${baseUrl}/yacd/` },
+    { id: 'metacubexd', key: 'metacubexd', name: 'MetaCubeXD', label: 'MetaCubeXD', variant: 'Official', installed: true, selected: selectedId === 'metacubexd', url: `${baseUrl}/metacubexd/` },
+    { id: 'zashboard', key: 'zashboard', name: 'Zashboard', label: 'Zashboard', variant: 'Official', installed: false, selected: selectedId === 'zashboard', url: null }
   ]
 }
 

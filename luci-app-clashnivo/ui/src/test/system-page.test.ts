@@ -104,8 +104,8 @@ function setupMocks({
   packageStatus = { status: 'idle' } as UpdateStatusResult,
   assetsStatus = { status: 'idle' } as UpdateStatusResult,
   dashboards = [
-    { id: 'metacubexd', key: 'metacubexd', name: 'MetaCubeXD', label: 'MetaCubeXD', variant: 'Official', installed: true, selected: true },
-    { id: 'zashboard', key: 'zashboard', name: 'Zashboard', label: 'Zashboard', variant: 'Official', installed: false, selected: false }
+    { id: 'metacubexd', key: 'metacubexd', name: 'MetaCubeXD', label: 'MetaCubeXD', variant: 'Official', installed: true, selected: true, url: 'http://localhost:9093/ui/metacubexd/' },
+    { id: 'zashboard', key: 'zashboard', name: 'Zashboard', label: 'Zashboard', variant: 'Official', installed: false, selected: false, url: null }
   ] as DashboardOption[],
   dashboardStatus = { status: 'idle' } as UpdateStatusResult,
   coreUpdateMutate = vi.fn().mockResolvedValue(undefined),
@@ -247,20 +247,19 @@ describe('SystemPage', () => {
     expect(screen.getByRole('button', { name: 'Check source' })).toBeInTheDocument()
   })
 
-  it('shows dashboard link using configured transport', () => {
+  it('shows row-level dashboard links from backend-provided urls', () => {
     setupMocks({
-      uciData: {
-        config: {
-          cn_port: '9093',
-          dashboard_type: 'Official',
-          dashboard_forward_ssl: '1'
-        }
-      }
+      dashboards: [
+        { id: 'metacubexd', key: 'metacubexd', name: 'MetaCubeXD', label: 'MetaCubeXD', variant: 'Official', installed: true, selected: true, url: 'https://localhost:9093/ui/metacubexd/' },
+        { id: 'zashboard', key: 'zashboard', name: 'Zashboard', label: 'Zashboard', variant: 'Official', installed: true, selected: false, url: 'https://localhost:9093/ui/zashboard/' }
+      ] as DashboardOption[]
     })
     render(SystemPage)
 
-    expect(screen.getByRole('link', { name: 'Open' })).toHaveAttribute('href', 'https://localhost:9093/ui')
-    expect(screen.getByText('Installed')).toBeInTheDocument()
+    const openLinks = screen.getAllByRole('link', { name: 'Open' })
+    expect(openLinks[0]).toHaveAttribute('href', 'https://localhost:9093/ui/metacubexd/')
+    expect(openLinks[1]).toHaveAttribute('href', 'https://localhost:9093/ui/zashboard/')
+    expect(screen.getAllByText('Installed').length).toBeGreaterThan(0)
   })
 
   it('calls core update when the button is clicked', async () => {

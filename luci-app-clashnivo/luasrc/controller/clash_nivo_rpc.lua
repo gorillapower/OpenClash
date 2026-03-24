@@ -24,6 +24,35 @@ local LOG_CORE       = "/tmp/clash.log"
 local LOG_UPDATES    = "/tmp/clashnivo_updates.log"
 local LOG_MAX_LINES  = 500
 local CONFIG_DIR     = "/etc/clashnivo/config"
+
+local function request_host()
+    local host = http.getenv("HTTP_HOST") or http.getenv("SERVER_NAME") or "localhost"
+    if host:match("^%[.+%]") then
+        return host:match("^(%[.+%])") or host
+    end
+    return host:gsub(":%d+$", "")
+end
+
+local function dashboard_base_url()
+    local cursor = uci_mod.cursor()
+    local ssl = cursor:get("clashnivo", "config", "dashboard_forward_ssl") == "1"
+    local port = cursor:get("clashnivo", "config", "cn_port") or "9093"
+    local scheme = ssl and "https" or "http"
+    return string.format("%s://%s:%s/ui", scheme, request_host(), port)
+end
+
+local function decorate_dashboard_urls(options)
+    local base_url = dashboard_base_url()
+    for _, option in ipairs(options) do
+        if option.installed then
+            option.url = string.format("%s/%s/", base_url, option.key)
+        else
+            option.url = nil
+        end
+    end
+    return options
+end
+
 function index()
     local e = entry({"rpc", "clash-nivo"}, call("handle_rpc"))
     e.leaf      = true
@@ -615,7 +644,7 @@ function handlers.assets_update_status(p)
 end
 
 function handlers.dashboard_list()
-    return backend.dashboard_list()
+    return decorate_dashboard_urls(backend.dashboard_list())
 end
 
 function handlers.dashboard_select(p)
