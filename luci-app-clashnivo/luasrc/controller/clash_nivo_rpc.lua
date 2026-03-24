@@ -21,6 +21,7 @@ local ALLOWED_PATH_PATTERNS = {
 
 local LOG_SERVICE    = "/tmp/clashnivo.log"
 local LOG_CORE       = "/tmp/clash.log"
+local LOG_UPDATES    = "/tmp/clashnivo_updates.log"
 local LOG_MAX_LINES  = 500
 local CONFIG_DIR     = "/etc/clashnivo/config"
 function index()
@@ -277,6 +278,27 @@ end
 
 function handlers.log_core(p)
     return tail_file(LOG_CORE, p[1])
+end
+
+function handlers.log_updates(p)
+    return tail_file(LOG_UPDATES, p[1])
+end
+
+function handlers.log_clear(p)
+    local kind = p[1]
+    local path
+
+    if kind == "service" then
+        path = LOG_SERVICE
+    elseif kind == "core" then
+        path = LOG_CORE
+    elseif kind == "updates" then
+        path = LOG_UPDATES
+    else
+        error("unknown log kind")
+    end
+
+    return handlers.file_write({ path, "" })
 end
 
 function handlers.system_info()
@@ -637,6 +659,8 @@ local METHOD_MAP = {
     ["file.write"]               = handlers.file_write,
     ["log.service"]              = handlers.log_service,
     ["log.core"]                 = handlers.log_core,
+    ["log.updates"]              = handlers.log_updates,
+    ["log.clear"]                = handlers.log_clear,
     ["system.info"]              = handlers.system_info,
     ["subscription.add"]         = handlers.subscription_add,
     ["subscription.test"]        = handlers.subscription_test,

@@ -20,7 +20,7 @@ del_lock() {
 set_lock
 
 LOGTIME=$(echo $(date "+%Y-%m-%d %H:%M:%S"))
-LOG_FILE="/tmp/clashnivo.log"
+: "${LOG_FILE:=/tmp/clashnivo_subscription_refresh.log}"
 CRON_FILE="/etc/crontabs/root"
 CONFIG_PATH=$(uci_get_config "config_path")
 router_self_proxy=$(uci_get_config "router_self_proxy" || echo 1)

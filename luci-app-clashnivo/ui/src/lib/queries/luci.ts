@@ -53,7 +53,8 @@ export const luciKeys = {
   dashboards: [...['luci'], 'dashboards'] as const,
   dashboardUpdateStatus: (id: string) => [...['luci'], 'dashboard-update-status', id] as const,
   logService: (lines: number) => [...['luci'], 'log-service', lines] as const,
-  logCore: (lines: number) => [...['luci'], 'log-core', lines] as const
+  logCore: (lines: number) => [...['luci'], 'log-core', lines] as const,
+  logUpdates: (lines: number) => [...['luci'], 'log-updates', lines] as const
 }
 
 // ---------------------------------------------------------------------------

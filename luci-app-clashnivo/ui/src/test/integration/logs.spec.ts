@@ -48,6 +48,22 @@ test.describe('Log viewer', () => {
     expect(text).not.toBeNull()
   })
 
+  test('switching to updates log tab shows content', async ({ appPage: page }) => {
+    await gotoApp(page, '#/logs')
+    await page.waitForLoadState('networkidle')
+
+    const updatesLogTrigger = page.getByRole('button', { name: /updates log|updates/i }).first()
+
+    if (await updatesLogTrigger.isVisible()) {
+      await updatesLogTrigger.click()
+    }
+
+    const logArea = page.locator('[data-testid="log-output"], pre, textarea').first()
+    await expect(logArea).toBeVisible({ timeout: 10_000 })
+    const text = await logArea.textContent()
+    expect(text).not.toBeNull()
+  })
+
   test('log section is present on the Logs page', async ({ appPage: page }) => {
     await gotoApp(page, '#/logs')
     await expect(page.getByRole('heading', { name: 'Logs' })).toBeVisible()

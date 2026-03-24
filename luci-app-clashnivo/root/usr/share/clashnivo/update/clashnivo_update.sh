@@ -166,10 +166,11 @@ if [ -n "$OP_CV" ] && [ -n "$OP_LV" ] && version_compare "$OP_CV" "$OP_LV" && [ 
          fi
       fi
    done
-   cat > /tmp/clashnivo_update.sh <<"EOF"
+cat > /tmp/clashnivo_update.sh <<"EOF"
 #!/bin/sh
 START_LOG="/tmp/clashnivo_start.log"
-LOG_FILE="/tmp/clashnivo.log"
+: "${LOG_FILE:=/tmp/clashnivo_updates.log}"
+: "${MIRROR_LOG_FILE:=}"
 LOGTIME=$(date "+%Y-%m-%d %H:%M:%S")
 
 UPDATE_LOCK="/tmp/lock/clashnivo_update_install.lock"
@@ -192,11 +193,20 @@ fi
 
 trap 'del_update_lock; exit' INT TERM EXIT
 
+log_append() {
+   local line="$1"
+   [ -n "$line" ] || return 0
+   echo -e "$line" >> "$LOG_FILE"
+   if [ -n "$MIRROR_LOG_FILE" ] && [ "$MIRROR_LOG_FILE" != "$LOG_FILE" ]; then
+      echo -e "$line" >> "$MIRROR_LOG_FILE"
+   fi
+}
+
 LOG_ERROR()
 {
 	if [ -n "${1}" ]; then
 		echo -e "${1}" > $START_LOG
-		echo -e "${LOGTIME} [error] ${1}" >> $LOG_FILE
+		log_append "${LOGTIME} [error] ${1}"
 	fi
 }
 
@@ -204,7 +214,7 @@ LOG_TIP()
 {
 	if [ -n "${1}" ]; then
 		echo -e "${1}" > $START_LOG
-		echo -e "${LOGTIME} [tip] ${1}" >> $LOG_FILE
+		log_append "${LOGTIME} [tip] ${1}"
 	fi
 }
 

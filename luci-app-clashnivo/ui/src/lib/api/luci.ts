@@ -506,5 +506,13 @@ export const luciRpc = {
 
   logCore(lines?: number): Promise<string> {
     return rpcCall<string>('log.core', lines !== undefined ? [lines] : [])
+  },
+
+  logUpdates(lines?: number): Promise<string> {
+    return rpcCall<string>('log.updates', lines !== undefined ? [lines] : [])
+  },
+
+  clearLog(kind: 'service' | 'core' | 'updates'): Promise<void> {
+    return rpcCall('log.clear', [kind])
   }
 }

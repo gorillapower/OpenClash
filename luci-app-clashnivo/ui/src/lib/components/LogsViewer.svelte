@@ -1,14 +1,19 @@
 <script lang="ts">
-  import { createQuery, useQueryClient } from '@tanstack/svelte-query'
+  import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query'
   import { luciRpc } from '$lib/api/luci'
   import { luciKeys } from '$lib/queries/luci'
   import Button from '$lib/components/ui/button/button.svelte'
   import { Card, CardContent, CardHeader } from '$lib/components/ui/card/index'
 
-  type Tab = 'service' | 'core'
+  type Tab = 'service' | 'core' | 'updates'
 
   const POLL_INTERVAL = 5000
   const LINE_OPTIONS = [100, 250, 500] as const
+  const TAB_META: Record<Tab, { label: string; path: string }> = {
+    service: { label: 'Service', path: '/tmp/clashnivo.log' },
+    core: { label: 'Core', path: '/tmp/clash.log' },
+    updates: { label: 'Updates', path: '/tmp/clashnivo_updates.log' },
+  }
 
   let activeTab = $state<Tab>('service')
   let lines = $state<(typeof LINE_OPTIONS)[number]>(100)
@@ -32,8 +37,24 @@
     retry: false,
   }))
 
-  const activeLog = $derived(activeTab === 'service' ? serviceLog : coreLog)
+  const updatesLog = createQuery(() => ({
+    queryKey: luciKeys.logUpdates(lines),
+    queryFn: () => luciRpc.logUpdates(lines),
+    refetchInterval: !paused && activeTab === 'updates' ? POLL_INTERVAL : false,
+    retry: false,
+  }))
+
+  const activeLog = $derived(
+    activeTab === 'service' ? serviceLog : activeTab === 'core' ? coreLog : updatesLog,
+  )
   const logText = $derived(activeLog.data ?? '')
+  const clearLog = createMutation(() => ({
+    mutationFn: () => luciRpc.clearLog(activeTab),
+    onSuccess: () => {
+      userScrolled = false
+      refresh()
+    },
+  }))
 
   function scrollToBottom() {
     if (logEl) logEl.scrollTop = logEl.scrollHeight
@@ -58,7 +79,12 @@
 
   function refresh() {
     queryClient.invalidateQueries({
-      queryKey: activeTab === 'service' ? luciKeys.logService(lines) : luciKeys.logCore(lines),
+      queryKey:
+        activeTab === 'service'
+          ? luciKeys.logService(lines)
+          : activeTab === 'core'
+            ? luciKeys.logCore(lines)
+            : luciKeys.logUpdates(lines),
     })
   }
 
@@ -73,14 +99,14 @@
     <div class="flex flex-wrap items-center justify-between gap-2">
       <!-- Tab switcher -->
       <div class="flex rounded-md bg-muted p-1">
-        {#each (['service', 'core'] as Tab[]) as tab (tab)}
+        {#each (['service', 'core', 'updates'] as Tab[]) as tab (tab)}
           <button
             onclick={() => switchTab(tab)}
             class="rounded px-3 py-1 text-xs font-medium transition-colors {activeTab === tab
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'}"
           >
-            {tab === 'service' ? 'Service' : 'Core'}
+            {TAB_META[tab].label}
           </button>
         {/each}
       </div>
@@ -98,7 +124,17 @@
         </select>
 
         <Button variant="ghost" size="sm" onclick={refresh} class="h-7 px-2 text-xs">
-          Refresh logs
+          Refresh
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onclick={() => clearLog.mutate()}
+          disabled={clearLog.isPending}
+          class="h-7 px-2 text-xs"
+        >
+          {clearLog.isPending ? 'Clearing…' : 'Clear'}
         </Button>
 
         <Button
@@ -107,15 +143,21 @@
           onclick={() => (paused = !paused)}
           class="h-7 px-2 text-xs"
         >
-          {paused ? 'Resume live updates' : 'Pause live updates'}
+          {paused ? 'Resume' : 'Pause'}
         </Button>
       </div>
     </div>
   </CardHeader>
 
   <CardContent>
+    <div class="mb-3 text-xs text-muted-foreground">
+      <span class="font-medium text-foreground">{TAB_META[activeTab].label} log</span>
+      <span class="ml-2 font-mono">{TAB_META[activeTab].path}</span>
+    </div>
+
     <div class="relative">
       <pre
+        data-testid="log-output"
         bind:this={logEl}
         onscroll={onLogScroll}
         class="h-72 overflow-y-auto rounded-sm bg-muted p-3 font-mono text-xs leading-relaxed text-foreground"

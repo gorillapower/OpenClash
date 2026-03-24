@@ -80,13 +80,14 @@ clashnivo_service_subscription_refresh_async() {
 
    (
       clashnivo_service_command_lock_set_owner "${context}" "$$"
-      clashnivo_service_command_lock_set_job_metadata "subscription" "${target_name}" "true" "$timeout_at" "" "${CLASHNIVO_LOG_FILE}"
+      : > "${CLASHNIVO_SUBSCRIPTION_UPDATE_LOG_FILE}"
+      clashnivo_service_command_lock_set_job_metadata "subscription" "${target_name}" "true" "$timeout_at" "" "${CLASHNIVO_SUBSCRIPTION_UPDATE_LOG_FILE}"
       trap 'clashnivo_service_command_lock_release' EXIT INT TERM
 
       if [ -n "${selector}" ]; then
-         setsid bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" "${selector}" >/dev/null 2>&1 &
+         setsid env LOG_FILE="${CLASHNIVO_SUBSCRIPTION_UPDATE_LOG_FILE}" MIRROR_LOG_FILE="${CLASHNIVO_UPDATE_LOG_FILE}" bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" "${selector}" >/dev/null 2>&1 &
       else
-         setsid bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" >/dev/null 2>&1 &
+         setsid env LOG_FILE="${CLASHNIVO_SUBSCRIPTION_UPDATE_LOG_FILE}" MIRROR_LOG_FILE="${CLASHNIVO_UPDATE_LOG_FILE}" bash "${CLASHNIVO_SUBSCRIPTION_REFRESH_SCRIPT}" >/dev/null 2>&1 &
       fi
       worker_pid=$!
       clashnivo_service_command_lock_set_owner "${context}" "${worker_pid}"
@@ -95,7 +96,8 @@ clashnivo_service_subscription_refresh_async() {
          sleep "${timeout_seconds}"
          if kill -0 "${worker_pid}" >/dev/null 2>&1; then
             clashnivo_service_command_lock_set_final_state "timed_out" "Subscription refresh timed out."
-            printf '%s\n' "Subscription refresh timed out after ${timeout_seconds} seconds." >> "${CLASHNIVO_LOG_FILE}"
+            printf '%s\n' "Subscription refresh timed out after ${timeout_seconds} seconds." >> "${CLASHNIVO_SUBSCRIPTION_UPDATE_LOG_FILE}"
+            printf '%s\n' "Subscription refresh timed out after ${timeout_seconds} seconds." >> "${CLASHNIVO_UPDATE_LOG_FILE}"
             clashnivo_service_command_lock_kill_owner "${worker_pid}" >/dev/null 2>&1
          fi
       ) &

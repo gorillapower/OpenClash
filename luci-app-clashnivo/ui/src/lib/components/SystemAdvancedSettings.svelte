@@ -36,8 +36,6 @@
   const setTproxyPort = useSetUciConfig('clashnivo', 'config', 'tproxy_port')
   const setDnsPort = useSetUciConfig('clashnivo', 'config', 'dns_port')
   const setControllerPort = useSetUciConfig('clashnivo', 'config', 'cn_port')
-  const setLogLevel = useSetUciConfig('clashnivo', 'config', 'log_level')
-  const setLogSize = useSetUciConfig('clashnivo', 'config', 'log_size')
   const flushDns = useFlushDnsCache()
 
   const cfg = $derived(config.data?.config ?? {})
@@ -81,8 +79,6 @@
   const tproxyPort = $derived((cfg['tproxy_port'] as string | undefined) ?? '7895')
   const dnsPort = $derived((cfg['dns_port'] as string | undefined) ?? '7874')
   const controllerPort = $derived((cfg['cn_port'] as string | undefined) ?? '9093')
-  const logLevel = $derived((cfg['log_level'] as string | undefined) ?? '0')
-  const logSize = $derived((cfg['log_size'] as string | undefined) ?? '1024')
 
   const deviceMode = $derived.by<DeviceMode>(() => {
     if (lanAcMode === '1') return 'whitelist'
@@ -99,14 +95,12 @@
   let localTproxyPort = $state('')
   let localDnsPort = $state('')
   let localControllerPort = $state('')
-  let localLogSize = $state('')
 
   $effect(() => {
     localInterfaceName = interfaceName === '0' ? '' : interfaceName
     localTproxyPort = tproxyPort
     localDnsPort = dnsPort
     localControllerPort = controllerPort
-    localLogSize = logSize
   })
 
   function switchClasses(on: boolean) {
@@ -176,9 +170,6 @@
 
   async function saveControllerPort() {
     await setControllerPort.mutateAsync(localControllerPort.trim() || '9093')
-  }
-  async function saveLogSize() {
-    await setLogSize.mutateAsync(localLogSize.trim() || '1024')
   }
 </script>
 
@@ -451,34 +442,6 @@
         </div>
       </div>
     {/if}
-
-    <div class="space-y-1">
-      <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Logs and diagnostics</h3>
-      <div class="divide-y divide-border rounded-lg border border-border bg-card px-4">
-        <SettingRow
-          label="Log level"
-          tooltip="Controls how much detail Clash Nivo writes to logs. Use a lower level for normal operation and a higher level only while troubleshooting."
-        >
-          <select class={selectClass} value={logLevel} onchange={(e) => setLogLevel.mutateAsync((e.target as HTMLSelectElement).value)} disabled={setLogLevel.isPending} aria-label="Log level">
-            <option value="0">Silent / default</option>
-            <option value="info">Info</option>
-            <option value="warning">Warning</option>
-            <option value="error">Error</option>
-            <option value="debug">Debug</option>
-          </select>
-        </SettingRow>
-
-        <SettingRow
-          label="Log size"
-          tooltip="Maximum retained log size before rotation. Higher values keep more history, but use more storage on the router."
-        >
-          <div class="flex items-center gap-2">
-            <input class={inputClass} bind:value={localLogSize} aria-label="Log size" inputmode="numeric" />
-            <Button variant="outline" size="sm" onclick={saveLogSize} disabled={setLogSize.isPending}>Save</Button>
-          </div>
-        </SettingRow>
-      </div>
-    </div>
 
     <DeviceListSheet
       open={deviceSheetOpen}
