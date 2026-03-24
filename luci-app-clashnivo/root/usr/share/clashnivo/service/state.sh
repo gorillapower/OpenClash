@@ -143,3 +143,21 @@ clashnivo_service_clear_disabled_runtime_state() {
       "${DEBUG_LOG_FILE}" \
       "${ANNOUNCEMENT_FILE}"
 }
+
+clashnivo_service_spawn_detached() {
+   local script_file helper_pid
+
+   script_file="$(mktemp "${CLASHNIVO_STATE_DIR}/clashnivo-spawn.XXXXXX")" || return 1
+   umask 077
+   cat > "${script_file}" || {
+      rm -f "${script_file}"
+      return 1
+   }
+   chmod 700 "${script_file}" >/dev/null 2>&1
+
+   /bin/sh "${script_file}" </dev/null >/dev/null 2>&1 &
+   helper_pid=$!
+   rm -f "${script_file}"
+
+   printf '%s' "${helper_pid}"
+}

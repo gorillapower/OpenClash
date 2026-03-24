@@ -200,52 +200,63 @@ clashnivo_service_update_run_async() {
 
    clashnivo_service_update_write_status "$kind" "$target" accepted "${accepted_message:-Queued}"
 
-   (
-      clashnivo_service_command_lock_set_owner "${context}" "$$"
-      clashnivo_service_command_lock_set_job_metadata "$kind" "$target" "true" "$timeout_at" "$status_file" "$log_file"
-      trap 'clashnivo_service_command_lock_release' EXIT INT TERM
-      clashnivo_service_update_write_status "$kind" "$target" running "${accepted_message:-Queued}"
-      if command -v setsid >/dev/null 2>&1; then
-         setsid env LOG_FILE="$log_file" MIRROR_LOG_FILE="$CLASHNIVO_UPDATE_LOG_FILE" sh -c "exec ${command_string}" >"$log_file" 2>&1 &
-      else
-         env LOG_FILE="$log_file" MIRROR_LOG_FILE="$CLASHNIVO_UPDATE_LOG_FILE" sh -c "exec ${command_string}" >"$log_file" 2>&1 &
-      fi
-      worker_pid=$!
-      clashnivo_service_command_lock_set_owner "${context}" "${worker_pid}"
+   worker_pid="$(
+      clashnivo_service_spawn_detached <<EOF
+#!/bin/sh
+. /usr/share/clashnivo/service/env.sh
+clashnivo_service_init_env ''
+context='${context}'
+kind='${kind}'
+target='${target}'
+status_file='${status_file}'
+log_file='${log_file}'
+timeout_seconds='${timeout_seconds}'
 
-      (
-         sleep "${timeout_seconds}"
-         if kill -0 "${worker_pid}" >/dev/null 2>&1; then
-            clashnivo_service_command_lock_set_final_state "timed_out" "Update timed out."
-            printf '%s\n' "Job timed out after ${timeout_seconds} seconds." >> "$log_file"
-            clashnivo_service_command_lock_kill_owner "${worker_pid}" >/dev/null 2>&1
-         fi
-      ) </dev/null >/dev/null 2>&1 &
-      timeout_watcher_pid=$!
+clashnivo_service_command_lock_set_owner "\${context}" "\$\$"
+clashnivo_service_command_lock_set_job_metadata "\${kind}" "\${target}" "true" "${timeout_at}" "\${status_file}" "\${log_file}"
+trap 'clashnivo_service_command_lock_release' EXIT INT TERM
+clashnivo_service_update_write_status "\${kind}" "\${target}" running "${accepted_message:-Queued}"
+if command -v setsid >/dev/null 2>&1; then
+   setsid env LOG_FILE="\${log_file}" MIRROR_LOG_FILE="${CLASHNIVO_UPDATE_LOG_FILE}" sh -c "exec ${command_string}" >"\${log_file}" 2>&1 &
+else
+   env LOG_FILE="\${log_file}" MIRROR_LOG_FILE="${CLASHNIVO_UPDATE_LOG_FILE}" sh -c "exec ${command_string}" >"\${log_file}" 2>&1 &
+fi
+worker_pid=\$!
+clashnivo_service_command_lock_set_owner "\${context}" "\${worker_pid}"
 
-      wait "${worker_pid}"
-      rc=$?
-      kill "${timeout_watcher_pid}" >/dev/null 2>&1
+(
+   sleep "\${timeout_seconds}"
+   if kill -0 "\${worker_pid}" >/dev/null 2>&1; then
+      clashnivo_service_command_lock_set_final_state "timed_out" "Update timed out."
+      printf '%s\n' "Job timed out after \${timeout_seconds} seconds." >> "\${log_file}"
+      clashnivo_service_command_lock_kill_owner "\${worker_pid}" >/dev/null 2>&1
+   fi
+) </dev/null >/dev/null 2>&1 &
+timeout_watcher_pid=\$!
 
-      final_state="$(clashnivo_service_command_lock_final_state)"
-      final_message="$(clashnivo_service_command_lock_final_message)"
+wait "\${worker_pid}"
+rc=\$?
+kill "\${timeout_watcher_pid}" >/dev/null 2>&1
 
-      if [ "${final_state}" = "cancelled" ]; then
-         clashnivo_service_update_write_status "$kind" "$target" cancelled "${final_message:-Cancelled by user.}"
-      elif [ "${final_state}" = "timed_out" ]; then
-         clashnivo_service_update_write_status "$kind" "$target" timed_out "${final_message:-Update timed out.}"
-      elif [ "$rc" -eq 0 ]; then
-         if grep -Eiq 'No Change|Has Not Been Updated|Stop Continuing Operation' "$log_file" 2>/dev/null; then
-            clashnivo_service_update_write_status "$kind" "$target" nochange "No update was required"
-         else
-            clashnivo_service_update_write_status "$kind" "$target" done "Update completed"
-         fi
-      else
-         clashnivo_service_update_write_status "$kind" "$target" error "Update failed"
-      fi
-   ) </dev/null >/dev/null 2>&1 &
-   worker_pid=$!
-   clashnivo_service_command_lock_set_owner "${context}" "${worker_pid}"
+final_state="\$(clashnivo_service_command_lock_final_state)"
+final_message="\$(clashnivo_service_command_lock_final_message)"
+
+if [ "\${final_state}" = "cancelled" ]; then
+   clashnivo_service_update_write_status "\${kind}" "\${target}" cancelled "\${final_message:-Cancelled by user.}"
+elif [ "\${final_state}" = "timed_out" ]; then
+   clashnivo_service_update_write_status "\${kind}" "\${target}" timed_out "\${final_message:-Update timed out.}"
+elif [ "\$rc" -eq 0 ]; then
+   if grep -Eiq 'No Change|Has Not Been Updated|Stop Continuing Operation' "\${log_file}" 2>/dev/null; then
+      clashnivo_service_update_write_status "\${kind}" "\${target}" nochange "No update was required"
+   else
+      clashnivo_service_update_write_status "\${kind}" "\${target}" done "Update completed"
+   fi
+else
+   clashnivo_service_update_write_status "\${kind}" "\${target}" error "Update failed"
+fi
+EOF
+   )"
+   [ -n "${worker_pid}" ] && clashnivo_service_command_lock_set_owner "${context}" "${worker_pid}"
 }
 
 clashnivo_service_cancel_job_command() {
