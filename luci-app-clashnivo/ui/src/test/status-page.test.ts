@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/svelte'
 import type { CreateQueryResult, CreateMutationResult } from '@tanstack/svelte-query'
-import type { ServiceActionResult, ServiceStatusResult, UciPackage, FileReadResult } from '$lib/api/luci'
+import type { CoreSourceProbeResult, CoreVersionResult, FileReadResult, InstalledCoreResult, ServiceActionResult, ServiceStatusResult, UciPackage, UpdateStatusResult } from '$lib/api/luci'
 import type { ProxyGroup, RuleProvider, CustomRule, CustomProxy } from '$lib/queries/luci'
 import StatusPage from '../pages/StatusPage.svelte'
 
@@ -19,6 +19,13 @@ vi.mock('$lib/queries/luci', () => ({
   useServiceStop: vi.fn(),
   useServiceRestart: vi.fn(),
   useServiceCancelJob: vi.fn(),
+  useCoreCurrent: vi.fn(),
+  useCoreLatestVersion: vi.fn(),
+  useCoreRefreshLatestVersion: vi.fn(),
+  useCoreProbeSources: vi.fn(),
+  useCoreUpdate: vi.fn(),
+  useCoreUpdateStatus: vi.fn(),
+  useSetUciConfigBatch: vi.fn(),
   useUciConfig: vi.fn(),
   useSubscriptionAdd: vi.fn(),
   useSubscriptionUpdate: vi.fn(),
@@ -44,6 +51,13 @@ import {
   useServiceStop,
   useServiceRestart,
   useServiceCancelJob,
+  useCoreCurrent,
+  useCoreLatestVersion,
+  useCoreRefreshLatestVersion,
+  useCoreProbeSources,
+  useCoreUpdate,
+  useCoreUpdateStatus,
+  useSetUciConfigBatch,
   useUciConfig,
   useSubscriptionAdd,
   useSubscriptionUpdate,
@@ -83,6 +97,23 @@ function setupMocks({
   vi.mocked(useUciConfig).mockReturnValue(
     makeQueryResult({ config: { config_path: '/etc/clashnivo/config/work.yaml' } }) as CreateQueryResult<UciPackage>
   )
+  vi.mocked(useCoreCurrent).mockReturnValue(
+    makeQueryResult({ installed: true, version: '1.18.0', core_type: 'Meta' } as InstalledCoreResult) as CreateQueryResult<InstalledCoreResult>
+  )
+  vi.mocked(useCoreLatestVersion).mockReturnValue(
+    makeQueryResult({ version: '1.19.0', core_type: 'Meta', source_policy: 'auto' } as CoreVersionResult) as CreateQueryResult<CoreVersionResult>
+  )
+  vi.mocked(useCoreRefreshLatestVersion).mockReturnValue(makeMutationResult() as never)
+  vi.mocked(useCoreProbeSources).mockReturnValue(
+    makeMutationResult() as CreateMutationResult<CoreSourceProbeResult, unknown, void, unknown>
+  )
+  vi.mocked(useCoreUpdate).mockReturnValue(
+    makeMutationResult() as CreateMutationResult<UpdateStatusResult, unknown, void, unknown>
+  )
+  vi.mocked(useCoreUpdateStatus).mockReturnValue(
+    makeQueryResult({ status: 'idle' } as UpdateStatusResult) as CreateQueryResult<UpdateStatusResult>
+  )
+  vi.mocked(useSetUciConfigBatch).mockReturnValue(makeMutationResult() as never)
   vi.mocked(useProxyGroups).mockReturnValue(makeQueryResult(proxyGroups) as never)
   vi.mocked(useRuleProviders).mockReturnValue(makeQueryResult(ruleProviders) as never)
   vi.mocked(useCustomProxies).mockReturnValue(makeQueryResult(customProxies) as never)

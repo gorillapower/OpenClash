@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte'
 import type { CreateQueryResult, CreateMutationResult } from '@tanstack/svelte-query'
-import type { ClashVersion } from '$lib/api/clash'
-import type { CoreSourceProbeResult, CoreVersionResult, DashboardOption, ServiceStatusResult, UpdateStatusResult, UciPackage } from '$lib/api/luci'
+import type { CoreSourceProbeResult, CoreVersionResult, DashboardOption, InstalledCoreResult, ServiceStatusResult, UpdateStatusResult, UciPackage } from '$lib/api/luci'
 import SystemPage from '../pages/SystemPage.svelte'
 
 function makeQueryResult<T>(data: T) {
@@ -17,10 +16,6 @@ function makeMutationResult(mutateAsync = vi.fn().mockResolvedValue(undefined)) 
   return { isPending: false, isError: false, isSuccess: false, mutateAsync } as unknown
 }
 
-vi.mock('$lib/queries/clash', () => ({
-  useClashVersion: vi.fn()
-}))
-
 vi.mock('$lib/queries/luci', () => ({
   useServiceStatus: vi.fn(),
   useServiceCancelJob: vi.fn(),
@@ -30,6 +25,7 @@ vi.mock('$lib/queries/luci', () => ({
   useFlushDnsCache: vi.fn(),
   useFirewallRules: vi.fn(),
   useSetFirewallRules: vi.fn(),
+  useCoreCurrent: vi.fn(),
   useCoreLatestVersion: vi.fn(),
   useCoreRefreshLatestVersion: vi.fn(),
   useCoreProbeSources: vi.fn(),
@@ -56,7 +52,6 @@ vi.mock('@tanstack/svelte-query', async (importOriginal) => {
   }
 })
 
-import { useClashVersion } from '$lib/queries/clash'
 import {
   useServiceStatus,
   useServiceCancelJob,
@@ -77,6 +72,7 @@ import {
   useFlushDnsCache,
   useFirewallRules,
   useSetFirewallRules,
+  useCoreCurrent,
   useSetUciConfig,
   useSetUciConfigBatch,
   useUciConfig
@@ -91,7 +87,7 @@ function setupMocks({
       dashboard_forward_ssl: '0'
     }
   } as UciPackage,
-  currentVersion = { version: '1.18.0', meta: true } as ClashVersion,
+  currentVersion = { installed: true, version: '1.18.0', core_type: 'Meta' } as InstalledCoreResult,
   latestCore = {
     version: '1.19.0',
     core_type: 'Meta',
@@ -137,8 +133,8 @@ function setupMocks({
   vi.mocked(useSetFirewallRules).mockReturnValue(
     makeMutationResult() as CreateMutationResult<void, unknown, string, unknown>
   )
-  vi.mocked(useClashVersion).mockReturnValue(
-    makeQueryResult(currentVersion) as CreateQueryResult<ClashVersion>
+  vi.mocked(useCoreCurrent).mockReturnValue(
+    makeQueryResult(currentVersion) as CreateQueryResult<InstalledCoreResult>
   )
   vi.mocked(useCoreLatestVersion).mockReturnValue(
     makeQueryResult(latestCore) as CreateQueryResult<CoreVersionResult>
@@ -218,7 +214,7 @@ describe('SystemPage', () => {
 
   it('shows current and latest core versions', () => {
     setupMocks({
-      currentVersion: { version: '1.18.3', meta: true },
+      currentVersion: { installed: true, version: '1.18.3', core_type: 'Meta' },
       latestCore: { version: '1.19.0', core_type: 'Meta', source_policy: 'auto' }
     })
     render(SystemPage)
@@ -229,7 +225,7 @@ describe('SystemPage', () => {
 
   it('shows install core when no current core is present', () => {
     setupMocks({
-      currentVersion: { version: '', meta: true },
+      currentVersion: { installed: false, version: null, core_type: 'Meta' },
       latestCore: {
         version: '1.19.0',
         core_type: 'Meta',
@@ -383,8 +379,8 @@ describe('SystemPage', () => {
     vi.mocked(useSetUciConfigBatch).mockReturnValue(
       makeMutationResult() as CreateMutationResult<void, unknown, { option: string; value: string | string[] }[], unknown>
     )
-    vi.mocked(useClashVersion).mockReturnValue(
-      makeQueryResult({ version: '1.18.0', meta: true }) as CreateQueryResult<ClashVersion>
+    vi.mocked(useCoreCurrent).mockReturnValue(
+      makeQueryResult({ installed: true, version: '1.18.0', core_type: 'Meta' }) as CreateQueryResult<InstalledCoreResult>
     )
     vi.mocked(useCoreLatestVersion).mockReturnValue(
       makePendingQueryResult() as CreateQueryResult<CoreVersionResult>

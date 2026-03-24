@@ -601,6 +601,10 @@ function handlers.core_latest_version()
     return backend.core_latest_version()
 end
 
+function handlers.core_current()
+    return backend.core_current()
+end
+
 function handlers.core_refresh_latest_version()
     return backend.refresh_core_latest_version()
 end
@@ -706,6 +710,7 @@ local METHOD_MAP = {
     ["config.preview"]           = handlers.config_preview,
     ["config.validate"]          = handlers.config_validate,
     ["core.latestVersion"]       = handlers.core_latest_version,
+    ["core.current"]             = handlers.core_current,
     ["core.refreshLatestVersion"]= handlers.core_refresh_latest_version,
     ["core.probeSources"]        = handlers.core_probe_sources,
     ["core.update"]              = handlers.core_update,

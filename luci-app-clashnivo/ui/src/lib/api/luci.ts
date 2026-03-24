@@ -120,6 +120,13 @@ export interface CoreVersionResult {
   status?: 'done' | 'error'
 }
 
+export interface InstalledCoreResult {
+  installed: boolean
+  version?: string | null
+  core_type?: string | null
+  path?: string | null
+}
+
 export interface CoreSourceProbeResult {
   accepted: boolean
   status: 'done' | 'error' | 'busy'
@@ -442,6 +449,10 @@ export const luciRpc = {
   // Core management
   coreLatestVersion(): Promise<CoreVersionResult> {
     return rpcCall('core.latestVersion', [])
+  },
+
+  coreCurrent(): Promise<InstalledCoreResult> {
+    return rpcCall('core.current', [])
   },
 
   coreRefreshLatestVersion(): Promise<CoreVersionResult> {

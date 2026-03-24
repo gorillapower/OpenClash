@@ -19,6 +19,7 @@ import {
   type FileReadResult,
   type ConfigCompositionResult,
   type CoreVersionResult,
+  type InstalledCoreResult,
   type CoreSourceProbeResult,
   type UpdateStatusResult,
   type DashboardOption
@@ -46,6 +47,7 @@ export const luciKeys = {
   ruleProviders: [...['luci'], 'rule-providers'] as const,
   customProxies: [...['luci'], 'custom-proxies'] as const,
   coreLatestVersion: [...['luci'], 'core-latest-version'] as const,
+  coreCurrent: [...['luci'], 'core-current'] as const,
   coreUpdateStatus: [...['luci'], 'core-update-status'] as const,
   packageLatestVersion: [...['luci'], 'package-latest-version'] as const,
   packageUpdateStatus: [...['luci'], 'package-update-status'] as const,
@@ -1107,6 +1109,15 @@ export function useCoreLatestVersion(opts?: Partial<CreateQueryOptions<CoreVersi
     retry: false,
     ...opts
   } as CreateQueryOptions<CoreVersionResult>))
+}
+
+export function useCoreCurrent(opts?: Partial<CreateQueryOptions<InstalledCoreResult>>) {
+  return createQuery<InstalledCoreResult>(() => ({
+    queryKey: luciKeys.coreCurrent,
+    queryFn: () => luciRpc.coreCurrent(),
+    retry: false,
+    ...opts
+  } as CreateQueryOptions<InstalledCoreResult>))
 }
 
 export function useCoreRefreshLatestVersion(

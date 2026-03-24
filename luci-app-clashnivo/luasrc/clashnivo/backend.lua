@@ -14,6 +14,7 @@ local CLASHNIVO_PACKAGE_VERSION_SCRIPT = "/usr/share/clashnivo/clashnivo_version
 local CLASHNIVO_CORE_VERSION_FILE = "/tmp/clash_last_version"
 local CLASHNIVO_CORE_SOURCE_PROBE_FILE = "/tmp/clashnivo_core_source_probe"
 local CLASHNIVO_PACKAGE_VERSION_FILE = "/tmp/clashnivo_last_version"
+local CLASHNIVO_META_CORE_PATH = "/etc/clashnivo/core/clash_meta"
 local CLASHNIVO_CORE_VERSION_LOCK = "/tmp/clashnivo_core_latest.lock"
 local CLASHNIVO_PACKAGE_VERSION_LOCK = "/tmp/clashnivo_package_latest.lock"
 local CLASHNIVO_COMMAND_LOCK_DIR = "/tmp/clashnivo_command.lock"
@@ -527,6 +528,18 @@ function read_core_version(core_path)
 	return sys.exec(string.format("%s -v 2>/dev/null | head -1 | tr -d '\\n'", shellquote(core_path))) or ""
 end
 
+function current_core()
+	local version_line = trim(read_core_version(CLASHNIVO_META_CORE_PATH))
+	local version = trim((version_line:match("^%S+%s+%S+%s+(.+)$") or version_line):gsub("^v", ""))
+
+	return {
+		installed = fs.access(CLASHNIVO_META_CORE_PATH) and true or false,
+		version = version ~= "" and version or nil,
+		core_type = "Meta",
+		path = CLASHNIVO_META_CORE_PATH,
+	}
+end
+
 function is_core_running()
 	return core_process_pid() ~= nil
 end
@@ -589,6 +602,10 @@ end
 
 function core_latest_version()
 	return read_core_latest_cached()
+end
+
+function core_current()
+	return current_core()
 end
 
 function refresh_core_latest_version()

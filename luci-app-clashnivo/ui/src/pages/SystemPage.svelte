@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { useClashVersion } from '$lib/queries/clash'
   import {
     useAssetsUpdate,
     useAssetsUpdateStatus,
+    useCoreCurrent,
     useCoreProbeSources,
     useDashboards,
     useDashboardUpdate,
@@ -31,7 +31,7 @@
   const serviceStatus = useServiceStatus('clashnivo', { refetchInterval: 5000 })
   const cancelJob = useServiceCancelJob('clashnivo')
 
-  const currentCore = useClashVersion()
+  const currentCore = useCoreCurrent()
   const latestCore = useCoreLatestVersion()
   const refreshLatestCore = useCoreRefreshLatestVersion()
   const probeCoreSources = useCoreProbeSources()
@@ -75,7 +75,7 @@
   const coreCustomBaseUrl = $derived((cfg['core_custom_base_url'] as string | undefined) ?? '')
   const currentCoreVersion = $derived(currentCore.data?.version ?? null)
   const latestCoreVersion = $derived(latestCore.data?.version ?? null)
-  const currentCoreType = $derived(currentCore.data?.meta ? 'Mihomo' : 'Clash')
+  const currentCoreType = $derived(currentCore.data?.core_type ?? 'Meta')
   const latestCoreType = $derived(latestCore.data?.core_type ?? currentCoreType)
   const selectedCoreSourceLabel = $derived(latestCore.data?.selected_source_label ?? null)
   const selectedCoreSourceBase = $derived(latestCore.data?.source_base ?? null)

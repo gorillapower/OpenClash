@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte'
 import type { CreateQueryResult, CreateMutationResult } from '@tanstack/svelte-query'
-import type { ServiceActionResult, ServiceStatusResult, UciPackage } from '$lib/api/luci'
+import type { CoreSourceProbeResult, CoreVersionResult, InstalledCoreResult, ServiceActionResult, ServiceStatusResult, UpdateStatusResult, UciPackage } from '$lib/api/luci'
 import StatusPage from '../pages/StatusPage.svelte'
 
 function makeQueryResult<T>(data: T, isSuccess = true) {
@@ -18,6 +18,13 @@ vi.mock('$lib/queries/luci', () => ({
   useServiceStop: vi.fn(),
   useServiceRestart: vi.fn(),
   useServiceCancelJob: vi.fn(),
+  useCoreCurrent: vi.fn(),
+  useCoreLatestVersion: vi.fn(),
+  useCoreRefreshLatestVersion: vi.fn(),
+  useCoreProbeSources: vi.fn(),
+  useCoreUpdate: vi.fn(),
+  useCoreUpdateStatus: vi.fn(),
+  useSetUciConfigBatch: vi.fn(),
   useUciConfig: vi.fn(),
   useSubscriptionAdd: vi.fn(),
   useSubscriptionUpdate: vi.fn(),
@@ -43,6 +50,13 @@ import {
   useServiceStop,
   useServiceRestart,
   useServiceCancelJob,
+  useCoreCurrent,
+  useCoreLatestVersion,
+  useCoreRefreshLatestVersion,
+  useCoreProbeSources,
+  useCoreUpdate,
+  useCoreUpdateStatus,
+  useSetUciConfigBatch,
   useUciConfig,
   useSubscriptionAdd,
   useSubscriptionUpdate,
@@ -60,6 +74,23 @@ function setupEmptyState(addMutate = vi.fn().mockResolvedValue(undefined), addPe
   vi.mocked(useUciConfig).mockReturnValue(
     { data: { config: {} }, isPending: false, isError: false, isSuccess: true } as unknown as CreateQueryResult<UciPackage>
   )
+  vi.mocked(useCoreCurrent).mockReturnValue(
+    makeQueryResult({ installed: false, version: null, core_type: 'Meta' } as InstalledCoreResult) as CreateQueryResult<InstalledCoreResult>
+  )
+  vi.mocked(useCoreLatestVersion).mockReturnValue(
+    makeQueryResult({ version: '1.19.0', core_type: 'Meta', source_policy: 'auto' } as CoreVersionResult) as CreateQueryResult<CoreVersionResult>
+  )
+  vi.mocked(useCoreRefreshLatestVersion).mockReturnValue(makeMutationResult() as never)
+  vi.mocked(useCoreProbeSources).mockReturnValue(
+    makeMutationResult() as CreateMutationResult<CoreSourceProbeResult, unknown, void, unknown>
+  )
+  vi.mocked(useCoreUpdate).mockReturnValue(
+    makeMutationResult() as CreateMutationResult<UpdateStatusResult, unknown, void, unknown>
+  )
+  vi.mocked(useCoreUpdateStatus).mockReturnValue(
+    makeQueryResult({ status: 'idle' } as UpdateStatusResult) as CreateQueryResult<UpdateStatusResult>
+  )
+  vi.mocked(useSetUciConfigBatch).mockReturnValue(makeMutationResult() as never)
   vi.mocked(useProxyGroups).mockReturnValue(makeQueryResult([]) as never)
   vi.mocked(useRuleProviders).mockReturnValue(makeQueryResult([]) as never)
   vi.mocked(useCustomProxies).mockReturnValue(makeQueryResult([]) as never)
@@ -82,16 +113,19 @@ describe('StatusPage empty state', () => {
     setupEmptyState()
     render(StatusPage)
 
-    expect(screen.getByText('Add a subscription')).toBeInTheDocument()
+    expect(screen.getByText('Set up Clash Nivo')).toBeInTheDocument()
+    expect(screen.getByText('1. Core')).toBeInTheDocument()
+    expect(screen.getByText('2. Source')).toBeInTheDocument()
+    expect(screen.getByText('3. Start')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /save \+ refresh/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /open sources/i })).toHaveAttribute('href', '#/sources')
   })
 
-  it('does not show service control buttons in empty state', () => {
+  it('shows the final start step as disabled until setup is ready', () => {
     setupEmptyState()
     render(StatusPage)
 
-    expect(screen.queryByRole('button', { name: 'Start' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Restart' })).not.toBeInTheDocument()
   })

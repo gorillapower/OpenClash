@@ -5,6 +5,13 @@
     useServiceStop,
     useServiceRestart,
     useServiceCancelJob,
+    useCoreCurrent,
+    useCoreLatestVersion,
+    useCoreRefreshLatestVersion,
+    useCoreProbeSources,
+    useCoreUpdate,
+    useCoreUpdateStatus,
+    useSetUciConfigBatch,
     useUciConfig,
     useSubscriptionAdd,
     useSubscriptionUpdate,
@@ -20,12 +27,25 @@
   import { Input } from '$lib/components/ui/input/index'
   import { Card, CardHeader, CardContent } from '$lib/components/ui/card/index'
   import PageIntro from '$lib/components/PageIntro.svelte'
-  import EmptyState from '$lib/components/EmptyState.svelte'
 
   const queryClient = useQueryClient()
 
   const serviceStatus = useServiceStatus('clashnivo', { refetchInterval: 5000 })
   const uciConfig = useUciConfig('clashnivo')
+  const currentCore = useCoreCurrent()
+  const latestCore = useCoreLatestVersion()
+  const refreshLatestCore = useCoreRefreshLatestVersion()
+  const probeCoreSources = useCoreProbeSources()
+  const coreUpdate = useCoreUpdate()
+  const coreUpdateStatus = useCoreUpdateStatus({
+    enabled: () => coreUpdate.isPending || (serviceStatus.data?.busy ?? false) && serviceStatus.data?.busy_command === 'core:core',
+    refetchInterval: (query) =>
+      (coreUpdate.isPending || ((serviceStatus.data?.busy ?? false) && serviceStatus.data?.busy_command === 'core:core')) &&
+      isPendingState(query.state.data?.status)
+        ? 2000
+        : false
+  } as never)
+  const setCoreSourceConfig = useSetUciConfigBatch('clashnivo', 'config')
   const proxyGroups = useProxyGroups()
   const ruleProviders = useRuleProviders()
   const customProxies = useCustomProxies()
@@ -42,11 +62,19 @@
   let optimisticRunning = $state<boolean | null>(null)
   let subscriptionUrl = $state('')
   let urlError = $state<string | null>(null)
+  let localCoreCustomBaseUrl = $state('')
 
-  const controllerPort = $derived(
-    ((uciConfig.data?.config as Record<string, string> | undefined)?.cn_port ?? '9093').trim() || '9093'
-  )
+  const cfg = $derived((uciConfig.data?.config as Record<string, string> | undefined) ?? {})
+  const controllerPort = $derived((cfg.cn_port ?? '9093').trim() || '9093')
   const dashboardUrl = $derived(`http://${window.location.hostname}:${controllerPort}/ui`)
+  const rawCoreSourceMode = $derived(cfg.core_source ?? 'auto')
+  const coreCustomBaseUrl = $derived(cfg.core_custom_base_url ?? '')
+  const installedCore = $derived(currentCore.data?.installed ?? false)
+  const installedCoreVersion = $derived(currentCore.data?.version ?? null)
+  const latestCoreVersion = $derived(latestCore.data?.version ?? null)
+  const selectedCoreSourceLabel = $derived(latestCore.data?.selected_source_label ?? null)
+  const selectedCoreSourceBase = $derived(latestCore.data?.source_base ?? null)
+  const selectedCoreSourceLatency = $derived(latestCore.data?.latency_ms ?? null)
 
   const serviceState = $derived.by(() => {
     if (optimisticRunning === true) return 'starting'
@@ -86,7 +114,7 @@
   const serviceManaged = $derived(serviceStatus.data?.service_running ?? false)
   const watchdogRunning = $derived(serviceStatus.data?.watchdog_running ?? false)
 
-  const isEmpty = $derived(uciConfig.isSuccess && !activeConfigPath)
+  const needsOnboarding = $derived(uciConfig.isSuccess && (!activeConfigPath || !installedCore))
 
   const proxyGroupCount = $derived(proxyGroups.data?.length ?? 0)
   const ruleProviderCount = $derived(ruleProviders.data?.length ?? 0)
@@ -168,6 +196,37 @@
     if (activeJobKind === 'dashboard') return 'Cancel dashboard download'
     return 'Cancel active job'
   })
+  const onboardingStepCount = $derived((installedCore ? 1 : 0) + (activeConfigPath ? 1 : 0) + (isRunning ? 1 : 0))
+
+  const CORE_SOURCE_OPTIONS = {
+    auto: 'Auto',
+    official: 'Official',
+    jsdelivr: 'jsDelivr',
+    fastly: 'Fastly',
+    testingcf: 'TestingCF',
+    custom: 'Custom'
+  } as const
+
+  type CoreSourceMode = keyof typeof CORE_SOURCE_OPTIONS
+
+  const coreSourceMode = $derived.by<CoreSourceMode>(() => {
+    if (rawCoreSourceMode === 'openclash' || rawCoreSourceMode === 'clashnivo') return 'official'
+    if (
+      rawCoreSourceMode === 'official' ||
+      rawCoreSourceMode === 'jsdelivr' ||
+      rawCoreSourceMode === 'fastly' ||
+      rawCoreSourceMode === 'testingcf' ||
+      rawCoreSourceMode === 'custom'
+    ) {
+      return rawCoreSourceMode
+    }
+    return 'auto'
+  })
+  const coreBusy = $derived(isPendingState(coreUpdateStatus.data?.status) || coreUpdate.isPending)
+
+  function isPendingState(status?: string) {
+    return status === 'accepted' || status === 'running'
+  }
 
   function blockedReasonMessage(reason: string | null): string {
     if (reason === 'openclash_active') {
@@ -189,6 +248,14 @@
   function formatProxyMode(mode: string): string {
     return mode.charAt(0).toUpperCase() + mode.slice(1)
   }
+
+  function setupTone(done: boolean) {
+    return done ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-border bg-card'
+  }
+
+  $effect(() => {
+    localCoreCustomBaseUrl = coreCustomBaseUrl
+  })
 
   function validateUrl(url: string): string | null {
     if (!url.trim()) return 'Please enter a subscription URL'
@@ -228,6 +295,27 @@
     }
   }
 
+  async function handleCoreSourceModeChange(e: Event) {
+    const value = (e.target as HTMLSelectElement).value as CoreSourceMode
+    if (value === 'custom') {
+      if (!localCoreCustomBaseUrl) localCoreCustomBaseUrl = 'https://'
+      return
+    }
+    await setCoreSourceConfig.mutateAsync([
+      { option: 'core_source', value },
+      { option: 'core_custom_base_url', value: '' }
+    ])
+  }
+
+  async function saveCustomCoreSource() {
+    const trimmed = localCoreCustomBaseUrl.trim()
+    const normalised = trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed
+    await setCoreSourceConfig.mutateAsync([
+      { option: 'core_source', value: 'custom' },
+      { option: 'core_custom_base_url', value: normalised }
+    ])
+  }
+
   async function handleStart() {
     optimisticRunning = true
     try {
@@ -259,7 +347,7 @@
 <div class="space-y-8">
   <PageIntro eyebrow="Operations" title="Status" />
 
-  {#if isEmpty}
+  {#if needsOnboarding}
     <div class="space-y-5 py-2">
       {#if busyMessage}
         <div class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
@@ -277,43 +365,178 @@
         </div>
       {/if}
 
-      <EmptyState
-        title="Add a subscription"
-        body=""
-      />
+      <Card>
+        <CardHeader class="space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="space-y-1">
+              <h2 class="text-xl font-semibold">Set up Clash Nivo</h2>
+              <p class="text-sm text-muted-foreground">Finish the three required steps: install a core, add a source, then start the service.</p>
+            </div>
+            <span class="rounded-full border border-border px-3 py-1 text-sm text-muted-foreground">{onboardingStepCount}/3 ready</span>
+          </div>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          <div class={`rounded-lg border px-4 py-4 ${setupTone(installedCore)}`}>
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="space-y-1">
+                <div class="text-sm font-semibold">1. Core</div>
+                <div class="text-sm text-muted-foreground">
+                  {#if installedCore}
+                    Installed{#if installedCoreVersion}: {installedCoreVersion}{/if}
+                  {:else if coreBusy}
+                    Installing…
+                  {:else}
+                    No core is installed yet.
+                  {/if}
+                </div>
+              </div>
+              {#if !installedCore}
+                <Button
+                  variant="default"
+                  size="sm"
+                  disabled={isBusy || coreBusy || latestCore.isPending || refreshLatestCore.isPending}
+                  onclick={() => coreUpdate.mutateAsync()}
+                >
+                  {coreBusy ? 'Installing…' : 'Install'}
+                </Button>
+              {/if}
+            </div>
 
-      <div class="flex w-full max-w-2xl flex-col gap-2">
-        <div class="flex gap-2">
-          <Input
-            type="url"
-            placeholder="https://example.com/subscribe?token=..."
-            bind:value={subscriptionUrl}
-            disabled={subscriptionAdd.isPending || subscriptionUpdate.isPending || isBusy}
-            aria-label="Subscription URL"
-            aria-invalid={urlError ? 'true' : undefined}
-          />
-          <Button
-            variant="default"
-            disabled={subscriptionAdd.isPending || subscriptionUpdate.isPending || isBusy}
-            onclick={handleGetStarted}
-          >
-            {#if subscriptionAdd.isPending}
-              Saving subscription...
-            {:else if subscriptionUpdate.isPending}
-              Checking and refreshing...
-            {:else}
-              Save + refresh
+            {#if !installedCore}
+              <div class="mt-4 space-y-3">
+                <div class="flex flex-wrap items-center gap-2">
+                  <select
+                    class="rounded-md border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                    value={coreSourceMode}
+                    onchange={handleCoreSourceModeChange}
+                    disabled={isBusy || setCoreSourceConfig.isPending || probeCoreSources.isPending}
+                    aria-label="Download source"
+                  >
+                    {#each Object.entries(CORE_SOURCE_OPTIONS) as [value, label]}
+                      <option value={value}>{label}</option>
+                    {/each}
+                  </select>
+                  {#if coreSourceMode === 'custom'}
+                    <input
+                      class="min-w-[16rem] flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                      bind:value={localCoreCustomBaseUrl}
+                      aria-label="Custom download source prefix"
+                      placeholder="https://mirror.example.com"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onclick={saveCustomCoreSource}
+                      disabled={isBusy || setCoreSourceConfig.isPending || probeCoreSources.isPending}
+                    >
+                      Save
+                    </Button>
+                  {/if}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onclick={() => probeCoreSources.mutateAsync()}
+                    disabled={isBusy || setCoreSourceConfig.isPending || probeCoreSources.isPending}
+                  >
+                    {probeCoreSources.isPending ? 'Checking…' : 'Check'}
+                  </Button>
+                </div>
+                {#if latestCoreVersion || selectedCoreSourceLabel}
+                  <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                    {#if latestCoreVersion}
+                      <span>Latest: <span class="font-medium text-foreground">{latestCoreVersion}</span></span>
+                    {/if}
+                    {#if selectedCoreSourceLabel}
+                      <span>
+                        Source: <span class="font-medium text-foreground">{selectedCoreSourceLabel}</span>{#if selectedCoreSourceLatency !== null} ({selectedCoreSourceLatency} ms){/if}
+                      </span>
+                    {/if}
+                  </div>
+                {/if}
+                {#if selectedCoreSourceBase}
+                  <p class="break-all text-xs text-muted-foreground">{selectedCoreSourceBase}</p>
+                {/if}
+                {#if coreUpdateStatus.data?.message}
+                  <p class="text-sm text-muted-foreground">{coreUpdateStatus.data.message}</p>
+                {/if}
+              </div>
             {/if}
-          </Button>
-        </div>
-        {#if urlError}
-          <p class="text-sm text-destructive">{urlError}</p>
-        {/if}
-        <div class="flex flex-wrap gap-3 text-sm">
-          <a href="#/sources" class="text-foreground underline underline-offset-4">Open Sources</a>
-          <a href="#/compose" class="text-muted-foreground underline underline-offset-4">Open Compose</a>
-        </div>
-      </div>
+          </div>
+
+          <div class={`rounded-lg border px-4 py-4 ${setupTone(!!activeConfigPath)}`}>
+            <div class="space-y-1">
+              <div class="text-sm font-semibold">2. Source</div>
+              <div class="text-sm text-muted-foreground">
+                {#if activeConfigName}
+                  Active source: {activeConfigName}
+                {:else}
+                  Add one subscription to create the first active source.
+                {/if}
+              </div>
+            </div>
+
+            {#if !activeConfigPath}
+              <div class="mt-4 space-y-2">
+                <div class="flex gap-2">
+                  <Input
+                    type="url"
+                    placeholder="https://example.com/subscribe?token=..."
+                    bind:value={subscriptionUrl}
+                    disabled={subscriptionAdd.isPending || subscriptionUpdate.isPending || isBusy}
+                    aria-label="Subscription URL"
+                    aria-invalid={urlError ? 'true' : undefined}
+                  />
+                  <Button
+                    variant="default"
+                    disabled={subscriptionAdd.isPending || subscriptionUpdate.isPending || isBusy}
+                    onclick={handleGetStarted}
+                  >
+                    {#if subscriptionAdd.isPending}
+                      Saving…
+                    {:else if subscriptionUpdate.isPending}
+                      Refreshing…
+                    {:else}
+                      Save + refresh
+                    {/if}
+                  </Button>
+                </div>
+                {#if urlError}
+                  <p class="text-sm text-destructive">{urlError}</p>
+                {/if}
+                <a href="#/sources" class="inline-block text-sm text-foreground underline underline-offset-4">Open Sources</a>
+              </div>
+            {/if}
+          </div>
+
+          <div class={`rounded-lg border px-4 py-4 ${setupTone(isRunning)}`}>
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="space-y-1">
+                <div class="text-sm font-semibold">3. Start</div>
+                <div class="text-sm text-muted-foreground">
+                  {#if isRunning}
+                    Clash Nivo is running.
+                  {:else if !installedCore}
+                    Install a core first.
+                  {:else if !activeConfigPath}
+                    Add a source first.
+                  {:else if isBlocked}
+                    {blockedReasonMessage(blockedReason)}
+                  {:else}
+                    Start Clash Nivo with the active source.
+                  {/if}
+                </div>
+              </div>
+              <Button
+                variant="default"
+                disabled={isBusy || isRunning || !installedCore || !activeConfigPath || !canStart}
+                onclick={handleStart}
+              >
+                Start
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   {:else}
     <div class="grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
