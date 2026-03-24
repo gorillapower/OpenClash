@@ -21,6 +21,9 @@ function createToastStore() {
     error(message: string) {
       this.add(message, 'error')
     },
+    info(message: string) {
+      this.add(message, 'default')
+    },
     success(message: string) {
       this.add(message, 'success')
     },

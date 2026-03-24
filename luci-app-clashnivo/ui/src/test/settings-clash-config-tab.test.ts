@@ -224,13 +224,13 @@ describe('ClashConfigTab', () => {
 
       render(ClashConfigTab)
 
-      // First click shows Confirm/Cancel
+      // First click shows Delete/Cancel
       const deleteBtn = screen.getByRole('button', { name: /delete HK Select/i })
       await fireEvent.click(deleteBtn)
 
-      // Confirm button should now be visible
-      const confirmBtn = screen.getByRole('button', { name: /confirm/i })
-      await fireEvent.click(confirmBtn)
+      // Destructive button should now be visible
+      const confirmDeleteBtn = screen.getByRole('button', { name: /^delete$/i })
+      await fireEvent.click(confirmDeleteBtn)
 
       expect(vi.mocked(useDeleteProxyGroup)().mutate).toHaveBeenCalled()
     })
@@ -571,13 +571,13 @@ describe('ClashConfigTab', () => {
       const deleteBtn = await screen.findByRole('button', { name: /delete azure_west_europe/i })
       await fireEvent.click(deleteBtn)
 
-      // First click shows Confirm
+      // First click shows Delete
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /^delete$/i })).toBeInTheDocument()
         expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
       })
 
-      await fireEvent.click(screen.getByRole('button', { name: /confirm/i }))
+      await fireEvent.click(screen.getByRole('button', { name: /^delete$/i }))
 
       await waitFor(() => {
         expect(vi.mocked(useDeleteRuleProvider)().mutate).toHaveBeenCalled()
@@ -592,13 +592,13 @@ describe('ClashConfigTab', () => {
       await fireEvent.click(deleteBtn)
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /^delete$/i })).toBeInTheDocument()
       })
 
       await fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
 
       await waitFor(() => {
-        expect(screen.queryByRole('button', { name: /confirm/i })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: /^delete$/i })).not.toBeInTheDocument()
         expect(screen.getByText('Azure_West_Europe')).toBeInTheDocument()
       })
     })

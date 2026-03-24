@@ -405,7 +405,7 @@
                   onclick={() => { deleteCustomProxy.mutate(proxy.id); confirmDeleteProxyId = undefined }}
                   disabled={deleteCustomProxy.isPending}
                 >
-                  Confirm
+                  Delete
                 </Button>
                 <Button
                   variant="ghost"
@@ -494,7 +494,7 @@
                     confirmDeleteProviderId = undefined
                   }}
                 >
-                  Confirm
+                  Delete
                 </Button>
                 <Button
                   variant="outline"
@@ -594,7 +594,7 @@
                   onclick={() => { deleteProxyGroup.mutate(group.id); confirmDeleteId = undefined }}
                   disabled={deleteProxyGroup.isPending}
                 >
-                  Confirm
+                  Delete
                 </Button>
                 <Button
                   variant="ghost"

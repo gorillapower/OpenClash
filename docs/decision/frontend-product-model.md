@@ -67,6 +67,10 @@ Rules:
 - actions that change stored settings, generated config, runtime activation, or remote refresh must be clearly distinguished
 - the UI must not rely on the user inferring behavior from context or legacy OpenClash vocabulary
 - the surrounding surface should carry the noun context so action labels can stay short
+- feedback must reflect the actual state transition:
+  - completed changes should read as saved, deleted, updated, or checked
+  - accepted long-running work should read as starting, refreshing, or cancelling
+  - busy or blocked work must not be presented as success
 
 Examples of distinctions the product must keep explicit:
 - save settings versus preview generated config
@@ -89,6 +93,7 @@ Preferred action vocabulary:
 Avoid:
 - repeated noun-heavy labels when the section or card already identifies the target
 - mixing synonyms for the same effect across pages
+- generic `Confirm` labels for destructive actions when `Delete` would be clearer
 
 ### Explain Advanced Features In Context
 

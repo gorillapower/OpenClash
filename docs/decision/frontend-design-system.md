@@ -74,6 +74,12 @@ That includes:
 
 The interface must never make the user infer meaning from different button placement or inherited wording.
 
+That includes feedback semantics:
+- success toasts for completed, persisted changes
+- neutral informational feedback for accepted or in-progress actions
+- error feedback for blocked or failed work
+- destructive confirmation controls that keep the destructive verb visible instead of swapping to a generic `Confirm`
+
 ### Context Carries Meaning
 
 The surface around a control should do most of the explanatory work.
@@ -180,6 +186,11 @@ Default to:
 - ordinary confirm dialogs for destructive actions
 
 Only introduce custom components when they materially improve consistency or reduce repeated complexity.
+
+For destructive actions:
+- use `Delete` + `Cancel` in inline confirmation states
+- avoid replacing the destructive action with a vague `Confirm`
+- keep the action label aligned with the consequence
 
 ## Visual Direction
 

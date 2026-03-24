@@ -128,6 +128,26 @@ function onMutationError(err: unknown) {
   toasts.error(message)
 }
 
+function activeCommandLabel(activeCommand?: string) {
+  return activeCommand ?? 'another command is running'
+}
+
+function notifyBusy(subject: string, activeCommand?: string) {
+  toasts.info(`${subject} is busy: ${activeCommandLabel(activeCommand)}`)
+}
+
+function notifyRequested(subject: string) {
+  toasts.info(subject)
+}
+
+function notifySaved(subject: string) {
+  toasts.success(`${subject} saved`)
+}
+
+function notifyDeleted(subject: string) {
+  toasts.success(`${subject} deleted`)
+}
+
 function titleCaseService(name: string): string {
   if (name.toLowerCase() === 'clashnivo') return 'Clash Nivo'
   return name.charAt(0).toUpperCase() + name.slice(1)
@@ -175,11 +195,11 @@ export function useServiceStart(
     mutationFn: () => luciRpc.serviceStart(name),
     onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
-      toasts.success(
-        result.busy
-          ? `${titleCaseService(name)} is busy: ${result.active_command ?? 'another command is running'}`
-          : `${titleCaseService(name)} start requested`
-      )
+      if (result.busy) {
+        notifyBusy(titleCaseService(name), result.active_command)
+        return
+      }
+      notifyRequested(`Starting ${titleCaseService(name)}`)
     },
     onError: onMutationError,
     ...opts
@@ -195,11 +215,11 @@ export function useServiceStop(
     mutationFn: () => luciRpc.serviceStop(name),
     onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
-      toasts.success(
-        result.busy
-          ? `${titleCaseService(name)} is busy: ${result.active_command ?? 'another command is running'}`
-          : `${titleCaseService(name)} stop requested`
-      )
+      if (result.busy) {
+        notifyBusy(titleCaseService(name), result.active_command)
+        return
+      }
+      notifyRequested(`Stopping ${titleCaseService(name)}`)
     },
     onError: onMutationError,
     ...opts
@@ -215,11 +235,11 @@ export function useServiceRestart(
     mutationFn: () => luciRpc.serviceRestart(name),
     onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
-      toasts.success(
-        result.busy
-          ? `${titleCaseService(name)} is busy: ${result.active_command ?? 'another command is running'}`
-          : `${titleCaseService(name)} restart requested`
-      )
+      if (result.busy) {
+        notifyBusy(titleCaseService(name), result.active_command)
+        return
+      }
+      notifyRequested(`Restarting ${titleCaseService(name)}`)
     },
     onError: onMutationError,
     ...opts
@@ -241,11 +261,11 @@ export function useServiceCancelJob(
         queryClient.invalidateQueries({ queryKey: luciKeys.assetsUpdateStatus('all') }),
         queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
       ])
-      toasts.success(
-        result.accepted
-          ? (result.message ?? 'Cancellation requested')
-          : (result.message ?? 'No cancelable Clash Nivo job is active')
-      )
+      if (result.status === 'error') {
+        toasts.error(result.message ?? 'Could not cancel the active job')
+        return
+      }
+      notifyRequested(result.message ?? (result.accepted ? 'Cancelling active job' : 'No active job to cancel'))
     },
     onError: onMutationError,
     ...opts
@@ -305,7 +325,7 @@ export function useSubscriptionAdd(
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
-      toasts.success('Subscription saved')
+      notifySaved('Subscription')
     },
     onError: onMutationError,
     ...opts
@@ -329,7 +349,7 @@ export function useSubscriptionDelete(
     mutationFn: (name: string) => luciRpc.subscriptionDelete(name),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
-      toasts.success('Subscription removed')
+      notifyDeleted('Subscription')
     },
     onError: onMutationError,
     ...opts
@@ -359,14 +379,14 @@ export function useSubscriptionUpdate(
     onSuccess(result, name) {
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
       if (result.status === 'busy') {
-        toasts.success(`Sources are busy: ${result.active_command ?? 'another command is running'}`)
+        notifyBusy('Sources', result.active_command)
         return
       }
       if (result.status === 'error') {
         toasts.error(result.message ?? `Subscription refresh failed: ${name}`)
         return
       }
-      toasts.success(`Subscription refresh requested: ${name}`)
+      notifyRequested(`Refreshing ${name}`)
     },
     onError: onMutationError,
     ...opts
@@ -384,7 +404,7 @@ export function useSubscriptionPreflight(
         queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
       }
       if (result.ok) {
-        toasts.success('Subscription test passed')
+        toasts.success('Subscription checked')
       } else {
         toasts.error(result.message)
       }
@@ -402,11 +422,11 @@ export function useSubscriptionUpdateAll(
     mutationFn: () => luciRpc.subscriptionUpdateAll(),
     onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
-      toasts.success(
-        result.status === 'busy'
-          ? `Sources are busy: ${result.active_command ?? 'another command is running'}`
-          : 'Subscription refresh requested for all saved sources'
-      )
+      if (result.status === 'busy') {
+        notifyBusy('Sources', result.active_command)
+        return
+      }
+      notifyRequested('Refreshing all sources')
     },
     onError: onMutationError,
     ...opts
@@ -423,7 +443,7 @@ export function useSubscriptionEdit(
     mutationFn: ({ name, data }) => luciRpc.subscriptionEdit(name, data),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
-      toasts.success('Subscription saved')
+      notifySaved('Subscription')
     },
     onError: onMutationError,
     ...opts
@@ -464,7 +484,7 @@ export function useConfigSetActive(
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.configs })
-      toasts.success('Source selected')
+      toasts.success('Active source changed')
     },
     ...opts
   }))
@@ -478,7 +498,7 @@ export function useConfigDelete(
     mutationFn: (name: string) => luciRpc.configDelete(name),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.configs })
-      toasts.success('Source file removed')
+      notifyDeleted('Source')
     },
     onError: onMutationError,
     ...opts
@@ -491,9 +511,9 @@ export function useConfigWrite(
   const queryClient = useQueryClient()
   return createMutation<void, unknown, { name: string; content: string }>(() => ({
     mutationFn: ({ name, content }) => luciRpc.configWrite(name, content),
-    onSuccess(_, { name }) {
+    onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.configs })
-      toasts.success(`Source file saved: ${name}`)
+      notifySaved('Source')
     },
     onError: onMutationError,
     ...opts
@@ -526,7 +546,7 @@ export function useFlushDnsCache(
   return createMutation<void, unknown, void>(() => ({
     mutationFn: () => clashClient.flushDnsCache(),
     onSuccess() {
-      toasts.success('DNS cache flushed')
+      toasts.success('DNS cache cleared')
     },
     onError: onMutationError,
     ...opts
@@ -555,7 +575,7 @@ export function useSetFirewallRules(
     mutationFn: (content: string) => luciRpc.fileWrite(FIREWALL_RULES_PATH, content),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.firewallRules })
-      toasts.success('Firewall rules saved')
+      notifySaved('Firewall rules')
     },
     onError: onMutationError,
     ...opts
@@ -642,7 +662,7 @@ export function useAddProxyGroup(
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.proxyGroups })
-      toasts.success('Proxy group added')
+      notifySaved('Proxy group')
     },
     onError: onMutationError,
     ...opts
@@ -677,7 +697,7 @@ export function useUpdateProxyGroup(
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.proxyGroups })
-      toasts.success('Proxy group updated')
+      notifySaved('Proxy group')
     },
     onError: onMutationError,
     ...opts
@@ -695,7 +715,7 @@ export function useDeleteProxyGroup(
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.proxyGroups })
-      toasts.success('Proxy group deleted')
+      notifyDeleted('Proxy group')
     },
     onError: onMutationError,
     ...opts
@@ -856,7 +876,7 @@ export function useSetCustomRules(
       luciRpc.fileWrite(CUSTOM_RULES_PATH, serializeCustomRules(rules)),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.customRules })
-      toasts.success('Custom rules saved')
+      notifySaved('Custom rules')
     },
     onError: onMutationError,
     ...opts
@@ -885,7 +905,7 @@ export function useSetConfigOverwrite(
     mutationFn: (content: string) => luciRpc.fileWrite(CONFIG_OVERWRITE_PATH, content),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.configOverwrite })
-      toasts.success('Config overwrite saved')
+      notifySaved('Overwrite')
     },
     onError: onMutationError,
     ...opts
@@ -985,7 +1005,7 @@ export function useAddRuleProvider(
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.ruleProviders })
-      toasts.success('Rule provider added')
+      notifySaved('Rule provider')
     },
     onError: onMutationError,
     ...opts
@@ -1020,7 +1040,7 @@ export function useUpdateRuleProvider(
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.ruleProviders })
-      toasts.success('Rule provider updated')
+      notifySaved('Rule provider')
     },
     onError: onMutationError,
     ...opts
@@ -1038,7 +1058,7 @@ export function useDeleteRuleProvider(
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.ruleProviders })
-      toasts.success('Rule provider deleted')
+      notifyDeleted('Rule provider')
     },
     onError: onMutationError,
     ...opts
@@ -1097,7 +1117,11 @@ export function useCoreRefreshLatestVersion(
     mutationFn: () => luciRpc.coreRefreshLatestVersion(),
     onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.coreLatestVersion })
-      toasts.success(result.status === 'error' ? 'Core version check failed' : 'Core version checked')
+      if (result.status === 'error') {
+        toasts.error('Could not check core version')
+        return
+      }
+      toasts.success('Core version checked')
     },
     onError: onMutationError,
     ...opts
@@ -1114,11 +1138,11 @@ export function useCoreProbeSources(
       queryClient.invalidateQueries({ queryKey: luciKeys.coreLatestVersion })
       queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
       if (result.status === 'busy') {
-        toasts.success(`Core source check blocked: ${result.active_command ?? 'another command is running'}`)
+        notifyBusy('Download source', result.active_command)
       } else if (result.status === 'error') {
-        toasts.error('No healthy core source was found')
+        toasts.error('No healthy download source was found')
       } else {
-        toasts.success(`Core source checked: ${result.selected_source_label ?? result.selected_source ?? 'selected'}`)
+        toasts.success(`Download source checked: ${result.selected_source_label ?? result.selected_source ?? 'selected'}`)
       }
     },
     onError: onMutationError,
@@ -1147,13 +1171,11 @@ export function useCoreUpdate(
       // Invalidate both so version + status refresh after update completes
       queryClient.invalidateQueries({ queryKey: luciKeys.coreLatestVersion })
       queryClient.invalidateQueries({ queryKey: luciKeys.coreUpdateStatus })
-      toasts.success(
-        result.status === 'busy'
-          ? `Core update blocked: ${result.active_command ?? 'another command is running'}`
-          : result.status === 'accepted' || result.status === 'running'
-            ? 'Core update started'
-            : 'Core update requested'
-      )
+      if (result.status === 'busy') {
+        notifyBusy('Core update', result.active_command)
+        return
+      }
+      notifyRequested('Starting core update')
     },
     onError: onMutationError,
     ...opts
@@ -1178,7 +1200,11 @@ export function usePackageRefreshLatestVersion(
     mutationFn: () => luciRpc.packageRefreshLatestVersion(),
     onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.packageLatestVersion })
-      toasts.success(result.status === 'error' ? 'Package version check failed' : 'Package version checked')
+      if (result.status === 'error') {
+        toasts.error('Could not check package version')
+        return
+      }
+      toasts.success('Package version checked')
     },
     onError: onMutationError,
     ...opts
@@ -1205,13 +1231,11 @@ export function usePackageUpdate(
     onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.packageLatestVersion })
       queryClient.invalidateQueries({ queryKey: luciKeys.packageUpdateStatus })
-      toasts.success(
-        result.status === 'busy'
-          ? `Package update blocked: ${result.active_command ?? 'another command is running'}`
-          : result.status === 'accepted' || result.status === 'running'
-            ? 'Package update started'
-            : 'Package update requested'
-      )
+      if (result.status === 'busy') {
+        notifyBusy('Package update', result.active_command)
+        return
+      }
+      notifyRequested('Starting package update')
     },
     onError: onMutationError,
     ...opts
@@ -1239,12 +1263,12 @@ export function useAssetsUpdate(
     mutationFn: () => luciRpc.assetsUpdate(target),
     onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.assetsUpdateStatus(target) })
-      toasts.success(
-        result.status === 'busy'
-          ? `Asset refresh blocked: ${result.active_command ?? 'another command is running'}`
-          : result.status === 'accepted' || result.status === 'running'
-            ? (target === 'all' ? 'Asset refresh started' : `Asset refresh started: ${target}`)
-            : (target === 'all' ? 'Asset refresh requested' : `Asset refresh requested: ${target}`)
+      if (result.status === 'busy') {
+        notifyBusy('Asset refresh', result.active_command)
+        return
+      }
+      notifyRequested(
+        target === 'all' ? 'Refreshing assets' : `Refreshing assets: ${target}`
       )
     },
     onError: onMutationError,
@@ -1281,7 +1305,7 @@ export function useDashboardSelect(
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.dashboards })
       queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
-      toasts.success('Dashboard preference saved')
+      notifySaved('Dashboard')
     },
     onError: onMutationError,
     ...opts
@@ -1297,11 +1321,11 @@ export function useDashboardUpdate(
     onSuccess(result, id) {
       queryClient.invalidateQueries({ queryKey: luciKeys.dashboardUpdateStatus(id) })
       queryClient.invalidateQueries({ queryKey: luciKeys.dashboards })
-      toasts.success(
-        result.status === 'busy'
-          ? `Dashboard update blocked: ${result.active_command ?? 'another command is running'}`
-          : 'Dashboard download requested'
-      )
+      if (result.status === 'busy') {
+        notifyBusy('Dashboard download', result.active_command)
+        return
+      }
+      notifyRequested('Starting dashboard download')
     },
     onError: onMutationError,
     ...opts
@@ -1456,7 +1480,7 @@ export function useAddCustomProxy(
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.customProxies })
-      toasts.success('Custom proxy added')
+      notifySaved('Custom proxy')
     },
     onError: onMutationError,
     ...opts
@@ -1510,7 +1534,7 @@ export function useUpdateCustomProxy(
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.customProxies })
-      toasts.success('Custom proxy updated')
+      notifySaved('Custom proxy')
     },
     onError: onMutationError,
     ...opts
@@ -1528,7 +1552,7 @@ export function useDeleteCustomProxy(
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.customProxies })
-      toasts.success('Custom proxy deleted')
+      notifyDeleted('Custom proxy')
     },
     onError: onMutationError,
     ...opts
