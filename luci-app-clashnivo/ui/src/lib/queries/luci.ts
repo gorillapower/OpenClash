@@ -130,6 +130,10 @@ function onMutationError(err: unknown) {
   toasts.error(message)
 }
 
+function isMissingRpcMethod(err: unknown, method: string) {
+  return isApiError(err) && err.message === `method not found: ${method}`
+}
+
 function activeCommandLabel(activeCommand?: string) {
   return activeCommand ?? 'another command is running'
 }
@@ -368,17 +372,23 @@ export function useSubscriptionUpdate(
   const queryClient = useQueryClient()
   return createMutation<UpdateStatusResult, unknown, string>(() => ({
     mutationFn: async (name: string) => {
-      const probe = await luciRpc.subscriptionTest(name)
-      if (!probe.ok) {
-        return {
-          accepted: false,
-          status: 'error',
-          target: name,
-          kind: 'subscription',
-          message: probe.message,
-          preflight_status: probe.status,
-          preflight_http_code: probe.http_code
-        } as UpdateStatusResult
+      try {
+        const probe = await luciRpc.subscriptionTest(name)
+        if (!probe.ok) {
+          return {
+            accepted: false,
+            status: 'error',
+            target: name,
+            kind: 'subscription',
+            message: probe.message,
+            preflight_status: probe.status,
+            preflight_http_code: probe.http_code
+          } as UpdateStatusResult
+        }
+      } catch (err) {
+        if (!isMissingRpcMethod(err, 'subscription.test')) {
+          throw err
+        }
       }
       return luciRpc.subscriptionUpdate(name)
     },
@@ -415,7 +425,13 @@ export function useSubscriptionPreflight(
         toasts.error(result.message)
       }
     },
-    onError: onMutationError,
+    onError(err) {
+      if (isMissingRpcMethod(err, 'subscription.test')) {
+        toasts.info('Subscription check is unavailable on this backend')
+        return
+      }
+      onMutationError(err)
+    },
     ...opts
   }))
 }
