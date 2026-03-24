@@ -10,7 +10,6 @@
   import PageIntro from '$lib/components/PageIntro.svelte'
   import SectionHeader from '$lib/components/SectionHeader.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
-  import ExplainerSheet from '$lib/components/ExplainerSheet.svelte'
   import {
     useSubscriptions,
     useSubscriptionAdd,
@@ -74,7 +73,6 @@
   let deletingConfigNames = $state(new Set<string>())
   let confirmSelectName = $state<string | null>(null)
   let confirmDeleteName = $state<string | null>(null)
-  let explainerOpen = $state(false)
   let pendingSourceName = $state('')
 
   const sourceSwitchPending = $derived(
@@ -280,16 +278,7 @@
 </script>
 
 <div class="space-y-8">
-  <PageIntro
-    eyebrow="Inventory"
-    title="Sources"
-  >
-    {#snippet actions()}
-      <Button variant="outline" size="sm" onclick={() => (explainerOpen = true)}>
-        How this works
-      </Button>
-    {/snippet}
-  </PageIntro>
+  <PageIntro eyebrow="Inventory" title="Sources" />
 
   {#if busyMessage}
     <div class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
@@ -308,7 +297,7 @@
   {/if}
 
   <section class="space-y-4" aria-labelledby="sources-selected-heading">
-    <SectionHeader title="Selected source" />
+    <SectionHeader title="Active source" />
 
     <Card>
       <CardContent class="pt-5">
@@ -354,7 +343,7 @@
         >
           {subscriptionUpdateAll.isPending ? 'Refreshing all…' : 'Refresh all'}
         </Button>
-        <Button variant="outline" size="sm" onclick={openAdd} disabled={globalBusy}>Add subscription</Button>
+        <Button variant="outline" size="sm" onclick={openAdd} disabled={globalBusy}>Add</Button>
       {/snippet}
     </SectionHeader>
 
@@ -389,7 +378,7 @@
   <section class="space-y-4" aria-labelledby="sources-configs-heading">
     <SectionHeader title="Uploaded sources">
       {#snippet actions()}
-        <Button variant="outline" size="sm" onclick={openUploadConfig} disabled={globalBusy}>Upload config</Button>
+        <Button variant="outline" size="sm" onclick={openUploadConfig} disabled={globalBusy}>Upload</Button>
       {/snippet}
     </SectionHeader>
 
@@ -449,7 +438,7 @@
                       }}
                       disabled={globalBusy || selectingNames.has(config.name)}
                     >
-                      {selectingNames.has(config.name) ? 'Selecting…' : 'Select source'}
+                      {selectingNames.has(config.name) ? 'Selecting…' : 'Select'}
                     </Button>
                   {/if}
                   <Button
@@ -514,32 +503,11 @@
     <Card>
       <CardContent class="flex flex-col gap-3 pt-5 sm:flex-row sm:items-center sm:justify-between">
         <p class="text-sm text-muted-foreground">Not available yet.</p>
-        <Button variant="outline" disabled>Import from OpenClash</Button>
+        <Button variant="outline" disabled>Import</Button>
       </CardContent>
     </Card>
   </section>
 </div>
-
-<ExplainerSheet
-  open={explainerOpen}
-  onClose={() => (explainerOpen = false)}
-  title="Sources"
-  intro="Sources is where you manage the YAML inputs Clash Nivo can build from. It is separate from custom rules, groups, proxies, and overwrite."
-  sections={[
-    {
-      title: 'What belongs here',
-      body: 'Use subscriptions for remote feeds you want to refresh in place. Use uploaded sources for local YAML files you want to store and select directly.'
-    },
-    {
-      title: 'Refresh behavior',
-      body: 'Refresh updates the stored source file only. It does not remove custom layers, rebuild the generated config, or restart Clash Nivo by itself.'
-    },
-    {
-      title: 'Selected source',
-      body: 'Clash Nivo composes from one selected source at a time. Selecting a different source changes what Compose will build from next.'
-    }
-  ]}
-/>
 
 <Sheet open={addOpen} onClose={() => (addOpen = false)} title="Add subscription">
   <form class="space-y-4" onsubmit={(event) => { event.preventDefault(); handleAdd(true) }}>
@@ -566,10 +534,6 @@
       <Input id="add-name" type="text" placeholder="My VPN" bind:value={addName} />
     </div>
 
-    <p class="text-xs text-muted-foreground">
-      Save only stores the URL. Save and refresh checks reachability first, then fetches the source file.
-    </p>
-
     <div class="grid gap-2 sm:grid-cols-2">
       <Button
         type="button"
@@ -578,7 +542,7 @@
         disabled={globalBusy || subscriptionAdd.isPending || subscriptionPreflight.isPending || subscriptionUpdate.isPending}
         onclick={() => handleAdd(false)}
       >
-        {subscriptionAdd.isPending ? 'Saving subscription…' : 'Save only'}
+        {subscriptionAdd.isPending ? 'Saving…' : 'Save'}
       </Button>
       <Button
         type="submit"
@@ -590,7 +554,7 @@
         {:else if subscriptionPreflight.isPending || subscriptionUpdate.isPending}
           Checking and refreshing…
         {:else}
-          Save and refresh
+          Save + refresh
         {/if}
       </Button>
     </div>
@@ -635,10 +599,6 @@
         </select>
       </div>
 
-      <p class="text-xs text-muted-foreground">
-        Save changes stores the updated URL and metadata. Save and refresh checks the URL first, then fetches the latest source file.
-      </p>
-
       <div class="grid gap-2 sm:grid-cols-2">
         <Button
           type="submit"
@@ -646,7 +606,7 @@
           class="w-full"
           disabled={globalBusy || subscriptionEdit.isPending || subscriptionPreflight.isPending || subscriptionUpdate.isPending}
         >
-          {subscriptionEdit.isPending ? 'Saving changes…' : 'Save changes'}
+          {subscriptionEdit.isPending ? 'Saving…' : 'Save'}
         </Button>
         <Button
           type="button"
@@ -655,11 +615,11 @@
           onclick={() => handleEdit(true)}
         >
           {#if subscriptionEdit.isPending}
-            Saving changes…
+            Saving…
           {:else if subscriptionPreflight.isPending || subscriptionUpdate.isPending}
             Checking and refreshing…
           {:else}
-            Save and refresh
+            Save + refresh
           {/if}
         </Button>
       </div>
@@ -690,7 +650,7 @@
         <YamlEditor content={editConfigContent} onChange={(value) => (editConfigContent = value)} />
       </div>
       <Button class="w-full shrink-0" disabled={globalBusy || configWrite.isPending} onclick={handleSaveConfig}>
-        {configWrite.isPending ? 'Saving…' : 'Save source file'}
+        {configWrite.isPending ? 'Saving…' : 'Save'}
       </Button>
     {/if}
   </div>
@@ -726,7 +686,7 @@
     </div>
 
     <Button type="submit" class="w-full" disabled={globalBusy || configWrite.isPending || !uploadConfigContent}>
-      {configWrite.isPending ? 'Uploading source…' : 'Upload source'}
+      {configWrite.isPending ? 'Uploading…' : 'Upload'}
     </Button>
   </form>
 </Sheet>

@@ -17,6 +17,7 @@ vi.mock('$lib/queries/luci', () => ({
   useServiceStart: vi.fn(),
   useServiceStop: vi.fn(),
   useServiceRestart: vi.fn(),
+  useServiceCancelJob: vi.fn(),
   useUciConfig: vi.fn(),
   useSubscriptionAdd: vi.fn(),
   useSubscriptionUpdate: vi.fn(),
@@ -41,6 +42,7 @@ import {
   useServiceStart,
   useServiceStop,
   useServiceRestart,
+  useServiceCancelJob,
   useUciConfig,
   useSubscriptionAdd,
   useSubscriptionUpdate,
@@ -66,6 +68,7 @@ function setupEmptyState(addMutate = vi.fn().mockResolvedValue(undefined), addPe
   vi.mocked(useServiceStart).mockReturnValue(makeMutationResult() as CreateMutationResult<ServiceActionResult, unknown, void, unknown>)
   vi.mocked(useServiceStop).mockReturnValue(makeMutationResult() as CreateMutationResult<ServiceActionResult, unknown, void, unknown>)
   vi.mocked(useServiceRestart).mockReturnValue(makeMutationResult() as CreateMutationResult<ServiceActionResult, unknown, void, unknown>)
+  vi.mocked(useServiceCancelJob).mockReturnValue(makeMutationResult() as never)
   vi.mocked(useSubscriptionAdd).mockReturnValue(
     makeMutationResult(addMutate, { isPending: addPending }) as unknown as ReturnType<typeof useSubscriptionAdd>
   )
@@ -80,7 +83,7 @@ describe('StatusPage empty state', () => {
     render(StatusPage)
 
     expect(screen.getByText('Add a subscription')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /save and refresh/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /save \+ refresh/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /open sources/i })).toHaveAttribute('href', '#/sources')
   })
 
@@ -97,7 +100,7 @@ describe('StatusPage empty state', () => {
     setupEmptyState()
     render(StatusPage)
 
-    await fireEvent.click(screen.getByRole('button', { name: /save and refresh/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /save \+ refresh/i }))
     await waitFor(() => {
       expect(screen.getByText(/please enter a subscription url/i)).toBeInTheDocument()
     })
@@ -105,7 +108,7 @@ describe('StatusPage empty state', () => {
     const input = screen.getByRole('textbox', { name: /subscription url/i }) as HTMLInputElement
     input.value = 'not a url'
     await fireEvent.input(input)
-    await fireEvent.click(screen.getByRole('button', { name: /save and refresh/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /save \+ refresh/i }))
 
     await waitFor(() => {
       expect(screen.getByText(/please enter a valid url/i)).toBeInTheDocument()
@@ -120,7 +123,7 @@ describe('StatusPage empty state', () => {
     const input = screen.getByRole('textbox', { name: /subscription url/i }) as HTMLInputElement
     input.value = 'https://example.com/sub?token=abc'
     await fireEvent.input(input)
-    await fireEvent.click(screen.getByRole('button', { name: /save and refresh/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /save \+ refresh/i }))
 
     await waitFor(() => {
       expect(addMutate).toHaveBeenCalledWith({ url: 'https://example.com/sub?token=abc' })

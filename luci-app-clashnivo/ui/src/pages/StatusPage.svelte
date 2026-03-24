@@ -142,14 +142,6 @@
     return 'Clash Nivo is installed but currently disabled.'
   })
 
-  const nextActionLabel = $derived.by(() => {
-    if (serviceState === 'blocked') return 'Stop OpenClash, then start Clash Nivo.'
-    if (!activeConfigPath) return 'Add a source to create your first active config.'
-    if (serviceState === 'disabled') return 'Enable and start Clash Nivo to apply the active generated config.'
-    if (serviceState === 'stopped' && canStart) return 'Start Clash Nivo to apply the active generated config.'
-    if (serviceState === 'degraded') return 'Check logs before restarting. The service and core do not currently agree on runtime ownership.'
-    return 'Use Compose to preview, validate, and activate changes before restarting.'
-  })
   const busyMessage = $derived.by(() => {
     if (!busyCommand) return null
     switch (busyCommand) {
@@ -310,7 +302,7 @@
             {:else if subscriptionUpdate.isPending}
               Checking and refreshing...
             {:else}
-              Save and refresh
+              Save + refresh
             {/if}
           </Button>
         </div>
@@ -402,11 +394,6 @@
         <CardContent class="space-y-4">
           <div class="grid gap-3 sm:grid-cols-2">
             <div class="rounded-md border border-border p-3">
-              <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Next action</p>
-              <p class="mt-1 text-sm">{nextActionLabel}</p>
-            </div>
-
-            <div class="rounded-md border border-border p-3">
               <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">OpenClash guard</p>
               <p class="mt-1 text-sm">
                 {#if openclashActive}
@@ -422,10 +409,10 @@
 
           <div class="flex flex-wrap gap-3 text-sm">
             <a href="#/compose" class="font-medium text-foreground underline underline-offset-4">
-              Open Compose
+              Compose
             </a>
             <a href="#/logs" class="font-medium text-foreground underline underline-offset-4">
-              View logs
+              Logs
             </a>
             <a
               href={dashboardUrl}
@@ -433,7 +420,7 @@
               rel="noopener noreferrer"
               class="text-muted-foreground underline underline-offset-4"
             >
-              Open dashboard
+              Dashboard
             </a>
           </div>
         </CardContent>

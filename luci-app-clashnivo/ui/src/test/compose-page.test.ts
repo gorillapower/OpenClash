@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte'
+import { render, screen, fireEvent, waitFor } from '@testing-library/svelte'
 import type { CreateQueryResult, CreateMutationResult } from '@tanstack/svelte-query'
 import type { ConfigCompositionResult, FileReadResult } from '$lib/api/luci'
 import ComposePage from '../pages/ComposePage.svelte'
@@ -148,7 +148,7 @@ describe('ComposePage', () => {
     render(ComposePage)
 
     expect(screen.getByRole('heading', { name: 'Compose' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /how this works/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /how this works/i })).not.toBeInTheDocument()
     expect(screen.getByText('alpha')).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: /selected source/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^switch$/i })).toBeDisabled()
@@ -167,9 +167,9 @@ describe('ComposePage', () => {
 
     expect(screen.getByText(/no source selected/i)).toBeInTheDocument()
     expect(screen.getByText(/selection required/i)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /go to sources/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /preview generated config/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /validate generated config/i })).toBeDisabled()
+    expect(screen.getByRole('link', { name: 'Sources' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^preview$/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^validate$/i })).toBeDisabled()
   })
 
   it('runs preview and renders preview content', async () => {
@@ -178,11 +178,11 @@ describe('ComposePage', () => {
     vi.mocked(useConfigPreview).mockReturnValue(makeMutation(previewMutate) as never)
 
     render(ComposePage)
-    await fireEvent.click(screen.getByRole('button', { name: /preview generated config/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /^preview$/i }))
 
     await waitFor(() => {
       expect(previewMutate).toHaveBeenCalledOnce()
-      expect(screen.getByText('Preview')).toBeInTheDocument()
+      expect(screen.getByText('Source: /etc/clashnivo/config/alpha.yaml')).toBeInTheDocument()
       expect(screen.getByText(/proxies:/i)).toBeInTheDocument()
     })
   })
@@ -212,10 +212,10 @@ describe('ComposePage', () => {
 
     render(ComposePage)
 
-    const activateButton = screen.getByRole('button', { name: /activate generated config/i })
+    const activateButton = screen.getByRole('button', { name: /^activate$/i })
     expect(activateButton).toBeDisabled()
 
-    await fireEvent.click(screen.getByRole('button', { name: /validate generated config/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /^validate$/i }))
 
     await waitFor(() => {
       expect(validateMutate).toHaveBeenCalledOnce()
@@ -230,31 +230,13 @@ describe('ComposePage', () => {
     })
   })
 
-  it('explains activation semantics clearly in the page explainer', async () => {
+  it('keeps the compose surface focused on direct actions', () => {
     setupMocks()
     render(ComposePage)
 
-    await fireEvent.click(screen.getByRole('button', { name: /how this works/i }))
-
-    expect(
-      screen.getByText(/activate makes the current validated generated config live by restarting clash nivo with it/i)
-    ).toBeInTheDocument()
-  })
-
-  it('opens the page explainer with the composition flow', async () => {
-    setupMocks()
-    render(ComposePage)
-
-    await fireEvent.click(screen.getByRole('button', { name: /how this works/i }))
-
-    const dialog = screen.getByRole('dialog', { name: 'Compose' })
-    expect(dialog).toBeInTheDocument()
-
-    const scoped = within(dialog)
-    expect(scoped.getAllByText('Selected source').length).toBeGreaterThan(0)
-    expect(scoped.getAllByText('Customizations').length).toBeGreaterThan(0)
-    expect(scoped.getAllByText('Preview').length).toBeGreaterThan(0)
-    expect(scoped.getAllByText('Validate').length).toBeGreaterThan(0)
-    expect(scoped.getAllByText('Activate').length).toBeGreaterThan(0)
+    expect(screen.queryByRole('dialog', { name: 'Compose' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^preview$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^validate$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^activate$/i })).toBeInTheDocument()
   })
 })

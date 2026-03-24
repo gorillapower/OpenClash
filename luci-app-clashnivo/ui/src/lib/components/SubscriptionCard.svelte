@@ -72,7 +72,7 @@
             class="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
             onclick={() => onUpdate?.(subscription.name)}
             disabled={updating || disabled}
-            title="Refresh source"
+            title="Refresh"
             type="button"
             aria-label="Refresh {subscription.name}"
           >
@@ -101,7 +101,7 @@
             class="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             onclick={() => onEdit?.(subscription)}
             disabled={disabled}
-            title="Edit subscription"
+            title="Edit"
             type="button"
             aria-label="Edit {subscription.name}"
           >
@@ -149,7 +149,7 @@
               class="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
               onclick={() => (confirmingDelete = true)}
               disabled={disabled}
-              title="Delete subscription"
+            title="Delete"
               type="button"
               aria-label="Delete {subscription.name}"
             >

@@ -19,7 +19,6 @@
   import PageIntro from '$lib/components/PageIntro.svelte'
   import SectionHeader from '$lib/components/SectionHeader.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
-  import ExplainerSheet from '$lib/components/ExplainerSheet.svelte'
   import ClashConfigTab from './settings/ClashConfigTab.svelte'
 
   const configs = useConfigs()
@@ -37,7 +36,6 @@
 
   let previewResult = $state<ConfigCompositionResult | null>(null)
   let validateResult = $state<ConfigCompositionResult | null>(null)
-  let explainerOpen = $state(false)
   let pendingSourceName = $state('')
 
   const selectedSource = $derived(configs.data?.find((config) => config.active) ?? null)
@@ -126,16 +124,7 @@
 </script>
 
 <div class="space-y-8">
-  <PageIntro
-    eyebrow="Composition"
-    title="Compose"
-  >
-    {#snippet actions()}
-      <Button variant="outline" size="sm" onclick={() => (explainerOpen = true)}>
-        How this works
-      </Button>
-    {/snippet}
-  </PageIntro>
+  <PageIntro eyebrow="Composition" title="Compose" />
 
   {#if busyMessage}
     <div class="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
@@ -184,7 +173,7 @@
           >
             {#snippet actions()}
               <a href="#/sources" class="text-sm font-medium text-foreground underline underline-offset-4">
-                Go to Sources
+                Sources
               </a>
             {/snippet}
           </EmptyState>
@@ -228,20 +217,20 @@
             onclick={handlePreview}
             disabled={globalBusy || !hasSelectedSource || previewMutation.isPending}
           >
-            {previewMutation.isPending ? 'Generating preview…' : 'Preview generated config'}
+            {previewMutation.isPending ? 'Previewing…' : 'Preview'}
           </Button>
           <Button
             variant="outline"
             onclick={handleValidate}
             disabled={globalBusy || !hasSelectedSource || validateMutation.isPending}
           >
-            {validateMutation.isPending ? 'Validating generated config…' : 'Validate generated config'}
+            {validateMutation.isPending ? 'Validating…' : 'Validate'}
           </Button>
           <Button
             onclick={handleActivate}
             disabled={globalBusy || !hasSelectedSource || !workflowReady || restartMutation.isPending}
           >
-            {restartMutation.isPending ? 'Activating generated config…' : 'Activate generated config'}
+            {restartMutation.isPending ? 'Activating…' : 'Activate'}
           </Button>
         </div>
 
@@ -319,25 +308,3 @@
     <ClashConfigTab />
   </div>
 </div>
-
-<ExplainerSheet
-  open={explainerOpen}
-  onClose={() => (explainerOpen = false)}
-  title="Compose"
-  intro="Compose is the build pipeline for the live runtime config. It combines the selected source with Clash Nivo-owned customizations, then lets you preview, validate, and activate the result."
-  flow={['Selected source', 'Customizations', 'Preview', 'Validate', 'Activate']}
-  sections={[
-    {
-      title: 'What changes here',
-      body: 'This page changes the generated runtime config, not the stored source file. The selected source stays preserved while Clash Nivo layers your custom inputs on top.'
-    },
-    {
-      title: 'Customizations',
-      body: 'Custom proxies, rule providers, proxy groups, rules, and overwrite are applied during composition. They extend or shape the generated config without rewriting the source YAML directly.'
-    },
-    {
-      title: 'Preview, validate, activate',
-      body: 'Preview shows the generated output. Validate checks whether that output is safe to use. Activate makes the current validated generated config live by restarting Clash Nivo with it.'
-    }
-  ]}
-/>

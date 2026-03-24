@@ -17,6 +17,7 @@ vi.mock('$lib/queries/luci', () => ({
   useServiceStart: vi.fn(),
   useServiceStop: vi.fn(),
   useServiceRestart: vi.fn(),
+  useServiceCancelJob: vi.fn(),
   useUciConfig: vi.fn(),
   useSubscriptionAdd: vi.fn(),
   useSubscriptionUpdate: vi.fn(),
@@ -41,6 +42,7 @@ import {
   useServiceStart,
   useServiceStop,
   useServiceRestart,
+  useServiceCancelJob,
   useUciConfig,
   useSubscriptionAdd,
   useSubscriptionUpdate,
@@ -66,6 +68,7 @@ function setupMocks(serviceStatus: ServiceStatusResult) {
   vi.mocked(useServiceStart).mockReturnValue(makeMutationResult() as never)
   vi.mocked(useServiceStop).mockReturnValue(makeMutationResult() as never)
   vi.mocked(useServiceRestart).mockReturnValue(makeMutationResult() as never)
+  vi.mocked(useServiceCancelJob).mockReturnValue(makeMutationResult() as never)
   vi.mocked(useSubscriptionAdd).mockReturnValue(makeMutationResult() as never)
   vi.mocked(useSubscriptionUpdate).mockReturnValue(makeMutationResult() as never)
 }

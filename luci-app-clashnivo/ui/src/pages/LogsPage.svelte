@@ -35,12 +35,7 @@
   <LogsViewer />
   <Card>
     <CardHeader>
-      <div>
-        <h2 class="text-sm font-semibold">Log controls</h2>
-        <p class="mt-1 text-sm text-muted-foreground">
-          Configure verbosity and retention where you inspect logs, not in runtime settings.
-        </p>
-      </div>
+      <h2 class="text-sm font-semibold">Settings</h2>
     </CardHeader>
 
     <CardContent>

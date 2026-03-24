@@ -42,7 +42,6 @@ vi.mock('$lib/queries/luci', () => ({
   useAssetsUpdateStatus: vi.fn(),
   useAssetsUpdate: vi.fn(),
   useDashboards: vi.fn(),
-  useDashboardSelect: vi.fn(),
   useDashboardUpdateStatus: vi.fn(),
   useDashboardUpdate: vi.fn()
 }))
@@ -64,7 +63,6 @@ import {
   useAssetsUpdate,
   useAssetsUpdateStatus,
   useDashboards,
-  useDashboardSelect,
   useDashboardUpdate,
   useDashboardUpdateStatus,
   useCoreRefreshLatestVersion,
@@ -113,7 +111,6 @@ function setupMocks({
   coreUpdateMutate = vi.fn().mockResolvedValue(undefined),
   packageUpdateMutate = vi.fn().mockResolvedValue(undefined),
   assetsUpdateMutate = vi.fn().mockResolvedValue(undefined),
-  dashboardSelectMutate = vi.fn().mockResolvedValue(undefined),
   dashboardUpdateMutate = vi.fn().mockResolvedValue(undefined)
 } = {}) {
   vi.mocked(useUciConfig).mockReturnValue(
@@ -182,9 +179,6 @@ function setupMocks({
   vi.mocked(useDashboardUpdateStatus).mockReturnValue(
     makeQueryResult(dashboardStatus) as CreateQueryResult<UpdateStatusResult>
   )
-  vi.mocked(useDashboardSelect).mockReturnValue(
-    makeMutationResult(dashboardSelectMutate) as CreateMutationResult<void, unknown, string, unknown>
-  )
   vi.mocked(useDashboardUpdate).mockReturnValue(
     makeMutationResult(dashboardUpdateMutate) as CreateMutationResult<UpdateStatusResult, unknown, string, unknown>
   )
@@ -198,16 +192,15 @@ describe('SystemPage', () => {
     render(SystemPage)
 
     expect(screen.getByRole('heading', { name: 'System' })).toBeInTheDocument()
-    expect(screen.getByText('Core runtime')).toBeInTheDocument()
-    expect(screen.getByText('Package update')).toBeInTheDocument()
-    expect(screen.getByText('Asset maintenance')).toBeInTheDocument()
-    expect(screen.getByText('Dashboards')).toBeInTheDocument()
+    expect(screen.getByText('Clash Core')).toBeInTheDocument()
+    expect(screen.getAllByText('Maintenance').length).toBeGreaterThan(0)
+    expect(screen.getByText('Dashboard')).toBeInTheDocument()
     expect(screen.getAllByText('Advanced settings').length).toBeGreaterThan(0)
     expect(screen.getByText('Traffic mode')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /how this works/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /how this works/i })).not.toBeInTheDocument()
   })
 
-  it('shows read-only core source policy context', () => {
+  it('shows the source selector in the core panel', () => {
     setupMocks({
       latestCore: {
         version: '1.19.0',
@@ -218,9 +211,9 @@ describe('SystemPage', () => {
     })
     render(SystemPage)
 
-    expect(screen.getAllByText('Official GitHub').length).toBeGreaterThan(0)
-    expect(screen.getByText('Core runtime')).toBeInTheDocument()
-    expect(screen.getByText('Dashboards')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Download source' })).toBeInTheDocument()
+    expect(screen.getByText('Clash Core')).toBeInTheDocument()
+    expect(screen.getByText('Dashboard')).toBeInTheDocument()
   })
 
   it('shows current and latest core versions', () => {
@@ -247,8 +240,8 @@ describe('SystemPage', () => {
     })
     render(SystemPage)
 
-    expect(screen.getByRole('button', { name: 'Install core' })).toBeInTheDocument()
-    expect(screen.getByText('No core is installed yet.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Install' })).toBeInTheDocument()
+    expect(screen.getAllByText('Not installed').length).toBeGreaterThan(0)
     expect(screen.getByText(/Selected: TestingCF jsDelivr/)).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Download source' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Check source' })).toBeInTheDocument()
@@ -266,7 +259,8 @@ describe('SystemPage', () => {
     })
     render(SystemPage)
 
-    expect(screen.getByRole('link', { name: /open dashboard/i })).toHaveAttribute('href', 'https://localhost:9093/ui')
+    expect(screen.getByRole('link', { name: 'Open' })).toHaveAttribute('href', 'https://localhost:9093/ui')
+    expect(screen.getByText('Installed')).toBeInTheDocument()
   })
 
   it('calls core update when the button is clicked', async () => {
@@ -274,7 +268,7 @@ describe('SystemPage', () => {
     setupMocks({ coreUpdateMutate })
     render(SystemPage)
 
-    await fireEvent.click(screen.getByRole('button', { name: /update available/i }))
+    await fireEvent.click(screen.getAllByRole('button', { name: /^update$/i })[0])
     expect(coreUpdateMutate).toHaveBeenCalledOnce()
   })
 
@@ -283,7 +277,8 @@ describe('SystemPage', () => {
     setupMocks({ packageUpdateMutate })
     render(SystemPage)
 
-    await fireEvent.click(screen.getByRole('button', { name: /update package/i }))
+    const updateButtons = screen.getAllByRole('button', { name: /^update$/i })
+    await fireEvent.click(updateButtons[updateButtons.length - 1])
     expect(packageUpdateMutate).toHaveBeenCalledOnce()
   })
 
@@ -292,7 +287,7 @@ describe('SystemPage', () => {
     setupMocks({ assetsUpdateMutate })
     render(SystemPage)
 
-    await fireEvent.click(screen.getByRole('button', { name: /refresh all assets/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /^refresh$/i }))
     expect(assetsUpdateMutate).toHaveBeenCalledOnce()
   })
 
@@ -309,7 +304,7 @@ describe('SystemPage', () => {
 
     render(SystemPage)
 
-    const buttons = screen.getAllByRole('button', { name: /check latest/i })
+    const buttons = screen.getAllByRole('button', { name: /^check$/i })
     await fireEvent.click(buttons[0])
     await fireEvent.click(buttons[1])
 
@@ -331,15 +326,6 @@ describe('SystemPage', () => {
 
     await fireEvent.click(screen.getByRole('switch', { name: /dashboard forwarding ssl/i }))
     expect(dashboardSslMutate).toHaveBeenCalledWith('1')
-  })
-
-  it('selects a dashboard option', async () => {
-    const dashboardSelectMutate = vi.fn().mockResolvedValue(undefined)
-    setupMocks({ dashboardSelectMutate })
-    render(SystemPage)
-
-    await fireEvent.click(screen.getByRole('button', { name: /^use$/i }))
-    expect(dashboardSelectMutate).toHaveBeenCalledWith('zashboard')
   })
 
   it('downloads a dashboard option', async () => {
@@ -372,9 +358,8 @@ describe('SystemPage', () => {
     render(SystemPage)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /^updating…$/i })).toBeDisabled()
-      expect(screen.getByRole('button', { name: /updating package/i })).toBeDisabled()
-      expect(screen.getByRole('button', { name: /refreshing assets/i })).toBeDisabled()
+      expect(screen.getAllByRole('button', { name: /^updating…$/i }).length).toBeGreaterThanOrEqual(2)
+      expect(screen.getByRole('button', { name: /^refreshing…$/i })).toBeDisabled()
     })
   })
 

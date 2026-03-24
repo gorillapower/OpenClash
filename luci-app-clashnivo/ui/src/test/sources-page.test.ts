@@ -147,8 +147,8 @@ describe('SourcesPage', () => {
     setupMocks()
     render(SourcesPage)
     expect(screen.getByRole('heading', { name: 'Sources' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /how this works/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Selected source' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /how this works/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Active source' })).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: /selected source/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^switch$/i })).toBeDisabled()
   })
@@ -164,7 +164,7 @@ describe('SourcesPage', () => {
     setupMocks()
     render(SourcesPage)
     expect(screen.getByText(/openclash import/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /import from openclash/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^import$/i })).toBeDisabled()
     expect(screen.getByText(/not available yet/i)).toBeInTheDocument()
   })
 
@@ -186,7 +186,7 @@ describe('SourcesPage', () => {
   it('opens add subscription sheet and validates empty URL', async () => {
     setupMocks()
     render(SourcesPage)
-    await fireEvent.click(screen.getByRole('button', { name: /add subscription/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /^add$/i }))
     const form = screen.getByRole('dialog').querySelector('form')!
     await fireEvent.submit(form)
     expect(screen.getByText(/url is required/i)).toBeInTheDocument()
@@ -197,11 +197,11 @@ describe('SourcesPage', () => {
     const updateMutateAsync = vi.fn().mockResolvedValue(undefined)
     setupMocks({ addMutateAsync, updateMutateAsync })
     render(SourcesPage)
-    await fireEvent.click(screen.getByRole('button', { name: /add subscription/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /^add$/i }))
     await fireEvent.input(screen.getByLabelText(/subscription url/i), {
       target: { value: 'https://example.com/sub' }
     })
-    await fireEvent.click(screen.getByRole('button', { name: /save only/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
     await waitFor(() =>
       expect(addMutateAsync).toHaveBeenCalledWith({
         url: 'https://example.com/sub',
@@ -222,7 +222,7 @@ describe('SourcesPage', () => {
     const updateMutateAsync = vi.fn().mockResolvedValue(undefined)
     setupMocks({ addMutateAsync, preflightMutateAsync, updateMutateAsync })
     render(SourcesPage)
-    await fireEvent.click(screen.getByRole('button', { name: /add subscription/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /^add$/i }))
     await fireEvent.input(screen.getByLabelText(/subscription url/i), {
       target: { value: 'https://example.com/sub' }
     })
@@ -244,8 +244,8 @@ describe('SourcesPage', () => {
     setupMocks()
     render(SourcesPage)
     expect(screen.getAllByText('backup.yaml').length).toBeGreaterThanOrEqual(2)
-    expect(screen.queryAllByText(/selected source/i).length).toBe(1)
-    expect(screen.getByRole('button', { name: /select source/i })).toBeInTheDocument()
+    expect(screen.queryAllByText(/active source/i).length).toBe(1)
+    expect(screen.getByRole('button', { name: /^select$/i })).toBeInTheDocument()
   })
 
   it('switches source only after explicit confirmation from the selected source section', async () => {
@@ -267,7 +267,7 @@ describe('SourcesPage', () => {
     setupMocks({ configSetActiveMutateAsync })
     render(SourcesPage)
 
-    await fireEvent.click(screen.getByRole('button', { name: /select source/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /^select$/i }))
     expect(screen.getByText(/use this as the selected source/i)).toBeInTheDocument()
     await fireEvent.click(screen.getByRole('button', { name: /^select$/i }))
     await waitFor(() => expect(configSetActiveMutateAsync).toHaveBeenCalledWith('backup.yaml'))
@@ -295,7 +295,7 @@ describe('SourcesPage', () => {
   it('upload form rejects empty name', async () => {
     setupMocks()
     render(SourcesPage)
-    await fireEvent.click(screen.getByRole('button', { name: /upload config|upload source/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /^upload$/i }))
     const form = screen.getByRole('dialog').querySelector('form')!
     await fireEvent.submit(form)
     expect(screen.getByText(/name is required/i)).toBeInTheDocument()

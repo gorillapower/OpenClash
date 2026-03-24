@@ -136,9 +136,9 @@ describe('StatusPage reset', () => {
     setupMocks()
     render(StatusPage)
 
-    expect(screen.getByRole('link', { name: /open compose/i })).toHaveAttribute('href', '#/compose')
-    expect(screen.getByRole('link', { name: /view logs/i })).toHaveAttribute('href', '#/logs')
-    expect(screen.getByRole('link', { name: /open dashboard/i })).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link', { name: 'Compose' })).toHaveAttribute('href', '#/compose')
+    expect(screen.getByRole('link', { name: 'Logs' })).toHaveAttribute('href', '#/logs')
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('target', '_blank')
   })
 
   it('uses clearer service control enablement', () => {

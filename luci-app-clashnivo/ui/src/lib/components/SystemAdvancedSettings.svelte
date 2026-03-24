@@ -9,8 +9,6 @@
     useUciConfig
   } from '$lib/queries/luci'
 
-  let { showDownloadSourceSection = true }: { showDownloadSourceSection?: boolean } = $props()
-
   const config = useUciConfig('clashnivo')
 
   const setOperationMode = useSetUciConfig('clashnivo', 'config', 'en_mode')
@@ -428,21 +426,6 @@
         </SettingRow>
       </div>
     </div>
-
-    {#if showDownloadSourceSection}
-      <div class="space-y-1">
-        <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Download sources and mirrors</h3>
-        <div class="divide-y divide-border rounded-lg border border-border bg-card px-4">
-          <SettingRow
-            label="Download source"
-            tooltip="Controls how Clash Nivo selects GitHub-backed download sources for core, package, asset, and managed rule fetches."
-          >
-            <p class="text-xs text-muted-foreground">Download source controls now live in the Core runtime panel above.</p>
-          </SettingRow>
-        </div>
-      </div>
-    {/if}
-
     <DeviceListSheet
       open={deviceSheetOpen}
       onClose={() => (deviceSheetOpen = false)}
