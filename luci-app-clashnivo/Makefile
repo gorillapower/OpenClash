@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-clashnivo
-PKG_VERSION:=0.1.18
+PKG_VERSION:=0.1.19
 PKG_MAINTAINER:=gorillapower <https://github.com/gorillapower>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
@@ -95,6 +95,23 @@ define Build/Compile
 endef
 
 define Package/$(PKG_NAME)/conffiles
+/etc/config/clashnivo
+/etc/clashnivo/custom/clashnivo_custom_rules.list
+/etc/clashnivo/custom/clashnivo_custom_rules_2.list
+/etc/clashnivo/custom/clashnivo_custom_hosts.list
+/etc/clashnivo/custom/clashnivo_custom_fake_filter.list
+/etc/clashnivo/custom/clashnivo_custom_domain_dns.list
+/etc/clashnivo/custom/clashnivo_custom_domain_dns_policy.list
+/etc/clashnivo/custom/clashnivo_custom_proxy_server_dns_policy.list
+/etc/clashnivo/custom/clashnivo_custom_fallback_filter.yaml
+/etc/clashnivo/custom/clashnivo_custom_sniffer.yaml
+/etc/clashnivo/custom/clashnivo_custom_localnetwork_ipv4.list
+/etc/clashnivo/custom/clashnivo_custom_localnetwork_ipv6.list
+/etc/clashnivo/custom/clashnivo_custom_chnroute_pass.list
+/etc/clashnivo/custom/clashnivo_custom_chnroute6_pass.list
+/etc/clashnivo/custom/clashnivo_custom_firewall_rules.sh
+/etc/clashnivo/custom/clashnivo_custom_overwrite.sh
+/etc/clashnivo/overwrite/default
 endef
 
 define Package/$(PKG_NAME)/preinst
@@ -125,8 +142,6 @@ define Package/$(PKG_NAME)/postrm
 	   DNSMASQ_CONF_DIR="/tmp/dnsmasq.d"
 	fi
 	DNSMASQ_CONF_DIR=$${DNSMASQ_CONF_DIR%*/}
-	rm -rf /etc/config/clashnivo >/dev/null 2>&1
-	rm -rf /etc/clashnivo >/dev/null 2>&1
 	rm -rf /usr/share/clashnivo >/dev/null 2>&1
 	rm -rf /var/etc/clashnivo.include >/dev/null 2>&1
 	rm -rf /tmp/clashnivo* >/dev/null 2>&1
