@@ -94,18 +94,6 @@ local function find_subscription_section(cursor, name)
     return found_sid
 end
 
-local function find_subscription_by_url(cursor, url)
-    local found_sid = nil
-    local found_name = nil
-    cursor:foreach("clashnivo", "config_subscribe", function(s)
-        if not found_sid and (s.address or "") == url then
-            found_sid = s[".name"]
-            found_name = s.name or s[".name"]
-        end
-    end)
-    return found_sid, found_name
-end
-
 local function update_subscription_probe_state(cursor, sid, result)
     if not sid or type(result) ~= "table" then
         return
@@ -417,10 +405,10 @@ function handlers.subscription_add(p)
     name = (name and name ~= "") and name or "subscription"
 
     local cursor = uci_mod.cursor()
-    local existing_sid, existing_name = find_subscription_by_url(cursor, url)
+    local existing_sid = find_subscription_section(cursor, name)
     if existing_sid then
         return {
-            name = existing_name or name,
+            name = name,
             created = false,
             duplicate = true,
         }
@@ -520,6 +508,10 @@ function handlers.subscription_edit(p)
         cursor:delete("clashnivo", sid, "last_check_http_code")
     end
     if data.newName and data.newName ~= "" then
+        local existing_sid = find_subscription_section(cursor, data.newName)
+        if existing_sid and existing_sid ~= sid then
+            error("subscription name already exists: " .. data.newName)
+        end
         cursor:set("clashnivo", sid, "name", data.newName)
     end
     if data.autoUpdateInterval ~= nil then

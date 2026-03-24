@@ -332,7 +332,7 @@ export function useSubscriptionAdd(
       queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
       if (result.duplicate) {
-        toasts.info('Subscription already exists')
+        toasts.info('Subscription name already exists')
         return
       }
       notifySaved('Subscription')
