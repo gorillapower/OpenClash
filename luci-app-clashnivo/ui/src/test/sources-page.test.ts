@@ -41,6 +41,7 @@ vi.mock('$lib/queries/luci', () => ({
   useSubscriptionUpdate: vi.fn(),
   useSubscriptionUpdateAll: vi.fn(),
   useSubscriptionEdit: vi.fn(),
+  useSubscriptionPreflight: vi.fn(),
   useConfigs: vi.fn(),
   useConfigSetActive: vi.fn(),
   useConfigDelete: vi.fn(),
@@ -65,6 +66,7 @@ import {
   useSubscriptionUpdate,
   useSubscriptionUpdateAll,
   useSubscriptionEdit,
+  useSubscriptionPreflight,
   useConfigs,
   useConfigSetActive,
   useConfigDelete,
@@ -112,6 +114,7 @@ function setupMocks({
   updateMutateAsync = vi.fn().mockResolvedValue(undefined),
   updateAllMutate = vi.fn(),
   editMutateAsync = vi.fn().mockResolvedValue(undefined),
+  preflightMutateAsync = vi.fn().mockResolvedValue({ ok: true, status: 'ok', message: 'ok', url: 'https://example.com/sub' }),
   configSetActiveMutateAsync = vi.fn().mockResolvedValue(undefined),
   configDeleteMutateAsync = vi.fn().mockResolvedValue(undefined),
   configWriteMutateAsync = vi.fn().mockResolvedValue(undefined)
@@ -127,6 +130,7 @@ function setupMocks({
     isPending: false
   } as never)
   vi.mocked(useSubscriptionEdit).mockReturnValue(makeMutation(editMutateAsync) as never)
+  vi.mocked(useSubscriptionPreflight).mockReturnValue(makeMutation(preflightMutateAsync) as never)
   vi.mocked(useConfigs).mockReturnValue(makeQuery(configs, isPending) as never)
   vi.mocked(useConfigSetActive).mockReturnValue(makeMutation(configSetActiveMutateAsync) as never)
   vi.mocked(useConfigDelete).mockReturnValue(makeMutation(configDeleteMutateAsync) as never)
@@ -185,9 +189,35 @@ describe('SourcesPage', () => {
     expect(screen.getByText(/url is required/i)).toBeInTheDocument()
   })
 
-  it('submits a valid subscription URL', async () => {
+  it('saves a valid subscription URL without refreshing when Save only is used', async () => {
     const addMutateAsync = vi.fn().mockResolvedValue({ name: 'test' })
-    setupMocks({ addMutateAsync })
+    const updateMutateAsync = vi.fn().mockResolvedValue(undefined)
+    setupMocks({ addMutateAsync, updateMutateAsync })
+    render(SourcesPage)
+    await fireEvent.click(screen.getByRole('button', { name: /add subscription/i }))
+    await fireEvent.input(screen.getByLabelText(/subscription url/i), {
+      target: { value: 'https://example.com/sub' }
+    })
+    await fireEvent.click(screen.getByRole('button', { name: /save only/i }))
+    await waitFor(() =>
+      expect(addMutateAsync).toHaveBeenCalledWith({
+        url: 'https://example.com/sub',
+        name: undefined
+      })
+    )
+    expect(updateMutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('save and refresh runs preflight before requesting a refresh', async () => {
+    const addMutateAsync = vi.fn().mockResolvedValue({ name: 'test' })
+    const preflightMutateAsync = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 'ok',
+      message: 'ok',
+      url: 'https://example.com/sub'
+    })
+    const updateMutateAsync = vi.fn().mockResolvedValue(undefined)
+    setupMocks({ addMutateAsync, preflightMutateAsync, updateMutateAsync })
     render(SourcesPage)
     await fireEvent.click(screen.getByRole('button', { name: /add subscription/i }))
     await fireEvent.input(screen.getByLabelText(/subscription url/i), {
@@ -195,12 +225,8 @@ describe('SourcesPage', () => {
     })
     const form = screen.getByRole('dialog').querySelector('form')!
     await fireEvent.submit(form)
-    await waitFor(() =>
-      expect(addMutateAsync).toHaveBeenCalledWith({
-        url: 'https://example.com/sub',
-        name: undefined
-      })
-    )
+    await waitFor(() => expect(preflightMutateAsync).toHaveBeenCalledWith({ name: 'test' }))
+    expect(updateMutateAsync).toHaveBeenCalledWith('test')
   })
 
   it('refresh all uses the reset wording and calls mutation', async () => {

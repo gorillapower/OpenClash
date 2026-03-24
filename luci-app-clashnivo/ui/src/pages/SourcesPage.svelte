@@ -18,6 +18,7 @@
     useSubscriptionUpdate,
     useSubscriptionUpdateAll,
     useSubscriptionEdit,
+    useSubscriptionPreflight,
     useServiceStatus,
     useConfigs,
     useConfigSetActive,
@@ -32,6 +33,7 @@
   const subscriptionUpdate = useSubscriptionUpdate()
   const subscriptionUpdateAll = useSubscriptionUpdateAll()
   const subscriptionEdit = useSubscriptionEdit()
+  const subscriptionPreflight = useSubscriptionPreflight()
 
   const configs = useConfigs()
   const configSetActive = useConfigSetActive()
@@ -104,7 +106,7 @@
     addOpen = true
   }
 
-  async function handleAdd() {
+  async function handleAdd(refreshAfterSave = false) {
     addUrlError = validateUrl(addUrl)
     if (addUrlError) return
     const result = await subscriptionAdd.mutateAsync({
@@ -114,13 +116,8 @@
     addOpen = false
     addUrl = ''
     addName = ''
-    if (result?.name) {
-      updatingNames = new Set([...updatingNames, result.name])
-      subscriptionUpdate.mutate(result.name, {
-        onSettled: () => {
-          updatingNames = new Set([...updatingNames].filter((value) => value !== result.name))
-        }
-      })
+    if (refreshAfterSave && result?.name) {
+      await handleRefresh(result.name)
     }
   }
 
@@ -133,10 +130,11 @@
     editOpen = true
   }
 
-  async function handleEdit() {
+  async function handleEdit(refreshAfterSave = false) {
     if (!editTarget) return
     editUrlError = validateUrl(editUrl)
     if (editUrlError) return
+    const nextName = editName.trim() || editTarget.name
     await subscriptionEdit.mutateAsync({
       name: editTarget.name,
       data: {
@@ -147,11 +145,16 @@
     })
     editOpen = false
     editTarget = null
+    if (refreshAfterSave) {
+      await handleRefresh(nextName)
+    }
   }
 
   async function handleRefresh(name: string) {
     updatingNames = new Set([...updatingNames, name])
     try {
+      const probe = await subscriptionPreflight.mutateAsync({ name })
+      if (!probe.ok) return
       await subscriptionUpdate.mutateAsync(name)
     } finally {
       updatingNames = new Set([...updatingNames].filter((value) => value !== name))
@@ -526,7 +529,7 @@
 />
 
 <Sheet open={addOpen} onClose={() => (addOpen = false)} title="Add subscription">
-  <form class="space-y-4" onsubmit={(event) => { event.preventDefault(); handleAdd() }}>
+  <form class="space-y-4" onsubmit={(event) => { event.preventDefault(); handleAdd(true) }}>
     <div class="space-y-1.5">
       <label for="add-url" class="text-sm font-medium">Subscription URL</label>
       <Input
@@ -550,15 +553,40 @@
       <Input id="add-name" type="text" placeholder="My VPN" bind:value={addName} />
     </div>
 
-    <Button type="submit" class="w-full" disabled={globalBusy || subscriptionAdd.isPending}>
-      {subscriptionAdd.isPending ? 'Adding source…' : 'Add subscription'}
-    </Button>
+    <p class="text-xs text-muted-foreground">
+      Save only stores the URL. Save and refresh checks reachability first, then fetches the source file.
+    </p>
+
+    <div class="grid gap-2 sm:grid-cols-2">
+      <Button
+        type="button"
+        variant="outline"
+        class="w-full"
+        disabled={globalBusy || subscriptionAdd.isPending || subscriptionPreflight.isPending || subscriptionUpdate.isPending}
+        onclick={() => handleAdd(false)}
+      >
+        {subscriptionAdd.isPending ? 'Saving subscription…' : 'Save only'}
+      </Button>
+      <Button
+        type="submit"
+        class="w-full"
+        disabled={globalBusy || subscriptionAdd.isPending || subscriptionPreflight.isPending || subscriptionUpdate.isPending}
+      >
+        {#if subscriptionAdd.isPending}
+          Saving subscription…
+        {:else if subscriptionPreflight.isPending || subscriptionUpdate.isPending}
+          Checking and refreshing…
+        {:else}
+          Save and refresh
+        {/if}
+      </Button>
+    </div>
   </form>
 </Sheet>
 
 <Sheet open={editOpen} onClose={() => (editOpen = false)} title="Edit subscription">
   {#if editTarget}
-    <form class="space-y-4" onsubmit={(event) => { event.preventDefault(); handleEdit() }}>
+    <form class="space-y-4" onsubmit={(event) => { event.preventDefault(); handleEdit(false) }}>
       <div class="space-y-1.5">
         <label for="edit-url" class="text-sm font-medium">Subscription URL</label>
         <Input
@@ -594,9 +622,34 @@
         </select>
       </div>
 
-      <Button type="submit" class="w-full" disabled={globalBusy || subscriptionEdit.isPending}>
-        {subscriptionEdit.isPending ? 'Saving subscription…' : 'Save subscription'}
-      </Button>
+      <p class="text-xs text-muted-foreground">
+        Save changes stores the updated URL and metadata. Save and refresh checks the URL first, then fetches the latest source file.
+      </p>
+
+      <div class="grid gap-2 sm:grid-cols-2">
+        <Button
+          type="submit"
+          variant="outline"
+          class="w-full"
+          disabled={globalBusy || subscriptionEdit.isPending || subscriptionPreflight.isPending || subscriptionUpdate.isPending}
+        >
+          {subscriptionEdit.isPending ? 'Saving changes…' : 'Save changes'}
+        </Button>
+        <Button
+          type="button"
+          class="w-full"
+          disabled={globalBusy || subscriptionEdit.isPending || subscriptionPreflight.isPending || subscriptionUpdate.isPending}
+          onclick={() => handleEdit(true)}
+        >
+          {#if subscriptionEdit.isPending}
+            Saving changes…
+          {:else if subscriptionPreflight.isPending || subscriptionUpdate.isPending}
+            Checking and refreshing…
+          {:else}
+            Save and refresh
+          {/if}
+        </Button>
+      </div>
     </form>
   {/if}
 </Sheet>

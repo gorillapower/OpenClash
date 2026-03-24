@@ -22,6 +22,7 @@ local CLASHNIVO_COMMAND_LOCK_CONTEXT_FILE = CLASHNIVO_COMMAND_LOCK_DIR .. "/cont
 local CLASHNIVO_COMMAND_LOCK_STARTED_AT_FILE = CLASHNIVO_COMMAND_LOCK_DIR .. "/started_at"
 local VERSION_CACHE_TTL = 900
 local DASHBOARD_UI_BASE = "/usr/share/clashnivo/ui"
+local SUBSCRIPTION_PREFLIGHT_DEFAULT_UA = "clash.meta"
 local DASHBOARD_OPTIONS = {
 	{ id = "dashboard_official", key = "dashboard", variant = "Official", name = "Dashboard", label = "Clash Dashboard" },
 	{ id = "dashboard_meta",     key = "dashboard", variant = "Meta",     name = "Dashboard", label = "Razord Meta" },
@@ -100,6 +101,122 @@ local function busy_response(context)
 		active_pid = command_lock_pid(),
 		started_at = command_lock_started_at(),
 	}
+end
+
+local function trim(value)
+	return (value or ""):gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function shell_capture(cmd)
+	return sys.exec(cmd .. " 2>/dev/null") or ""
+end
+
+local function classify_subscription_probe(url, user_agent)
+	url = trim(url)
+	user_agent = trim(user_agent)
+
+	if url == "" then
+		return {
+			ok = false,
+			status = "invalid_url",
+			message = "Subscription URL is required.",
+			url = url,
+		}
+	end
+
+	if not url:match("^https?://") then
+		return {
+			ok = false,
+			status = "invalid_url",
+			message = "Subscription URL must start with http:// or https://.",
+			url = url,
+		}
+	end
+
+	if user_agent == "" then
+		user_agent = SUBSCRIPTION_PREFLIGHT_DEFAULT_UA
+	end
+
+	local curl_cmd = string.format(
+		"curl -sS -L -o /dev/null -w '__HTTP__%%{http_code}\\n__TIME__%%{time_total}\\n' --connect-timeout 5 -m 12 --speed-time 5 --speed-limit 1 --retry 0 -H 'User-Agent: %s' %s; printf '__EXIT__%%s' \"$?\"",
+		user_agent,
+		shellquote(url)
+	)
+	local raw = shell_capture(curl_cmd)
+	local exit_code = tonumber(raw:match("__EXIT__(%d+)")) or 1
+	local http_code = tonumber(raw:match("__HTTP__(%d%d%d)")) or 0
+	local time_total = tonumber(raw:match("__TIME__([0-9.]+)")) or 0
+	local latency_ms = math.floor((time_total * 1000) + 0.5)
+	local curl_error = trim((raw:gsub("__HTTP__%d%d%d\n__TIME__[0-9.]+\n?__EXIT__%d+", "")):match("curl:[^\n\r]*") or "")
+
+	local result = {
+		ok = false,
+		status = "error",
+		message = "Subscription URL could not be reached.",
+		url = url,
+		http_code = http_code,
+		latency_ms = latency_ms,
+		user_agent = user_agent,
+	}
+
+	if exit_code == 0 and http_code >= 200 and http_code < 400 then
+		result.ok = true
+		result.status = "ok"
+		result.message = "Subscription URL is reachable."
+		return result
+	end
+
+	if http_code == 401 or http_code == 403 then
+		result.status = "unauthorized"
+		result.message = "Subscription URL rejected the request."
+		return result
+	end
+
+	if http_code == 404 then
+		result.status = "not_found"
+		result.message = "Subscription URL returned 404 Not Found."
+		return result
+	end
+
+	if http_code == 429 then
+		result.status = "rate_limited"
+		result.message = "Subscription URL is rate limiting requests."
+		return result
+	end
+
+	if http_code >= 400 and http_code < 500 then
+		result.status = "client_error"
+		result.message = string.format("Subscription URL returned HTTP %d.", http_code)
+		return result
+	end
+
+	if http_code >= 500 then
+		result.status = "server_error"
+		result.message = string.format("Subscription server returned HTTP %d.", http_code)
+		return result
+	end
+
+	if exit_code == 6 then
+		result.status = "dns_error"
+		result.message = "Subscription host could not be resolved."
+	elseif exit_code == 7 then
+		result.status = "connect_error"
+		result.message = "Subscription server could not be reached."
+	elseif exit_code == 28 then
+		result.status = "timeout"
+		result.message = "Subscription URL timed out before responding."
+	elseif exit_code == 35 or exit_code == 60 then
+		result.status = "tls_error"
+		result.message = "Subscription TLS handshake failed."
+	elseif curl_error ~= "" then
+		result.status = "network_error"
+		result.message = curl_error
+	else
+		result.status = "network_error"
+		result.message = "Subscription request failed before a usable response was returned."
+	end
+
+	return result
 end
 
 function command_busy(context)
@@ -402,6 +519,10 @@ end
 
 function is_core_running()
 	return core_process_pid() ~= nil
+end
+
+function subscription_preflight(url, user_agent)
+	return classify_subscription_probe(url, user_agent)
 end
 
 function start_subscription_update(name)

@@ -54,6 +54,10 @@
   const isExpired = $derived(
     subscription.expiry ? new Date(subscription.expiry) < new Date() : false
   )
+
+  const lastCheckFailed = $derived(
+    !!subscription.lastCheckStatus && subscription.lastCheckStatus !== 'ok'
+  )
 </script>
 
 <Card>
@@ -183,6 +187,12 @@
           <span>Updated {formatLastUpdated(subscription.lastUpdated)}</span>
         {/if}
       </div>
+
+      {#if lastCheckFailed && subscription.lastCheckMessage}
+        <div class="rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-2 text-xs text-destructive">
+          {subscription.lastCheckMessage}
+        </div>
+      {/if}
 
       <!-- Data quota bar -->
       {#if dataPercent !== null && subscription.dataTotal}

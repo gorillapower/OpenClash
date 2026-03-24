@@ -12,6 +12,7 @@ import {
   type UciSection,
   type ServiceStatusResult,
   type Subscription,
+  type SubscriptionPreflightResult,
   type SubscriptionEditData,
   type ConfigFile,
   type FileReadResult,
@@ -276,7 +277,7 @@ export function useSubscriptionAdd(
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
-      toasts.success('Source added')
+      toasts.success('Subscription saved')
     },
     onError: onMutationError,
     ...opts
@@ -312,14 +313,53 @@ export function useSubscriptionUpdate(
 ) {
   const queryClient = useQueryClient()
   return createMutation<UpdateStatusResult, unknown, string>(() => ({
-    mutationFn: (name: string) => luciRpc.subscriptionUpdate(name),
+    mutationFn: async (name: string) => {
+      const probe = await luciRpc.subscriptionTest(name)
+      if (!probe.ok) {
+        return {
+          accepted: false,
+          status: 'error',
+          target: name,
+          kind: 'subscription',
+          message: probe.message,
+          preflight_status: probe.status,
+          preflight_http_code: probe.http_code
+        } as UpdateStatusResult
+      }
+      return luciRpc.subscriptionUpdate(name)
+    },
     onSuccess(result, name) {
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
-      toasts.success(
-        result.status === 'busy'
-          ? `Sources are busy: ${result.active_command ?? 'another command is running'}`
-          : `Source refresh requested: ${name}`
-      )
+      if (result.status === 'busy') {
+        toasts.success(`Sources are busy: ${result.active_command ?? 'another command is running'}`)
+        return
+      }
+      if (result.status === 'error') {
+        toasts.error(result.message ?? `Subscription refresh failed: ${name}`)
+        return
+      }
+      toasts.success(`Subscription refresh requested: ${name}`)
+    },
+    onError: onMutationError,
+    ...opts
+  }))
+}
+
+export function useSubscriptionPreflight(
+  opts?: Partial<CreateMutationOptions<SubscriptionPreflightResult, unknown, { name?: string; url?: string }>>
+) {
+  const queryClient = useQueryClient()
+  return createMutation<SubscriptionPreflightResult, unknown, { name?: string; url?: string }>(() => ({
+    mutationFn: ({ name, url }) => luciRpc.subscriptionTest(name, url),
+    onSuccess(result, vars) {
+      if (vars.name) {
+        queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+      }
+      if (result.ok) {
+        toasts.success('Subscription test passed')
+      } else {
+        toasts.error(result.message)
+      }
     },
     onError: onMutationError,
     ...opts
@@ -337,7 +377,7 @@ export function useSubscriptionUpdateAll(
       toasts.success(
         result.status === 'busy'
           ? `Sources are busy: ${result.active_command ?? 'another command is running'}`
-          : 'All-source refresh requested'
+          : 'Subscription refresh requested for all saved sources'
       )
     },
     onError: onMutationError,

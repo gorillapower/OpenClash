@@ -6,6 +6,7 @@
     useServiceRestart,
     useUciConfig,
     useSubscriptionAdd,
+    useSubscriptionUpdate,
     useProxyGroups,
     useRuleProviders,
     useCustomProxies,
@@ -34,6 +35,7 @@
   const stopMutation = useServiceStop('clashnivo')
   const restartMutation = useServiceRestart('clashnivo')
   const subscriptionAdd = useSubscriptionAdd()
+  const subscriptionUpdate = useSubscriptionUpdate()
 
   let optimisticRunning = $state<boolean | null>(null)
   let subscriptionUrl = $state('')
@@ -167,7 +169,10 @@
     }
 
     try {
-      await subscriptionAdd.mutateAsync({ url: subscriptionUrl.trim() })
+      const result = await subscriptionAdd.mutateAsync({ url: subscriptionUrl.trim() })
+      if (result?.name) {
+        await subscriptionUpdate.mutateAsync(result.name)
+      }
 
       const interval = setInterval(async () => {
         await queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
@@ -230,19 +235,21 @@
             type="url"
             placeholder="https://example.com/subscribe?token=..."
             bind:value={subscriptionUrl}
-            disabled={subscriptionAdd.isPending || isBusy}
+            disabled={subscriptionAdd.isPending || subscriptionUpdate.isPending || isBusy}
             aria-label="Subscription URL"
             aria-invalid={urlError ? 'true' : undefined}
           />
           <Button
             variant="default"
-            disabled={subscriptionAdd.isPending || isBusy}
+            disabled={subscriptionAdd.isPending || subscriptionUpdate.isPending || isBusy}
             onclick={handleGetStarted}
           >
             {#if subscriptionAdd.isPending}
-              Adding subscription...
+              Saving subscription...
+            {:else if subscriptionUpdate.isPending}
+              Checking and refreshing...
             {:else}
-              Add subscription
+              Save and refresh
             {/if}
           </Button>
         </div>

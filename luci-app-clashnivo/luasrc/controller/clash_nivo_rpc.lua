@@ -64,6 +64,22 @@ local function find_subscription_section(cursor, name)
     return found_sid
 end
 
+local function update_subscription_probe_state(cursor, sid, result)
+    if not sid or type(result) ~= "table" then
+        return
+    end
+
+    cursor:set("clashnivo", sid, "last_check_status", tostring(result.status or "error"))
+    cursor:set("clashnivo", sid, "last_check_message", tostring(result.message or ""))
+    cursor:set("clashnivo", sid, "last_check_at", os.date("!%Y-%m-%dT%H:%M:%SZ"))
+
+    if result.http_code and tonumber(result.http_code) and tonumber(result.http_code) > 0 then
+        cursor:set("clashnivo", sid, "last_check_http_code", tostring(result.http_code))
+    else
+        cursor:delete("clashnivo", sid, "last_check_http_code")
+    end
+end
+
 -- Returns the safe filesystem path for a named config file.
 -- Errors if the name contains path separators or traversal sequences.
 local function config_file_path(name)
@@ -284,6 +300,40 @@ function handlers.subscription_update(p)
     return backend.start_subscription_update(name)
 end
 
+function handlers.subscription_test(p)
+    local name = p[1]
+    local override_url = p[2]
+    local cursor = uci_mod.cursor()
+    local sid
+    local url = override_url
+    local user_agent = nil
+
+    if (not url or url == "") and name and name ~= "" then
+        sid = find_subscription_section(cursor, name)
+        if not sid then
+            error("subscription not found: " .. name)
+        end
+        url = cursor:get("clashnivo", sid, "address")
+        user_agent = cursor:get("clashnivo", sid, "sub_ua")
+    elseif name and name ~= "" then
+        sid = find_subscription_section(cursor, name)
+        if sid then
+            user_agent = cursor:get("clashnivo", sid, "sub_ua")
+        end
+    end
+
+    local result = backend.subscription_preflight(url, user_agent)
+    result.name = name
+
+    if sid then
+        update_subscription_probe_state(cursor, sid, result)
+        cursor:save("clashnivo")
+        cursor:commit("clashnivo")
+    end
+
+    return result
+end
+
 function handlers.subscription_add(p)
     local url  = p[1]
     local name = p[2]
@@ -324,6 +374,18 @@ function handlers.subscription_list()
         end
         if s.last_updated and s.last_updated ~= "" then
             entry.lastUpdated = s.last_updated
+        end
+        if s.last_check_status and s.last_check_status ~= "" then
+            entry.lastCheckStatus = s.last_check_status
+        end
+        if s.last_check_message and s.last_check_message ~= "" then
+            entry.lastCheckMessage = s.last_check_message
+        end
+        if s.last_check_at and s.last_check_at ~= "" then
+            entry.lastCheckAt = s.last_check_at
+        end
+        if s.last_check_http_code and s.last_check_http_code ~= "" then
+            entry.lastCheckHttpCode = tonumber(s.last_check_http_code)
         end
         if s.expiry and s.expiry ~= "" then
             entry.expiry = s.expiry
@@ -372,6 +434,10 @@ function handlers.subscription_edit(p)
 
     if data.url and data.url ~= "" then
         cursor:set("clashnivo", sid, "address", data.url)
+        cursor:delete("clashnivo", sid, "last_check_status")
+        cursor:delete("clashnivo", sid, "last_check_message")
+        cursor:delete("clashnivo", sid, "last_check_at")
+        cursor:delete("clashnivo", sid, "last_check_http_code")
     end
     if data.newName and data.newName ~= "" then
         cursor:set("clashnivo", sid, "name", data.newName)
@@ -568,6 +634,7 @@ local METHOD_MAP = {
     ["log.core"]                 = handlers.log_core,
     ["system.info"]              = handlers.system_info,
     ["subscription.add"]         = handlers.subscription_add,
+    ["subscription.test"]        = handlers.subscription_test,
     ["subscription.list"]        = handlers.subscription_list,
     ["subscription.delete"]      = handlers.subscription_delete,
     ["subscription.edit"]        = handlers.subscription_edit,

@@ -69,17 +69,35 @@ config_test()
 
 config_download()
 {
-LOG_TIP "Source refresh: downloading 【$name】 with User-Agent 【$sub_ua】."
+PREFLIGHT_FAILED=0
+DOWNLOAD_URL=""
+DOWNLOAD_PARAM="$sub_ua"
 if [ -n "$subscribe_url_param" ] && [ -n "$c_address" ]; then
-   LOG_INFO "Config File【$name】Downloading URL【$c_address$subscribe_url_param】..."
    DOWNLOAD_URL="${c_address}${subscribe_url_param}"
-   DOWNLOAD_PARAM="$sub_ua"
 fi
 if [ -z "$DOWNLOAD_URL" ]; then
-   LOG_INFO "Config File【$name】Downloading URL【$subscribe_url】..."
    DOWNLOAD_URL="${subscribe_url}"
-   DOWNLOAD_PARAM="$sub_ua"
 fi
+
+LOG_TIP "Source refresh: checking 【$name】 before download."
+if ! PROBE_URL_CURL "$DOWNLOAD_URL" "$DOWNLOAD_PARAM"; then
+   LOG_ERROR "Source test failed for 【$name】 with the configured user agent: ${PROBE_MESSAGE}"
+   LOG_OUT "Source refresh: retrying the preflight for 【$name】 without the configured user agent."
+   DOWNLOAD_PARAM=""
+   if ! PROBE_URL_CURL "$DOWNLOAD_URL" "$DOWNLOAD_PARAM"; then
+      LOG_ERROR "Source test failed for 【$name】: ${PROBE_MESSAGE}"
+      PREFLIGHT_FAILED=1
+      DOWNLOAD_RESULT=3
+      return
+   fi
+fi
+
+if [ -n "$DOWNLOAD_PARAM" ]; then
+   LOG_TIP "Source refresh: downloading 【$name】 with User-Agent 【$DOWNLOAD_PARAM】."
+else
+   LOG_TIP "Source refresh: downloading 【$name】 without the configured user agent."
+fi
+LOG_INFO "Config File【$name】Downloading URL【$DOWNLOAD_URL】..."
 DOWNLOAD_FILE_CURL "$DOWNLOAD_URL" "$CFG_FILE" "$CONFIG_FILE" "$DOWNLOAD_PARAM"
 DOWNLOAD_RESULT=$?
 }
@@ -454,6 +472,8 @@ sub_info_get()
       fi
    elif [ "$DOWNLOAD_RESULT" -eq 2 ]; then
       LOG_OUT "Source refresh: 【$name】 is already current."
+   elif [ "$DOWNLOAD_RESULT" -eq 3 ] && [ "$PREFLIGHT_FAILED" -eq 1 ]; then
+      config_error
    else
       LOG_ERROR "Subscription download failed for 【$name】. Retrying without the configured user agent."
       config_download_direct

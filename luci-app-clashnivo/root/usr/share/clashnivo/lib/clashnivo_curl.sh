@@ -2,6 +2,85 @@
 . /usr/share/clashnivo/log.sh
 . /usr/share/clashnivo/clashnivo_etag.sh
 
+PROBE_URL_CURL() {
+    [ -z "$1" ] && return 1
+
+    local PROBE_URL=$1
+    local PROBE_UA=$2
+    [ -z "$PROBE_UA" ] && PROBE_UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+
+    local CURL_OUTPUT
+    CURL_OUTPUT=$(curl -sS -L -o /dev/null -w "\n%{http_code}\n%{time_total}" --connect-timeout 5 -m 12 --speed-time 5 --speed-limit 1 --retry 0 \
+        -H "User-Agent: ${PROBE_UA}" "$PROBE_URL" 2>&1)
+
+    PROBE_EXIT_CODE=$?
+    PROBE_HTTP_CODE=$(echo "$CURL_OUTPUT" | tail -n2 | head -n1)
+    PROBE_TIME_TOTAL=$(echo "$CURL_OUTPUT" | tail -n1)
+    PROBE_ERROR=$(echo "$CURL_OUTPUT" | sed '$d' | sed '$d' | grep -a 'curl:' | tail -n1)
+    PROBE_STATUS="network_error"
+    PROBE_MESSAGE="Subscription URL could not be reached."
+
+    if [ "$PROBE_EXIT_CODE" -eq 0 ] && [ "$PROBE_HTTP_CODE" -ge 200 ] && [ "$PROBE_HTTP_CODE" -lt 400 ]; then
+        PROBE_STATUS="ok"
+        PROBE_MESSAGE="Subscription URL is reachable."
+        return 0
+    fi
+
+    case "$PROBE_HTTP_CODE" in
+        401|403)
+            PROBE_STATUS="unauthorized"
+            PROBE_MESSAGE="Subscription URL rejected the request."
+            return 1
+        ;;
+        404)
+            PROBE_STATUS="not_found"
+            PROBE_MESSAGE="Subscription URL returned 404 Not Found."
+            return 1
+        ;;
+        429)
+            PROBE_STATUS="rate_limited"
+            PROBE_MESSAGE="Subscription URL is rate limiting requests."
+            return 1
+        ;;
+    esac
+
+    if [ "$PROBE_HTTP_CODE" -ge 400 ] && [ "$PROBE_HTTP_CODE" -lt 500 ]; then
+        PROBE_STATUS="client_error"
+        PROBE_MESSAGE="Subscription URL returned HTTP ${PROBE_HTTP_CODE}."
+        return 1
+    fi
+
+    if [ "$PROBE_HTTP_CODE" -ge 500 ]; then
+        PROBE_STATUS="server_error"
+        PROBE_MESSAGE="Subscription server returned HTTP ${PROBE_HTTP_CODE}."
+        return 1
+    fi
+
+    case "$PROBE_EXIT_CODE" in
+        6)
+            PROBE_STATUS="dns_error"
+            PROBE_MESSAGE="Subscription host could not be resolved."
+        ;;
+        7)
+            PROBE_STATUS="connect_error"
+            PROBE_MESSAGE="Subscription server could not be reached."
+        ;;
+        28)
+            PROBE_STATUS="timeout"
+            PROBE_MESSAGE="Subscription URL timed out before responding."
+        ;;
+        35|60)
+            PROBE_STATUS="tls_error"
+            PROBE_MESSAGE="Subscription TLS handshake failed."
+        ;;
+        *)
+            [ -n "$PROBE_ERROR" ] && PROBE_MESSAGE="$PROBE_ERROR"
+        ;;
+    esac
+
+    return 1
+}
+
 DOWNLOAD_FILE_CURL() {
     [ -z "$1" ] || [ -z "$2" ] && return 1
     DOWNLOAD_URL=$1

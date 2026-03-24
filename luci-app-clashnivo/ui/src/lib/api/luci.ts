@@ -138,6 +138,8 @@ export interface UpdateStatusResult {
   active_command?: string
   active_pid?: string
   started_at?: string
+  preflight_status?: string
+  preflight_http_code?: number
 }
 
 export interface DashboardOption {
@@ -202,12 +204,40 @@ export interface Subscription {
   dataUsed?: number
   /** Total data allowance in bytes */
   dataTotal?: number
+  lastCheckStatus?: string
+  lastCheckMessage?: string
+  lastCheckAt?: string
+  lastCheckHttpCode?: number
 }
 
 export interface SubscriptionEditData {
   url?: string
   newName?: string
   autoUpdateInterval?: number
+}
+
+export interface SubscriptionPreflightResult {
+  ok: boolean
+  status:
+    | 'ok'
+    | 'invalid_url'
+    | 'unauthorized'
+    | 'not_found'
+    | 'rate_limited'
+    | 'client_error'
+    | 'server_error'
+    | 'dns_error'
+    | 'connect_error'
+    | 'timeout'
+    | 'tls_error'
+    | 'network_error'
+    | 'error'
+  message: string
+  url: string
+  name?: string
+  http_code?: number
+  latency_ms?: number
+  user_agent?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -331,6 +361,14 @@ export const luciRpc = {
 
   subscriptionList(): Promise<Subscription[]> {
     return rpcCall('subscription.list', [])
+  },
+
+  subscriptionTest(name?: string, url?: string): Promise<SubscriptionPreflightResult> {
+    const params: string[] = []
+    if (name) params.push(name)
+    else if (url) params.push('')
+    if (url) params.push(url)
+    return rpcCall('subscription.test', params)
   },
 
   subscriptionDelete(name: string): Promise<void> {

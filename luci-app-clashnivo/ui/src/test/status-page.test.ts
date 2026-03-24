@@ -20,6 +20,7 @@ vi.mock('$lib/queries/luci', () => ({
   useServiceRestart: vi.fn(),
   useUciConfig: vi.fn(),
   useSubscriptionAdd: vi.fn(),
+  useSubscriptionUpdate: vi.fn(),
   useProxyGroups: vi.fn(),
   useRuleProviders: vi.fn(),
   useCustomProxies: vi.fn(),
@@ -43,6 +44,7 @@ import {
   useServiceRestart,
   useUciConfig,
   useSubscriptionAdd,
+  useSubscriptionUpdate,
   useProxyGroups,
   useRuleProviders,
   useCustomProxies,
@@ -88,6 +90,7 @@ function setupMocks({
   vi.mocked(useServiceStop).mockReturnValue(makeMutationResult() as CreateMutationResult<ServiceActionResult, unknown, void, unknown>)
   vi.mocked(useServiceRestart).mockReturnValue(makeMutationResult() as CreateMutationResult<ServiceActionResult, unknown, void, unknown>)
   vi.mocked(useSubscriptionAdd).mockReturnValue(makeMutationResult() as never)
+  vi.mocked(useSubscriptionUpdate).mockReturnValue(makeMutationResult() as never)
 }
 
 describe('StatusPage reset', () => {
