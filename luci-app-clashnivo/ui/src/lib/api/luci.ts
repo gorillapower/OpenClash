@@ -383,7 +383,7 @@ export const luciRpc = {
     return rpcCall('file.write', [path, content])
   },
 
-  subscriptionAdd(url: string, name?: string): Promise<{ name: string }> {
+  subscriptionAdd(url: string, name?: string): Promise<{ name: string; created?: boolean; duplicate?: boolean }> {
     const params: string[] = [url]
     if (name) params.push(name)
     return rpcCall('subscription.add', params)

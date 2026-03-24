@@ -319,14 +319,18 @@ export function useSetUciConfigBatch(
 }
 
 export function useSubscriptionAdd(
-  opts?: Partial<CreateMutationOptions<{ name: string }, unknown, { url: string; name?: string }>>
+  opts?: Partial<CreateMutationOptions<{ name: string; created?: boolean; duplicate?: boolean }, unknown, { url: string; name?: string }>>
 ) {
   const queryClient = useQueryClient()
-  return createMutation<{ name: string }, unknown, { url: string; name?: string }>(() => ({
+  return createMutation<{ name: string; created?: boolean; duplicate?: boolean }, unknown, { url: string; name?: string }>(() => ({
     mutationFn: ({ url, name }) => luciRpc.subscriptionAdd(url, name),
-    onSuccess() {
+    onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+      if (result.duplicate) {
+        toasts.info('Subscription already exists')
+        return
+      }
       notifySaved('Subscription')
     },
     onError: onMutationError,

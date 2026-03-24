@@ -9,6 +9,7 @@ local util = require "luci.util"
 local uci_mod = require "luci.model.uci"
 
 local CLASHNIVO_INIT = "/etc/init.d/clashnivo"
+local CLASHNIVO_SERVICE_ENV = "/usr/share/clashnivo/service/env.sh"
 local CLASHNIVO_CORE_VERSION_SCRIPT = "/usr/share/clashnivo/clash_version.sh"
 local CLASHNIVO_PACKAGE_VERSION_SCRIPT = "/usr/share/clashnivo/clashnivo_version.sh"
 local CLASHNIVO_CORE_VERSION_FILE = "/tmp/clash_last_version"
@@ -242,7 +243,13 @@ function core_process_pid()
 end
 
 function service_status()
-	local output = sys.exec(string.format("%s status_json 2>/dev/null", shellquote(CLASHNIVO_INIT))) or ""
+	local output = sys.exec(string.format(
+		"sh -c %s 2>/dev/null",
+		shellquote(string.format(
+			". %s && clashnivo_service_init_env '' && clashnivo_service_status_json",
+			shellquote(CLASHNIVO_SERVICE_ENV)
+		))
+	)) or ""
 	local parsed = json.parse(output)
 
 	if parsed and type(parsed) == "table" then

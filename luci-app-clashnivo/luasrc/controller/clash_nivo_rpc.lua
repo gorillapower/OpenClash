@@ -94,6 +94,18 @@ local function find_subscription_section(cursor, name)
     return found_sid
 end
 
+local function find_subscription_by_url(cursor, url)
+    local found_sid = nil
+    local found_name = nil
+    cursor:foreach("clashnivo", "config_subscribe", function(s)
+        if not found_sid and (s.address or "") == url then
+            found_sid = s[".name"]
+            found_name = s.name or s[".name"]
+        end
+    end)
+    return found_sid, found_name
+end
+
 local function update_subscription_probe_state(cursor, sid, result)
     if not sid or type(result) ~= "table" then
         return
@@ -404,8 +416,17 @@ function handlers.subscription_add(p)
 
     name = (name and name ~= "") and name or "subscription"
 
-    -- Create a new anonymous UCI config_subscribe section
     local cursor = uci_mod.cursor()
+    local existing_sid, existing_name = find_subscription_by_url(cursor, url)
+    if existing_sid then
+        return {
+            name = existing_name or name,
+            created = false,
+            duplicate = true,
+        }
+    end
+
+    -- Create a new anonymous UCI config_subscribe section
     local sid = cursor:add("clashnivo", "config_subscribe")
     cursor:set("clashnivo", sid, "address", url)
     cursor:set("clashnivo", sid, "name",    name)
@@ -413,7 +434,11 @@ function handlers.subscription_add(p)
     cursor:save("clashnivo")
     cursor:commit("clashnivo")
 
-    return { name = name }
+    return {
+        name = name,
+        created = true,
+        duplicate = false,
+    }
 end
 
 function handlers.subscription_list()
