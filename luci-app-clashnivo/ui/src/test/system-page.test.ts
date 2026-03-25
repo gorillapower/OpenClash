@@ -245,17 +245,30 @@ describe('SystemPage', () => {
 
   it('shows row-level dashboard links from backend-provided urls', () => {
     setupMocks({
+      serviceStatus: { running: true, busy: false } as ServiceStatusResult,
       dashboards: [
-        { id: 'metacubexd', key: 'metacubexd', name: 'MetaCubeXD', label: 'MetaCubeXD', variant: 'Official', installed: true, selected: true, url: 'https://localhost:9093/ui/metacubexd/' },
-        { id: 'zashboard', key: 'zashboard', name: 'Zashboard', label: 'Zashboard', variant: 'Official', installed: true, selected: false, url: 'https://localhost:9093/ui/zashboard/' }
+        { id: 'metacubexd', key: 'metacubexd', name: 'MetaCubeXD', label: 'MetaCubeXD', variant: 'Official', installed: true, selected: true, url: 'https://localhost:9093/ui/metacubexd/?hostname=localhost&port=9093&https=1&secret=abc' },
+        { id: 'zashboard', key: 'zashboard', name: 'Zashboard', label: 'Zashboard', variant: 'Official', installed: true, selected: false, url: 'https://localhost:9093/ui/zashboard/?hostname=localhost&port=9093&https=1&secret=abc' }
       ] as DashboardOption[]
     })
     render(SystemPage)
 
     const openLinks = screen.getAllByRole('link', { name: 'Open' })
-    expect(openLinks[0]).toHaveAttribute('href', 'https://localhost:9093/ui/metacubexd/')
-    expect(openLinks[1]).toHaveAttribute('href', 'https://localhost:9093/ui/zashboard/')
+    expect(openLinks[0]).toHaveAttribute('href', 'https://localhost:9093/ui/metacubexd/?hostname=localhost&port=9093&https=1&secret=abc')
+    expect(openLinks[1]).toHaveAttribute('href', 'https://localhost:9093/ui/zashboard/?hostname=localhost&port=9093&https=1&secret=abc')
     expect(screen.getAllByText('Installed').length).toBeGreaterThan(0)
+  })
+
+  it('hides dashboard open links when Clash Nivo is not running', () => {
+    setupMocks({
+      serviceStatus: { running: false, busy: false } as ServiceStatusResult,
+      dashboards: [
+        { id: 'metacubexd', key: 'metacubexd', name: 'MetaCubeXD', label: 'MetaCubeXD', variant: 'Official', installed: true, selected: true, url: 'https://localhost:9093/ui/metacubexd/?hostname=localhost&port=9093&https=1&secret=abc' }
+      ] as DashboardOption[]
+    })
+    render(SystemPage)
+
+    expect(screen.queryByRole('link', { name: 'Open' })).not.toBeInTheDocument()
   })
 
   it('calls core update when the button is clicked', async () => {

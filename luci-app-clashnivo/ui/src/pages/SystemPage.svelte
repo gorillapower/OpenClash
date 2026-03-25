@@ -133,6 +133,7 @@
     isPendingState(dashboardUpdateStatus.data?.status) ||
     dashboardUpdate.isPending
   )
+  const dashboardOpenAvailable = $derived(serviceStatus.data?.running ?? false)
   const busyLabel = $derived.by(() => {
     if (!globalBusy || !busyCommand) return null
     switch (busyCommand) {
@@ -396,20 +397,20 @@
 
           <div class="space-y-3">
             {#each dashboardOptions as option (option.id)}
-              <div class="rounded-lg border border-border bg-card px-4 py-3">
-                <div class="flex flex-wrap items-center gap-3">
-                  <div class="min-w-0 flex-1 space-y-1">
-                    <div class="flex flex-wrap items-center gap-2">
+              <div class="rounded-lg border border-border bg-card px-3 py-2">
+                <div class="flex flex-wrap items-center gap-2">
+                  <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                       <span class="font-medium">{option.label}</span>
                       <span class="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                         {option.installed ? 'Installed' : 'Not installed'}
                       </span>
                     </div>
                   </div>
-                  <div class="flex items-center gap-2">
-                    {#if option.installed && option.url}
+                  <div class="flex items-center gap-1.5">
+                    {#if dashboardOpenAvailable && option.installed && option.url}
                       <a
-                        class="inline-flex h-9 items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                        class="inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                         href={option.url}
                         target="_blank"
                         rel="noreferrer"

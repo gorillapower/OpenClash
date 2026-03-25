@@ -21,7 +21,7 @@ local ALLOWED_PATH_PATTERNS = {
 
 local LOG_SERVICE    = "/tmp/clashnivo.log"
 local LOG_CORE       = "/tmp/clash.log"
-local LOG_UPDATES    = "/tmp/clashnivo_updates.log"
+local LOG_UPDATES    = LOG_SERVICE
 local LOG_MAX_LINES  = 500
 local CONFIG_DIR     = "/etc/clashnivo/config"
 
@@ -33,6 +33,13 @@ local function request_host()
     return host:gsub(":%d+$", "")
 end
 
+local function urlencode(value)
+    value = tostring(value or "")
+    return (value:gsub("([^%w%-_%.~])", function(c)
+        return string.format("%%%02X", string.byte(c))
+    end))
+end
+
 local function dashboard_base_url()
     local cursor = uci_mod.cursor()
     local ssl = cursor:get("clashnivo", "config", "dashboard_forward_ssl") == "1"
@@ -42,10 +49,22 @@ local function dashboard_base_url()
 end
 
 local function decorate_dashboard_urls(options)
+    local cursor = uci_mod.cursor()
     local base_url = dashboard_base_url()
+    local scheme_flag = cursor:get("clashnivo", "config", "dashboard_forward_ssl") == "1" and "https" or "http"
+    local port = cursor:get("clashnivo", "config", "cn_port") or "9093"
+    local host = request_host()
+    local secret = cursor:get("clashnivo", "config", "dashboard_password") or ""
+    local query = string.format(
+        "hostname=%s&port=%s&%s=1&secret=%s",
+        urlencode(host),
+        urlencode(port),
+        scheme_flag,
+        urlencode(secret)
+    )
     for _, option in ipairs(options) do
         if option.installed then
-            option.url = string.format("%s/%s/", base_url, option.key)
+            option.url = string.format("%s/%s/?%s", base_url, option.key, query)
         else
             option.url = nil
         end
