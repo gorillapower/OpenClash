@@ -1,0 +1,7 @@
+#!/bin/sh
+
+set -eu
+
+host="${ROUTER_SSH_HOST:-router-temp}"
+
+exec ssh "$host"
