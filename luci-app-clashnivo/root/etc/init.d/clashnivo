@@ -497,6 +497,8 @@ end
 
 check_run_quick()
 {
+   local file_path tracked_mtime
+
    if $QUICK_START_CHECK; then
       return
    fi
@@ -505,7 +507,8 @@ check_run_quick()
 
    cat "$CHANGE_TRACK_FILE" | while read -r i; do
       file_path=$(echo "$i" |awk -F ' #edited time# ' '{print $1}')
-      if [ -z "$(grep "$file_path #edited time# $(date -r "$file_path")$" "$CHANGE_TRACK_FILE")" ]; then
+      tracked_mtime="$(clashnivo_service_file_mtime "$file_path" 2>/dev/null)" || tracked_mtime=""
+      if [ -z "$tracked_mtime" ] || ! grep -Fqx "$file_path #edited time# $tracked_mtime" "$CHANGE_TRACK_FILE"; then
          LOG_TIP "Quick start disabled because this file changed: 【$file_path】."
          rm -rf "$CHANGE_TRACK_FILE"
          break
@@ -519,6 +522,8 @@ check_run_quick()
 
 write_run_quick()
 {
+   local file mtime
+
    : > "$CHANGE_TRACK_FILE"
    {
       echo "/etc/config/clashnivo"
@@ -527,7 +532,13 @@ write_run_quick()
       ls -d /etc/clashnivo/custom/* 2>/dev/null
       ls -d /etc/clashnivo/overwrite/* 2>/dev/null
    } | while read -r file; do
-      echo "$file #edited time# $(date -r "$file")" >> "$CHANGE_TRACK_FILE"
+      mtime="$(clashnivo_service_file_mtime "$file" 2>/dev/null)" || mtime=""
+      if [ -z "$mtime" ]; then
+         LOG_TIP "Quick start tracking skipped because Clash Nivo could not read file metadata: 【$file】."
+         rm -rf "$CHANGE_TRACK_FILE"
+         break
+      fi
+      echo "$file #edited time# $mtime" >> "$CHANGE_TRACK_FILE"
    done
 } >/dev/null 2>&1
 

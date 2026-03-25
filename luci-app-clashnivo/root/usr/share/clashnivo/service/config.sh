@@ -28,6 +28,25 @@ clashnivo_service_config_find_first_source() {
    return 1
 }
 
+clashnivo_service_file_mtime() {
+   local file_path="${1:-}"
+   local mtime=""
+
+   [ -n "${file_path}" ] || return 1
+   [ -e "${file_path}" ] || return 1
+
+   mtime="$(stat -c '%Y' "${file_path}" 2>/dev/null)" || mtime=""
+   if [ -z "${mtime}" ]; then
+      mtime="$(stat -f '%m' "${file_path}" 2>/dev/null)" || mtime=""
+   fi
+   if [ -z "${mtime}" ] && command -v busybox >/dev/null 2>&1; then
+      mtime="$(busybox stat -c '%Y' "${file_path}" 2>/dev/null)" || mtime=""
+   fi
+
+   [ -n "${mtime}" ] || return 1
+   printf '%s\n' "${mtime}"
+}
+
 clashnivo_service_config_assign_paths() {
    RAW_CONFIG_FILE="${1:-}"
    CFG_NAME="$(basename "${RAW_CONFIG_FILE}" 2>/dev/null)"
