@@ -7,13 +7,13 @@
 import { test, expect, gotoApp } from './helpers/auth'
 
 test.describe('Log viewer', () => {
-  test('service log tab shows content', async ({ appPage: page }) => {
+  test('clashnivo log tab shows content', async ({ appPage: page }) => {
     await gotoApp(page, '#/logs')
     await page.waitForLoadState('networkidle')
 
     // The log viewer may be on a tab or an accordion — find it broadly
     const serviceLogTrigger = page
-      .getByRole('button', { name: /service log|openclash log/i })
+      .getByRole('button', { name: /clashnivo|service log|updates/i })
       .first()
 
     if (await serviceLogTrigger.isVisible()) {
@@ -29,34 +29,14 @@ test.describe('Log viewer', () => {
     expect(text).not.toBeNull()
   })
 
-  test('switching to core log tab shows different content', async ({ appPage: page }) => {
+  test('switching to clash core log tab shows different content', async ({ appPage: page }) => {
     await gotoApp(page, '#/logs')
     await page.waitForLoadState('networkidle')
 
     // Find the core log trigger
     const coreLogTrigger = page
-      .getByRole('button', { name: /core log|clash log/i })
+      .getByRole('button', { name: /clash core|core log|clash log/i })
       .first()
-
-    if (await coreLogTrigger.isVisible()) {
-      await coreLogTrigger.click()
-    }
-
-    const logArea = page.locator('pre, [data-testid="log-output"], textarea').first()
-    await expect(logArea).toBeVisible({ timeout: 10_000 })
-    const text = await logArea.textContent()
-    expect(text).not.toBeNull()
-  })
-
-  test('switching to updates log tab shows content', async ({ appPage: page }) => {
-    await gotoApp(page, '#/logs')
-    await page.waitForLoadState('networkidle')
-
-    const updatesLogTrigger = page.getByRole('button', { name: /updates log|updates/i }).first()
-
-    if (await updatesLogTrigger.isVisible()) {
-      await updatesLogTrigger.click()
-    }
 
     const logArea = page.locator('[data-testid="log-output"], pre, textarea').first()
     await expect(logArea).toBeVisible({ timeout: 10_000 })

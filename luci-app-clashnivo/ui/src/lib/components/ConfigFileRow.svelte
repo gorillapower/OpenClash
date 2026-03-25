@@ -37,7 +37,7 @@
 </script>
 
 <div
-  class="flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors {config.active ? 'border-primary bg-primary/5' : 'border-border'}"
+  class="flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors {config.active ? 'border-primary bg-primary/5' : 'border-border'}"
   data-active={config.active}
 >
   <!-- Active indicator dot -->
@@ -56,14 +56,12 @@
       {#if config.active}
         <span class="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">Active</span>
       {/if}
-    </div>
-    {#if config.size !== undefined || config.lastModified}
-      <p class="mt-0.5 text-xs text-muted-foreground">
+      {#if config.size !== undefined || config.lastModified}
         {#if config.size !== undefined}{formatSize(config.size)}{/if}
         {#if config.size !== undefined && config.lastModified} · {/if}
         {#if config.lastModified}{formatDate(config.lastModified)}{/if}
-      </p>
-    {/if}
+      {/if}
+    </div>
   </div>
 
   <!-- Actions -->
@@ -114,7 +112,7 @@
       <!-- Select -->
       {#if !config.active}
         <button
-          class="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+          class="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
           onclick={handleSelect}
           disabled={selecting}
           title="Select source"
@@ -129,8 +127,8 @@
       {/if}
 
       <!-- Edit -->
-      <button
-        class="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        <button
+        class="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         onclick={() => onEdit?.(config)}
         title="Edit config"
         type="button"
@@ -144,7 +142,7 @@
 
       <!-- Download -->
       <button
-        class="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        class="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         onclick={() => onDownload?.(config.name)}
         title="Download config"
         type="button"
@@ -159,7 +157,7 @@
 
       <!-- Delete -->
       <button
-        class="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+        class="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
         onclick={() => (confirmingDelete = true)}
         title="Delete config"
         type="button"

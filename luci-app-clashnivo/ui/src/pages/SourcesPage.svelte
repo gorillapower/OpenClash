@@ -421,23 +421,25 @@
         title="No uploaded sources"
       />
     {:else}
-      <div class="space-y-3">
+      <div class="space-y-2">
         {#each configs.data as config (config.name)}
-          <Card>
-            <CardContent class="space-y-4 pt-5">
-              <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-                <div class="min-w-0 space-y-1">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <p class="truncate text-sm font-medium">{config.name}</p>
-                  </div>
-                  <p class="text-xs text-muted-foreground">
+          <div class="rounded-lg border border-border bg-card px-3 py-2">
+            <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                  <p class="truncate font-medium">{config.name}</p>
+                  {#if config.active}
+                    <span class="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">Active</span>
+                  {/if}
+                  <span class="text-xs text-muted-foreground">
                     {#if config.size !== undefined}{formatSize(config.size)}{/if}
                     {#if config.size !== undefined && config.lastModified} · {/if}
                     {#if config.lastModified}Updated {formatDate(config.lastModified)}{/if}
-                  </p>
+                  </span>
                 </div>
+              </div>
 
-                <div class="flex flex-wrap items-center justify-end gap-2 sm:justify-self-end">
+              <div class="flex flex-wrap items-center justify-end gap-1.5 sm:justify-self-end">
                   {#if !config.active && confirmSelectName === config.name}
                     <span class="text-xs text-muted-foreground">Use this as the selected source.</span>
                     <Button
@@ -468,17 +470,17 @@
                       {selectingNames.has(config.name) ? 'Selecting…' : 'Select'}
                     </Button>
                   {/if}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onclick={() => handleConfigDownload(config.name)}
-                  >
-                    Download
-                  </Button>
-                </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onclick={() => handleConfigDownload(config.name)}
+                    >
+                      Download
+                    </Button>
               </div>
+            </div>
 
-              <div class="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+            <div class="mt-2 flex flex-wrap items-center gap-1.5">
                 <Button
                   size="sm"
                   variant="ghost"
@@ -516,9 +518,8 @@
                     Delete
                   </Button>
                 {/if}
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         {/each}
       </div>
     {/if}

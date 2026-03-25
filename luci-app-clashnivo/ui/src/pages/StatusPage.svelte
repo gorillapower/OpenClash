@@ -661,22 +661,6 @@
             </div>
           </div>
 
-          <div class="flex flex-wrap gap-3 text-sm">
-            <a href="#/compose" class="font-medium text-foreground underline underline-offset-4">
-              Compose
-            </a>
-            <a href="#/logs" class="font-medium text-foreground underline underline-offset-4">
-              Logs
-            </a>
-            <a
-              href={dashboardUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-muted-foreground underline underline-offset-4"
-            >
-              Dashboard
-            </a>
-          </div>
         </CardContent>
       </Card>
 

@@ -30,7 +30,7 @@
   }
 </script>
 
-<div class="space-y-8">
+<div class="space-y-8 xl:-mx-6 2xl:-mx-10">
   <PageIntro eyebrow="Runtime" title="Logs" />
   <LogsViewer />
   <Card>

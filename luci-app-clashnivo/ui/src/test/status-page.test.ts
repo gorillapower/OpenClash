@@ -163,15 +163,6 @@ describe('StatusPage reset', () => {
     expect(screen.getByText('Enabled')).toBeInTheDocument()
   })
 
-  it('shows quick links for compose, logs, and dashboard', () => {
-    setupMocks()
-    render(StatusPage)
-
-    expect(screen.getByRole('link', { name: 'Compose' })).toHaveAttribute('href', '#/compose')
-    expect(screen.getByRole('link', { name: 'Logs' })).toHaveAttribute('href', '#/logs')
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('target', '_blank')
-  })
-
   it('uses clearer service control enablement', () => {
     setupMocks({ serviceStatus: { running: false, state: 'stopped', enabled: true, can_start: true, blocked: false } })
     render(StatusPage)
