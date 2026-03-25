@@ -113,6 +113,42 @@ local function shell_capture(cmd)
 	return sys.exec(cmd .. " 2>/dev/null") or ""
 end
 
+local function service_helper_json(func_name)
+	local output = sys.exec(string.format(
+		"sh -c %s 2>/dev/null",
+		shellquote(string.format(
+			". %s && clashnivo_service_init_env '' && %s",
+			shellquote(CLASHNIVO_SERVICE_ENV),
+			func_name
+		))
+	)) or ""
+	local parsed = json.parse(output)
+
+	if parsed and type(parsed) == "table" then
+		return parsed
+	end
+
+	return nil, output
+end
+
+local function init_helper_json(func_name)
+	local output = sys.exec(string.format(
+		"sh -c %s 2>/dev/null",
+		shellquote(string.format(
+			". %s && %s",
+			shellquote(CLASHNIVO_INIT),
+			func_name
+		))
+	)) or ""
+	local parsed = json.parse(output)
+
+	if parsed and type(parsed) == "table" then
+		return parsed
+	end
+
+	return nil, output
+end
+
 local function classify_subscription_probe(url, user_agent)
 	url = trim(url)
 	user_agent = trim(user_agent)
@@ -243,14 +279,7 @@ function core_process_pid()
 end
 
 function service_status()
-	local output = sys.exec(string.format(
-		"sh -c %s 2>/dev/null",
-		shellquote(string.format(
-			". %s && clashnivo_service_init_env '' && clashnivo_service_status_json",
-			shellquote(CLASHNIVO_SERVICE_ENV)
-		))
-	)) or ""
-	local parsed = json.parse(output)
+	local parsed = service_helper_json("clashnivo_service_status_json")
 
 	if parsed and type(parsed) == "table" then
 		if parsed.running ~= true and parsed.running ~= false then
@@ -511,8 +540,18 @@ local function service_arg_command(action, arg, async)
 end
 
 local function service_json_command(action)
-	local output = sys.exec(string.format("%s %s 2>/dev/null", shellquote(CLASHNIVO_INIT), shellquote(action))) or ""
-	local parsed = json.parse(output)
+	local helper
+
+	if action == "preview" then
+		helper = "preview"
+	elseif action == "validate" then
+		helper = "validate"
+	end
+
+	local parsed
+	if helper then
+		parsed = init_helper_json(helper)
+	end
 
 	if parsed and type(parsed) == "table" then
 		return parsed

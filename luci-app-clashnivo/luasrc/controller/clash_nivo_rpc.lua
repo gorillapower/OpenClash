@@ -281,9 +281,6 @@ function handlers.service_stop()
     if busy then
         return busy
     end
-    local cursor = uci_mod.cursor()
-    cursor:set("clashnivo", "config", "enable", "0")
-    cursor:commit("clashnivo")
     return backend.service_action("stop")
 end
 

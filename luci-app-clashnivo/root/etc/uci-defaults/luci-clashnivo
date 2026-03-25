@@ -192,7 +192,9 @@ if [ -f "/tmp/clashnivo.bak" ]; then
 	rm -rf "/etc/clashnivo/custom/clashnivo_sniffing_domain_filter.yaml" >/dev/null 2>&1
 fi
 
-uci -q set clashnivo.config.enable=0
+if [ -z "$(uci -q get clashnivo.config.enable)" ]; then
+	uci -q set clashnivo.config.enable=1
+fi
 uci -q commit clashnivo
 
 rm -f /tmp/luci-indexcache >/dev/null 2>&1
