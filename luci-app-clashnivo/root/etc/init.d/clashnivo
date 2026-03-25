@@ -882,11 +882,16 @@ start_run_core()
       [ -n "$pid" ] && kill -9 "$pid" >/dev/null 2>&1
    done
 
-   # The Clash core starts reliably on this router when launched directly with
-   # SAFE_PATHS in the process environment. Keep the command path equivalent to
-   # the known-good manual invocation and avoid the extra shell/nohup wrapper,
-   # which prevents the controller from coming up on this device.
-   SAFE_PATHS=/usr/share/clashnivo:/usr/share/clashnivo/ui:/etc/ssl "$CLASH" -d "$CLASH_CONFIG" -f "$CONFIG_FILE" >> "$CORE_LOG_FILE" 2>&1 &
+   # Keep the known-good direct launch path, but restore the legacy core group
+   # contract on OpenWrt so router-output bypass rules exempt the core itself.
+   if [ -x /sbin/start-stop-daemon ] && grep -q '^nogroup:' /etc/group 2>/dev/null; then
+      SAFE_PATHS=/usr/share/clashnivo:/usr/share/clashnivo/ui:/etc/ssl \
+         /sbin/start-stop-daemon -S -q -b -c root:nogroup \
+         -x /usr/share/clashnivo/runtime/clashnivo_core_exec.sh -- \
+         "$CLASH" "$CLASH_CONFIG" "$CONFIG_FILE" "$CORE_LOG_FILE"
+   else
+      SAFE_PATHS=/usr/share/clashnivo:/usr/share/clashnivo/ui:/etc/ssl "$CLASH" -d "$CLASH_CONFIG" -f "$CONFIG_FILE" >> "$CORE_LOG_FILE" 2>&1 &
+   fi
 } >/dev/null 2>&1
 
 #防火墙设置部分
