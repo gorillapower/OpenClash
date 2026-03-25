@@ -124,6 +124,24 @@ local function config_file_path(name)
     return CONFIG_DIR .. "/" .. fname, fname
 end
 
+local function set_active_config_path(cursor, path)
+    if path and path ~= "" then
+        cursor:set("clashnivo", "config", "config_path", path)
+    else
+        cursor:delete("clashnivo", "config", "config_path")
+    end
+end
+
+local function first_config_path(exclude_path)
+    local files = backend.list_yaml_files(CONFIG_DIR)
+    for _, full_path in ipairs(files) do
+        if full_path ~= exclude_path and nixio.fs.access(full_path) then
+            return full_path
+        end
+    end
+    return nil
+end
+
 -- ── method handlers ────────────────────────────────────────────────────────
 -- Each handler receives params (array) and returns result or raises error().
 
@@ -500,6 +518,9 @@ function handlers.subscription_edit(p)
         error("subscription not found: " .. name)
     end
 
+    local active_path = cursor:get("clashnivo", "config", "config_path") or ""
+    local old_config_path, _ = config_file_path(name)
+
     if data.url and data.url ~= "" then
         cursor:set("clashnivo", sid, "address", data.url)
         cursor:delete("clashnivo", sid, "last_check_status")
@@ -512,6 +533,23 @@ function handlers.subscription_edit(p)
         if existing_sid and existing_sid ~= sid then
             error("subscription name already exists: " .. data.newName)
         end
+
+        local new_config_path, _ = config_file_path(data.newName)
+        if old_config_path ~= new_config_path and nixio.fs.access(old_config_path) then
+            if nixio.fs.access(new_config_path) then
+                error("config file already exists for subscription: " .. data.newName)
+            end
+            local ok, err = nixio.fs.rename(old_config_path, new_config_path)
+            if not ok then
+                error("failed to rename config file: " .. tostring(err))
+            end
+            if active_path == old_config_path then
+                set_active_config_path(cursor, new_config_path)
+            end
+        elseif active_path == old_config_path then
+            set_active_config_path(cursor, new_config_path)
+        end
+
         cursor:set("clashnivo", sid, "name", data.newName)
     end
     if data.autoUpdateInterval ~= nil then
@@ -572,18 +610,24 @@ function handlers.config_delete(p)
 
     local path, _ = config_file_path(name)
 
-    -- Refuse to delete the currently active config
     local cursor = uci_mod.cursor()
     local active = cursor:get("clashnivo", "config", "config_path") or ""
-    if active == path then
-        error("cannot delete the active config file")
-    end
 
     if not nixio.fs.access(path) then
         error("config file not found: " .. name)
     end
 
-    nixio.fs.remove(path)
+    local ok, err = nixio.fs.remove(path)
+    if not ok then
+        error("failed to delete config file: " .. tostring(err))
+    end
+
+    if active == path then
+        set_active_config_path(cursor, first_config_path(path))
+        cursor:save("clashnivo")
+        cursor:commit("clashnivo")
+    end
+
     return true
 end
 

@@ -104,17 +104,11 @@ DOWNLOAD_RESULT=$?
 
 config_cus_up()
 {
-	if [ -z "$CONFIG_PATH" ]; then
-      for file_name in /etc/clashnivo/config/*
-      do
-         if [ -f "$file_name" ]; then
-            CONFIG_PATH=$file_name
-            break
-         fi
-      done
+   if [ -z "$CONFIG_PATH" ] || [ ! -f "$CONFIG_PATH" ]; then
+      CONFIG_PATH="$CONFIG_FILE"
       uci -q set clashnivo.config.config_path="$CONFIG_PATH"
       uci commit clashnivo
-	fi
+   fi
 	if [ -z "$subscribe_url_param" ]; then
 	   if [ -n "$key_match_param" ] || [ -n "$key_ex_match_param" ]; then
 	      LOG_OUT "Source refresh: filtering nodes for 【$name】."	      

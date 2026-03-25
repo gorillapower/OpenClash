@@ -331,6 +331,7 @@ export function useSubscriptionAdd(
     onSuccess(result) {
       queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+      queryClient.invalidateQueries({ queryKey: luciKeys.configs })
       if (result.duplicate) {
         toasts.info('Subscription name already exists')
         return
@@ -358,7 +359,9 @@ export function useSubscriptionDelete(
   return createMutation<void, unknown, string>(() => ({
     mutationFn: (name: string) => luciRpc.subscriptionDelete(name),
     onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+      queryClient.invalidateQueries({ queryKey: luciKeys.configs })
       notifyDeleted('Subscription')
     },
     onError: onMutationError,
@@ -393,7 +396,9 @@ export function useSubscriptionUpdate(
       return luciRpc.subscriptionUpdate(name)
     },
     onSuccess(result, name) {
+      queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+      queryClient.invalidateQueries({ queryKey: luciKeys.configs })
       if (result.status === 'busy') {
         notifyBusy('Sources', result.active_command)
         return
@@ -464,7 +469,9 @@ export function useSubscriptionEdit(
   return createMutation<void, unknown, { name: string; data: SubscriptionEditData }>(() => ({
     mutationFn: ({ name, data }) => luciRpc.subscriptionEdit(name, data),
     onSuccess() {
+      queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
       queryClient.invalidateQueries({ queryKey: luciKeys.subscriptions })
+      queryClient.invalidateQueries({ queryKey: luciKeys.configs })
       notifySaved('Subscription')
     },
     onError: onMutationError,
@@ -506,6 +513,7 @@ export function useConfigSetActive(
     },
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.configs })
+      queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
       toasts.success('Active source changed')
     },
     ...opts
@@ -520,6 +528,7 @@ export function useConfigDelete(
     mutationFn: (name: string) => luciRpc.configDelete(name),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.configs })
+      queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
       notifyDeleted('Source')
     },
     onError: onMutationError,
@@ -535,6 +544,7 @@ export function useConfigWrite(
     mutationFn: ({ name, content }) => luciRpc.configWrite(name, content),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: luciKeys.configs })
+      queryClient.invalidateQueries({ queryKey: luciKeys.uci('clashnivo') })
       notifySaved('Source')
     },
     onError: onMutationError,
