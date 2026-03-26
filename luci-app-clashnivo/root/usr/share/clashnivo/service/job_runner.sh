@@ -7,6 +7,27 @@ command="${1:-}"
 shift 2>/dev/null || true
 
 case "${command}" in
+   assets.update)
+      clashnivo_service_update_assets_command "$1"
+   ;;
+   assets.updateStatus)
+      clashnivo_service_update_status_command assets "$1"
+   ;;
+   core.probeSources)
+      clashnivo_service_probe_core_sources_command
+   ;;
+   core.update)
+      clashnivo_service_update_core_command
+   ;;
+   core.updateStatus)
+      clashnivo_service_update_status_command core core
+   ;;
+   package.update)
+      clashnivo_service_update_package_command
+   ;;
+   package.updateStatus)
+      clashnivo_service_update_status_command package package
+   ;;
    subscription.update)
       clashnivo_service_subscription_refresh_command "$1"
    ;;

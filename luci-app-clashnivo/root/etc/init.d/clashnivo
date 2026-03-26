@@ -53,12 +53,27 @@ update_status()
       return $?
    fi
 
+   if [ "$1" = "assets" ]; then
+      "$CLASHNIVO_JOB_RUNNER" assets.updateStatus "$2"
+      return $?
+   fi
+
+   if [ "$1" = "core" ]; then
+      "$CLASHNIVO_JOB_RUNNER" core.updateStatus
+      return $?
+   fi
+
+   if [ "$1" = "package" ]; then
+      "$CLASHNIVO_JOB_RUNNER" package.updateStatus
+      return $?
+   fi
+
    clashnivo_service_update_status_command "$1" "$2"
 }
 
 probe_core_sources()
 {
-   clashnivo_service_probe_core_sources_command
+   "$CLASHNIVO_JOB_RUNNER" core.probeSources
 }
 
 cancel_job()
@@ -68,7 +83,7 @@ cancel_job()
 
 update_core()
 {
-   clashnivo_service_update_core_command
+   "$CLASHNIVO_JOB_RUNNER" core.update
 }
 
 update_core_latest()
@@ -78,7 +93,7 @@ update_core_latest()
 
 update_package()
 {
-   clashnivo_service_update_package_command
+   "$CLASHNIVO_JOB_RUNNER" package.update
 }
 
 update_package_latest()
@@ -88,7 +103,7 @@ update_package_latest()
 
 update_assets()
 {
-   clashnivo_service_update_assets_command "$1"
+   "$CLASHNIVO_JOB_RUNNER" assets.update "$1"
 }
 
 update_dashboard()

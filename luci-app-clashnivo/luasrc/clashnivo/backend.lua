@@ -482,7 +482,7 @@ local function refresh_core_latest_now()
 end
 
 function probe_core_sources()
-	return update_command("probe_core_sources")
+	return job_command("core.probeSources")
 end
 
 local function refresh_package_latest_now()
@@ -684,11 +684,11 @@ function refresh_core_latest_version()
 end
 
 function start_core_update()
-	return update_command("update_core")
+	return job_command("core.update")
 end
 
 function core_update_status()
-	return update_command("update_status", "core")
+	return job_command("core.updateStatus")
 end
 
 function package_latest_version()
@@ -700,19 +700,19 @@ function refresh_package_latest_version()
 end
 
 function start_package_update()
-	return update_command("update_package")
+	return job_command("package.update")
 end
 
 function package_update_status()
-	return update_command("update_status", "package")
+	return job_command("package.updateStatus")
 end
 
 function start_assets_update(target)
-	return update_command("update_assets", target)
+	return job_command("assets.update", target)
 end
 
 function assets_update_status(target)
-	return update_command("update_status", "assets", target)
+	return job_command("assets.updateStatus", target)
 end
 
 local function dashboard_dir_name(key)
