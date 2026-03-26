@@ -204,10 +204,34 @@ clashnivo_openclash_watchdog_running() {
       grep -q 'true'
 }
 
+clashnivo_openclash_pid_is_runtime() {
+   local pid="${1:-}"
+   local cmdline=""
+
+   [ -n "$pid" ] || return 1
+   [ -r "/proc/${pid}/cmdline" ] || return 1
+
+   cmdline="$(tr '\000' ' ' < "/proc/${pid}/cmdline" 2>/dev/null)"
+   [ -n "$cmdline" ] || return 1
+
+   printf '%s' "$cmdline" | grep -F -q '/etc/openclash/' || return 1
+   printf '%s' "$cmdline" | grep -F -q -- '-d /etc/openclash' || return 1
+   printf '%s' "$cmdline" | grep -F -q -- '-f /etc/openclash/' || return 1
+
+   return 0
+}
+
 clashnivo_openclash_core_pid() {
    local pid
-   pid="$(ps -w 2>/dev/null | grep -E '/etc/openclash/|/usr/share/openclash/' | grep -E 'clash|mihomo' | grep -v grep | awk 'NR==1 {print $1}')"
-   [ -n "$pid" ] && printf '%s' "$pid"
+
+   for pid in $(pidof clash mihomo clash_meta 2>/dev/null); do
+      if clashnivo_openclash_pid_is_runtime "$pid"; then
+         printf '%s' "$pid"
+         return 0
+      fi
+   done
+
+   return 1
 }
 
 clashnivo_openclash_core_running() {
