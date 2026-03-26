@@ -23,6 +23,7 @@ EXTRA_HELP="\
 
 . $IPKG_INSTROOT/usr/share/clashnivo/service/env.sh
 clashnivo_service_init_env "$IPKG_INSTROOT"
+CLASHNIVO_JOB_RUNNER="${IPKG_INSTROOT}/usr/share/clashnivo/service/job_runner.sh"
 
 status()
 {
@@ -47,6 +48,11 @@ validate()
 
 update_status()
 {
+   if [ "$1" = "dashboard" ]; then
+      "$CLASHNIVO_JOB_RUNNER" dashboard.updateStatus "$2"
+      return $?
+   fi
+
    clashnivo_service_update_status_command "$1" "$2"
 }
 
@@ -57,7 +63,7 @@ probe_core_sources()
 
 cancel_job()
 {
-   clashnivo_service_cancel_job_command
+   "$CLASHNIVO_JOB_RUNNER" service.cancelJob
 }
 
 update_core()
@@ -87,17 +93,17 @@ update_assets()
 
 update_dashboard()
 {
-   clashnivo_service_update_dashboard_command "$1"
+   "$CLASHNIVO_JOB_RUNNER" dashboard.update "$1"
 }
 
 refresh_source()
 {
-   clashnivo_service_subscription_refresh_command "$1"
+   "$CLASHNIVO_JOB_RUNNER" subscription.update "$1"
 }
 
 refresh_sources()
 {
-   clashnivo_service_subscription_refresh_command
+   "$CLASHNIVO_JOB_RUNNER" subscription.updateAll
 }
 
 add_cron()

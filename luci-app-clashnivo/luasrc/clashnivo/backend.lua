@@ -9,6 +9,7 @@ local util = require "luci.util"
 local uci_mod = require "luci.model.uci"
 
 local CLASHNIVO_INIT = "/etc/init.d/clashnivo"
+local CLASHNIVO_JOB_RUNNER = "/usr/share/clashnivo/service/job_runner.sh"
 local CLASHNIVO_SERVICE_ENV = "/usr/share/clashnivo/service/env.sh"
 local CLASHNIVO_CORE_VERSION_SCRIPT = "/usr/share/clashnivo/clash_version.sh"
 local CLASHNIVO_PACKAGE_VERSION_SCRIPT = "/usr/share/clashnivo/clashnivo_version.sh"
@@ -523,7 +524,7 @@ function service_action(action, async)
 end
 
 function cancel_active_job()
-	return update_command("cancel_job")
+	return job_command("service.cancelJob")
 end
 
 local function service_arg_command(action, arg, async)
@@ -599,8 +600,8 @@ function subscription_preflight(url, user_agent)
 end
 
 function start_subscription_update(name)
-	local action = (name and name ~= "") and "refresh_source" or "refresh_sources"
-	return update_command(action, name)
+	local action = (name and name ~= "") and "subscription.update" or "subscription.updateAll"
+	return job_command(action, name)
 end
 
 function list_yaml_files(config_dir)
@@ -648,6 +649,26 @@ function update_command(action, ...)
 	end
 
 	return { accepted = false, error = "Unable to parse service JSON output" }
+end
+
+function job_command(action, ...)
+	local cmd = shellquote(CLASHNIVO_JOB_RUNNER)
+	local args = { action, ... }
+
+	for _, arg in ipairs(args) do
+		if arg and arg ~= "" then
+			cmd = cmd .. " " .. shellquote(arg)
+		end
+	end
+
+	local output = sys.exec(cmd .. " 2>/dev/null") or ""
+	local parsed = json.parse(output)
+
+	if parsed and type(parsed) == "table" then
+		return parsed
+	end
+
+	return { accepted = false, error = "Unable to parse job runner JSON output" }
 end
 
 function core_latest_version()
@@ -768,11 +789,11 @@ function dashboard_select(id)
 end
 
 function dashboard_update(id)
-	return update_command("update_dashboard", id)
+	return job_command("dashboard.update", id)
 end
 
 function dashboard_update_status(id)
-	return update_command("update_status", "dashboard", id)
+	return job_command("dashboard.updateStatus", id)
 end
 
 function preview_config()
