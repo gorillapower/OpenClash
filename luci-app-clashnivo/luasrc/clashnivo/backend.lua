@@ -283,6 +283,19 @@ function service_status()
 	local parsed = service_helper_json("clashnivo_service_status_json")
 
 	if parsed and type(parsed) == "table" then
+		if parsed.state == "degraded"
+			and parsed.enabled == true
+			and parsed.blocked ~= true
+			and parsed.busy ~= true
+			and parsed.core_running == true
+		then
+			-- The current shipped lifecycle launches the runtime outside a clean procd-owned
+			-- service instance. Normalize the healthy direct-launch case so the UI can treat
+			-- the router as operational without pretending service ownership is coherent.
+			parsed.state = "running"
+			parsed.running = true
+		end
+
 		if parsed.running ~= true and parsed.running ~= false then
 			parsed.running = parsed.state == "running"
 		end

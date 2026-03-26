@@ -168,6 +168,9 @@
       return 'Clash Nivo is in a partial runtime state. Service ownership and core health do not currently agree.'
     }
     if (serviceState === 'running') {
+      if (!serviceManaged && coreRunning) {
+        return 'Clash Nivo runtime is active, but lifecycle ownership is still transitional.'
+      }
       return 'Clash Nivo is active and owns the runtime.'
     }
     if (serviceState === 'stopped') {

@@ -151,6 +151,31 @@ describe('StatusPage reset', () => {
     expect(screen.getByText('Core: Meta')).toBeInTheDocument()
   })
 
+  it('uses transitional running copy when the runtime is healthy but not service-owned', () => {
+    setupMocks({
+      serviceStatus: {
+        running: true,
+        state: 'running',
+        enabled: true,
+        service_running: false,
+        core_running: true,
+        watchdog_running: false,
+        can_start: true,
+        blocked: false,
+        openclash_installed: false,
+        openclash_active: false,
+        active_config: '/etc/clashnivo/config/work.yaml',
+        run_mode: 'fake-ip',
+        proxy_mode: 'rule',
+        core_type: 'Meta'
+      } as ServiceStatusResult
+    })
+    render(StatusPage)
+
+    expect(screen.getByText(/runtime is active, but lifecycle ownership is still transitional/i)).toBeInTheDocument()
+    expect(screen.getByText('Not managed')).toBeInTheDocument()
+  })
+
   it('shows compact custom layer counts', () => {
     setupMocks()
     render(StatusPage)
