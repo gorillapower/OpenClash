@@ -12,6 +12,11 @@ This repository does not store router credentials, private keys, or authorized p
 
 The helper scripts `scripts/router-ssh-test` and `scripts/router-ssh-shell` use a local SSH target from `ROUTER_SSH_HOST` and default to `router-temp`.
 
+For router validation and recovery, prefer the repo-owned wrappers:
+
+- `scripts/router-lifecycle-smoke`
+- `scripts/router-recover-openclash`
+
 ## Usage
 
 Test non-interactive access:
@@ -31,6 +36,77 @@ Override the local alias for one command:
 ```sh
 ROUTER_SSH_HOST=my-router scripts/router-ssh-test
 ```
+
+Copy a file to the router using legacy SCP mode:
+
+```sh
+scp -O path/to/local/file router-temp:/tmp/remote-file
+```
+
+Run the safe lifecycle smoke test:
+
+```sh
+scripts/router-lifecycle-smoke
+```
+
+Force recovery back to OpenClash:
+
+```sh
+scripts/router-recover-openclash
+```
+
+## Safe command patterns
+
+Prefer these patterns for router work:
+
+1. Keep the remote command to a single shell layer:
+
+```sh
+ssh -o BatchMode=yes router-temp sh -lc 'ps | grep clashnivo | grep -v grep'
+```
+
+2. For anything non-trivial, copy a script to `/tmp` and execute it:
+
+```sh
+scp -O scripts/router-check.sh router-temp:/tmp/router-check.sh
+ssh -o BatchMode=yes router-temp sh /tmp/router-check.sh
+```
+
+3. Avoid nested quoting like:
+
+```sh
+ssh ... sh -lc 'lua -e '\''... \"...\" ...'\'''
+```
+
+That form is brittle and has repeatedly failed in practice.
+
+4. Avoid inline JSON or Lua in the remote one-liner when possible.
+- Put JSON in a temporary file.
+- Put Lua in a temporary script file.
+- Then execute the file remotely.
+
+5. If you need a one-liner, prefer single quotes around the remote shell fragment and avoid additional nested shells inside it.
+
+Bad:
+
+```sh
+ssh ... sh -lc 'sh -lc \"...lua/json...\"'
+```
+
+Better:
+
+```sh
+ssh -o BatchMode=yes router-temp sh -lc 'command arg1 arg2'
+```
+
+6. When checking LuCI/backend behavior, prefer file-based probes over inline `lua -e ...`.
+- Example: copy a temporary Lua script to `/tmp` and run `lua /tmp/check.lua`.
+- This is more reliable than nested inline quoting through SSH.
+
+7. When a router test needs cleanup, never rely on a foreground `/etc/init.d/clashnivo stop` followed by a timeout loop.
+- Start `clashnivo stop` in the background.
+- Timeout the stop process itself.
+- If it does not finish, kill Clash Nivo wrappers/core directly and restore `fw4` + `dnsmasq` before bringing OpenClash back.
 
 ## Example local key setup
 

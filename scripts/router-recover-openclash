@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -eu
+
+host="${ROUTER_SSH_HOST:-router-temp}"
+script_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+remote_script="${script_dir}/router/recover-openclash.remote.sh"
+
+scp -O "$remote_script" "${host}:/tmp/recover-openclash.remote.sh"
+exec ssh -o BatchMode=yes "$host" sh /tmp/recover-openclash.remote.sh
