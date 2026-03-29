@@ -35,7 +35,7 @@ clashnivo_service_preview_validate_yaml_file() {
       ruby -ryaml -rYAML -I "/usr/share/clashnivo" -E UTF-8 -e '
 begin
    YAML.load_file(ARGV[0])
-rescue Exception => e
+rescue StandardError => e
    warn e.message
    exit 1
 end
@@ -136,7 +136,10 @@ clashnivo_service_preview_run_pipeline() {
    local stages_json="" first_stage=true failed_layer="" valid="false"
    local stage_result=""
 
-   get_config
+   if ! clashnivo_service_composition_load_context; then
+      clashnivo_service_preview_emit_result "false" "context" "[]"
+      return 1
+   fi
    clashnivo_service_preview_reset_outputs
 
    clashnivo_service_preview_run_stage "source" clashnivo_service_preview_prepare_source

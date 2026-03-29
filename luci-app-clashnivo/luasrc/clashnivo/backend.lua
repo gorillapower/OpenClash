@@ -114,6 +114,13 @@ local function shell_capture(cmd)
 	return sys.exec(cmd .. " 2>/dev/null") or ""
 end
 
+local function spawn_detached_command(command)
+	return sys.call(string.format(
+		"/bin/sh -c %s </dev/null >/dev/null 2>&1 &",
+		shellquote(command .. " >/dev/null 2>&1")
+	))
+end
+
 local function service_helper_json(func_name)
 	local output = sys.exec(string.format(
 		"sh -c %s 2>/dev/null",
@@ -132,14 +139,11 @@ local function service_helper_json(func_name)
 	return nil, output
 end
 
-local function init_helper_json(func_name)
+local function init_command_json(action)
 	local output = sys.exec(string.format(
-		"sh -c %s 2>/dev/null",
-		shellquote(string.format(
-			". %s && %s",
-			shellquote(CLASHNIVO_INIT),
-			func_name
-		))
+		"%s %s 2>/dev/null",
+		shellquote(CLASHNIVO_INIT),
+		shellquote(action)
 	)) or ""
 	local parsed = json.parse(output)
 
@@ -512,11 +516,7 @@ function service_action(action, async)
 	end
 
 	if async then
-		sys.call(string.format(
-			"nohup %s %s </dev/null >/dev/null 2>&1 &",
-			shellquote(CLASHNIVO_INIT),
-			shellquote(action)
-		))
+		spawn_detached_command(string.format("%s %s", shellquote(CLASHNIVO_INIT), shellquote(action)))
 		return {
 			accepted = true,
 			busy = false,
@@ -546,25 +546,17 @@ local function service_arg_command(action, arg, async)
 		cmd = cmd .. " " .. shellquote(arg)
 	end
 	if async then
-		cmd = "nohup " .. cmd .. " </dev/null >/dev/null 2>&1 &"
+		return spawn_detached_command(cmd)
 	else
 		cmd = cmd .. " >/dev/null 2>&1"
+		return sys.call(cmd)
 	end
-	return sys.call(cmd)
 end
 
 local function service_json_command(action)
-	local helper
-
-	if action == "preview" then
-		helper = "preview"
-	elseif action == "validate" then
-		helper = "validate"
-	end
-
 	local parsed
-	if helper then
-		parsed = init_helper_json(helper)
+	if action == "preview" or action == "validate" then
+		parsed = service_helper_json(string.format("clashnivo_service_%s_command", action))
 	end
 
 	if parsed and type(parsed) == "table" then
