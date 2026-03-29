@@ -1,0 +1,163 @@
+#!/bin/sh
+
+set -eu
+
+host="${ROUTER_SSH_HOST:-router-temp}"
+script_dir=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+remote_script="${script_dir}/router/service-owned-compare.remote.sh"
+repo_root=$(CDPATH= cd -- "${script_dir}/.." && pwd)
+init_script="${repo_root}/luci-app-clashnivo/root/etc/init.d/clashnivo"
+guard_script="${repo_root}/luci-app-clashnivo/root/usr/share/clashnivo/service/guard.sh"
+composition_script="${repo_root}/luci-app-clashnivo/root/usr/share/clashnivo/service/composition.sh"
+lifecycle_script="${repo_root}/luci-app-clashnivo/root/usr/share/clashnivo/service/lifecycle.sh"
+compare_init="$(mktemp /tmp/clashnivo.compare.init.XXXXXX)"
+
+cleanup() {
+  rm -f "$compare_init"
+}
+trap cleanup EXIT INT TERM
+
+extract_function() {
+  func_name="$1"
+  awk -v fname="${func_name}" '
+    BEGIN { target = fname "()" }
+    $0 == target { in_func=1 }
+    in_func { print }
+    in_func && $0 ~ /^}[[:space:]]*(>|$)/ { exit }
+  ' "$init_script"
+}
+
+append_function() {
+  func_name="$1"
+  printf '\n' >>"$compare_init"
+  extract_function "$func_name" >>"$compare_init"
+}
+
+cat >"$compare_init" <<'EOF'
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=15
+USE_PROCD=1
+
+. /usr/share/clashnivo/service/env.sh
+clashnivo_service_init_env "$IPKG_INSTROOT"
+EOF
+
+for fn in \
+  add_cron \
+  add_overwrite_cron \
+  sub_info_get \
+  config_choose \
+  config_check \
+  start_fail \
+  check_run_quick \
+  write_run_quick \
+  do_run_mode \
+  do_run_file \
+  check_core_status \
+  start_run_core \
+  check_type \
+  overwrite_file \
+  clear_overwrite_set \
+  get_config
+do
+  append_function "$fn"
+done
+
+if [ -n "${EXTRA_FUNCTIONS:-}" ]; then
+  OLD_IFS="${IFS}"
+  IFS=', '
+  for fn in ${EXTRA_FUNCTIONS}; do
+    [ -n "${fn}" ] || continue
+    append_function "$fn"
+  done
+  IFS="${OLD_IFS}"
+fi
+
+cat >>"$compare_init" <<'EOF'
+
+start_service() {
+   enable=$(uci_get_config "enable")
+   [ "$enable" != "1" ] && LOG_WARN "Clash Nivo is disabled. Start it from the LuCI page to continue." && SLOG_CLEAN && exit 0
+
+   if clashnivo_service_running; then
+      LOG_TIP "Clash Nivo is already running. Exiting."
+      exit 0
+   fi
+
+   clashnivo_service_require_guard_clear "start" || exit $?
+
+   LOG_TIP "Clash Nivo start requested."
+   clashnivo_service_runtime_state_reset
+
+   {
+      LOG_OUT "Step 1: Get The Configuration..."
+      [ "$ADD_CHECK_RUN_QUICK" = "1" ] && check_run_quick
+      [ -n "${DEBUG_LOG_FILE:-}" ] && echo "compare:after_check_run_quick QUICK_START=${QUICK_START}" >> "${DEBUG_LOG_FILE}"
+      [ "$ADD_OVERWRITE_FILE" = "1" ] && overwrite_file
+      get_config
+      [ -n "${DEBUG_LOG_FILE:-}" ] && echo "compare:get_config RAW_CONFIG_FILE=${RAW_CONFIG_FILE} CONFIG_FILE=${CONFIG_FILE} QUICK_START=${QUICK_START}" >> "${DEBUG_LOG_FILE}"
+      config_choose
+      do_run_mode
+
+      LOG_OUT "Step 2: Check The Components..."
+      [ "$ADD_DO_RUN_FILE" = "1" ] && do_run_file "$RAW_CONFIG_FILE"
+
+      if [ "$ADD_COMPOSE" = "1" ] && ! $QUICK_START; then
+         LOG_OUT "Step 3: Modify The Config File..."
+         clashnivo_service_composition_build_generated_config
+         compose_rc=$?
+         [ -n "${DEBUG_LOG_FILE:-}" ] && echo "compare:compose rc=${compose_rc} TMP_CONFIG_FILE=${TMP_CONFIG_FILE}" >> "${DEBUG_LOG_FILE}"
+         if [ "${compose_rc}" -ne 0 ]; then
+            LOG_ERROR "${CLASHNIVO_COMPOSITION_LAST_ERROR:-Generated runtime config validation failed.}"
+            start_fail "generated_runtime_invalid"
+         fi
+      fi
+
+      [ -n "${DEBUG_LOG_FILE:-}" ] && {
+         echo "compare:pre_step4:json_dump:begin" >> "${DEBUG_LOG_FILE}"
+         json_dump >> "${DEBUG_LOG_FILE}" 2>&1 || true
+         echo "compare:pre_step4:json_dump:end" >> "${DEBUG_LOG_FILE}"
+      }
+      LOG_OUT "Step 4: Start Running The Clash Core..."
+      start_run_core
+      LOG_OUT "Step 5: Add Cron Rules, Start Daemons..."
+      add_cron
+      LOG_OUT "Step 6: Core Status Checking and Firewall Rules Setting..."
+      check_core_status "start" &
+      [ "$ADD_NETWORK_ENSURE_LOADED" = "1" ] && clashnivo_service_network_ensure_loaded
+      [ "$ADD_CLEAR_START_FAILED" = "1" ] && clashnivo_service_runtime_state_clear_start_failed
+   }
+}
+EOF
+
+if [ "${APPEND_LIFECYCLE:-0}" = "1" ]; then
+  awk 'NR > 1 { print }' "$lifecycle_script" >>"$compare_init"
+fi
+
+if [ "${NOOP_START_WATCHDOG:-0}" = "1" ]; then
+  cat >>"$compare_init" <<'EOF'
+
+start_watchdog() {
+  return 0
+}
+EOF
+fi
+
+chmod 0755 "$compare_init"
+
+scp -O "$remote_script" "${host}:/tmp/service-owned-compare.remote.sh"
+scp -O "$compare_init" "${host}:/tmp/clashnivo.compare.init.test"
+scp -O "$guard_script" "${host}:/tmp/clashnivo.guard.test"
+scp -O "$composition_script" "${host}:/tmp/clashnivo.composition.test"
+
+env_args=""
+for name in ADD_CHECK_RUN_QUICK ADD_OVERWRITE_FILE ADD_DO_RUN_FILE ADD_COMPOSE ADD_NETWORK_ENSURE_LOADED ADD_CLEAR_START_FAILED EXTRA_FUNCTIONS APPEND_LIFECYCLE NOOP_START_WATCHDOG; do
+  eval "value=\${$name-}"
+  if [ -n "${value:-}" ]; then
+    env_args="$env_args $name=$value"
+  fi
+done
+
+exec ssh -o BatchMode=yes "$host" env $env_args sh /tmp/service-owned-compare.remote.sh

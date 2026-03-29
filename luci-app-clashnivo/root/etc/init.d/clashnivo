@@ -152,7 +152,6 @@ add_cron()
    config_foreach add_overwrite_cron "config_overwrite"
 
    command -v crontab >/dev/null 2>&1 && crontab "$CRON_FILE"
-   start_watchdog
 }
 
 del_cron()
@@ -520,13 +519,20 @@ check_run_quick()
 {
    local file_path tracked_mtime
 
+   [ "${CLASHNIVO_DEBUG_NOOP_CHECK_RUN_QUICK:-0}" = "1" ] && return 0
+
    if $QUICK_START_CHECK; then
       return
    fi
 
    QUICK_START_CHECK=true
 
-   cat "$CHANGE_TRACK_FILE" | while read -r i; do
+   [ -f "$CHANGE_TRACK_FILE" ] || {
+      QUICK_START=false
+      return
+   }
+
+   while IFS= read -r i; do
       file_path=$(echo "$i" |awk -F ' #edited time# ' '{print $1}')
       tracked_mtime="$(clashnivo_service_file_mtime "$file_path" 2>/dev/null)" || tracked_mtime=""
       if [ -z "$tracked_mtime" ] || ! grep -Fqx "$file_path #edited time# $tracked_mtime" "$CHANGE_TRACK_FILE"; then
@@ -534,25 +540,25 @@ check_run_quick()
          rm -rf "$CHANGE_TRACK_FILE"
          break
       fi
-   done
+   done < "$CHANGE_TRACK_FILE"
 
    if [ ! -f "$CHANGE_TRACK_FILE" ]; then
       QUICK_START=false
    fi
-} >/dev/null 2>&1
+}
 
 write_run_quick()
 {
    local file mtime
 
    : > "$CHANGE_TRACK_FILE"
-   {
-      echo "/etc/config/clashnivo"
-      echo "$RAW_CONFIG_FILE"
-      echo "$CONFIG_FILE"
-      ls -d /etc/clashnivo/custom/* 2>/dev/null
-      ls -d /etc/clashnivo/overwrite/* 2>/dev/null
-   } | while read -r file; do
+   for file in \
+      "/etc/config/clashnivo" \
+      "$RAW_CONFIG_FILE" \
+      "$CONFIG_FILE" \
+      /etc/clashnivo/custom/* \
+      /etc/clashnivo/overwrite/*; do
+      [ -e "$file" ] || continue
       mtime="$(clashnivo_service_file_mtime "$file" 2>/dev/null)" || mtime=""
       if [ -z "$mtime" ]; then
          LOG_TIP "Quick start tracking skipped because Clash Nivo could not read file metadata: 【$file】."
@@ -561,7 +567,7 @@ write_run_quick()
       fi
       echo "$file #edited time# $mtime" >> "$CHANGE_TRACK_FILE"
    done
-} >/dev/null 2>&1
+}
 
 #运行模式处理
 do_run_mode()
@@ -884,36 +890,46 @@ check_core_status()
 
 start_run_core()
 {
-   ulimit -SHn 1000000
-   ulimit -v unlimited
-   ulimit -u unlimited
-
+   [ -n "${DEBUG_LOG_FILE:-}" ] && echo "start_run_core:enter QUICK_START=${QUICK_START} CLASH=${CLASH} CONFIG_FILE=${CONFIG_FILE}" >> "${DEBUG_LOG_FILE}"
    if ! $QUICK_START; then
-      mv "$TMP_CONFIG_FILE" "$CONFIG_FILE"
-      rm -rf "$TMP_CONFIG_FILE"
+      [ -n "${DEBUG_LOG_FILE:-}" ] && echo "start_run_core:promote_tmp_config TMP_CONFIG_FILE=${TMP_CONFIG_FILE}" >> "${DEBUG_LOG_FILE}"
+      if [ -n "${TMP_CONFIG_FILE:-}" ] && [ -f "$TMP_CONFIG_FILE" ]; then
+         mv "$TMP_CONFIG_FILE" "$CONFIG_FILE"
+         rm -rf "$TMP_CONFIG_FILE"
+      else
+         [ -n "${DEBUG_LOG_FILE:-}" ] && echo "start_run_core:promote_tmp_config:skipped_missing_tmp" >> "${DEBUG_LOG_FILE}"
+      fi
    fi
    chown root:root "$CLASH"
+   [ -n "${DEBUG_LOG_FILE:-}" ] && echo "start_run_core:post_chown rc=$?" >> "${DEBUG_LOG_FILE}"
 
-   # Stop any stale Clash Nivo-managed core instance before starting a fresh one.
-   pgrep -f "$CLASH -d $CLASH_CONFIG -f " 2>/dev/null | while read -r pid; do
-      [ -n "$pid" ] && kill "$pid" >/dev/null 2>&1
-   done
-   sleep 1
-   pgrep -f "$CLASH -d $CLASH_CONFIG -f " 2>/dev/null | while read -r pid; do
-      [ -n "$pid" ] && kill -9 "$pid" >/dev/null 2>&1
-   done
-
-   # Keep the known-good direct launch path, but restore the legacy core group
-   # contract on OpenWrt so router-output bypass rules exempt the core itself.
-   if [ -x /sbin/start-stop-daemon ] && grep -q '^nogroup:' /etc/group 2>/dev/null; then
-      SAFE_PATHS=/usr/share/clashnivo:/usr/share/clashnivo/ui:/etc/ssl \
-         /sbin/start-stop-daemon -S -q -b -c root:nogroup \
-         -x /usr/share/clashnivo/runtime/clashnivo_core_exec.sh -- \
-         "$CLASH" "$CLASH_CONFIG" "$CONFIG_FILE" "$CORE_LOG_FILE"
-   else
-      SAFE_PATHS=/usr/share/clashnivo:/usr/share/clashnivo/ui:/etc/ssl "$CLASH" -d "$CLASH_CONFIG" -f "$CONFIG_FILE" >> "$CORE_LOG_FILE" 2>&1 &
-   fi
-} >/dev/null 2>&1
+   [ -n "${DEBUG_LOG_FILE:-}" ] && echo "start_run_core:procd_open_instance name=${CLASHNIVO_SERVICE_NAME}" >> "${DEBUG_LOG_FILE}"
+   procd_open_instance "${CLASHNIVO_SERVICE_NAME}"
+   [ -n "${DEBUG_LOG_FILE:-}" ] && echo "start_run_core:procd_open_instance rc=$?" >> "${DEBUG_LOG_FILE}"
+   procd_set_param env SAFE_PATHS=/usr/share/clashnivo:/usr/share/clashnivo/ui:/etc/ssl
+   [ -n "${DEBUG_LOG_FILE:-}" ] && echo "start_run_core:procd_set_param env rc=$?" >> "${DEBUG_LOG_FILE}"
+   procd_set_param command /bin/sh -c "$CLASH -d $CLASH_CONFIG -f \"$CONFIG_FILE\" >> $CORE_LOG_FILE 2>&1"
+   [ -n "${DEBUG_LOG_FILE:-}" ] && echo "start_run_core:procd_set_param command rc=$?" >> "${DEBUG_LOG_FILE}"
+   procd_set_param user "root"
+   [ -n "${DEBUG_LOG_FILE:-}" ] && echo "start_run_core:procd_set_param user rc=$?" >> "${DEBUG_LOG_FILE}"
+   procd_set_param group "nogroup"
+   [ -n "${DEBUG_LOG_FILE:-}" ] && echo "start_run_core:procd_set_param group rc=$?" >> "${DEBUG_LOG_FILE}"
+   procd_set_param limits nproc="unlimited" as="unlimited" memlock="unlimited" nofile="1000000 1000000"
+   [ -n "${DEBUG_LOG_FILE:-}" ] && echo "start_run_core:procd_set_param limits rc=$?" >> "${DEBUG_LOG_FILE}"
+   procd_set_param respawn 300 5 3
+   [ -n "${DEBUG_LOG_FILE:-}" ] && echo "start_run_core:procd_set_param respawn rc=$?" >> "${DEBUG_LOG_FILE}"
+   procd_set_param stderr 1
+   [ -n "${DEBUG_LOG_FILE:-}" ] && echo "start_run_core:procd_set_param stderr rc=$?" >> "${DEBUG_LOG_FILE}"
+   procd_set_param no_new_privs 1
+   [ -n "${DEBUG_LOG_FILE:-}" ] && echo "start_run_core:procd_set_param no_new_privs rc=$?" >> "${DEBUG_LOG_FILE}"
+   procd_close_instance
+   [ -n "${DEBUG_LOG_FILE:-}" ] && echo "start_run_core:procd_close_instance rc=$?" >> "${DEBUG_LOG_FILE}"
+   [ -n "${DEBUG_LOG_FILE:-}" ] && {
+      echo "start_run_core:json_dump:begin" >> "${DEBUG_LOG_FILE}"
+      json_dump >> "${DEBUG_LOG_FILE}" 2>&1 || true
+      echo "start_run_core:json_dump:end" >> "${DEBUG_LOG_FILE}"
+   }
+} >>"${DEBUG_LOG_FILE:-/dev/null}" 2>&1
 
 #防火墙设置部分
 nft_ac_add()
@@ -3735,24 +3751,22 @@ clear_overwrite_set()
 
 get_config()
 {
-   clashnivo_service_network_load
-
    RAW_CONFIG_FILE=$(uci_get_config "config_path")
    clashnivo_service_config_assign_paths "$RAW_CONFIG_FILE"
    enable=$(uci_get_config "enable")
    enable_custom_clash_rules=$(uci_get_config "enable_custom_clash_rules")
    da_password=$(uci_get_config "dashboard_password")
    cn_port=$(uci_get_config "cn_port")
-   proxy_port="${CLASHNIVO_NETWORK_PROXY_PORT}"
-   tproxy_port="${CLASHNIVO_NETWORK_TPROXY_PORT}"
-   proxy_mode="${CLASHNIVO_NETWORK_PROXY_MODE}"
-   ipv6_enable="${CLASHNIVO_NETWORK_IPV6_ENABLE}"
-   ipv6_dns="${CLASHNIVO_NETWORK_IPV6_DNS}"
+   proxy_port=$(uci_get_config "proxy_port")
+   tproxy_port=$(uci_get_config "tproxy_port" || echo 7895)
+   proxy_mode=$(uci_get_config "proxy_mode")
+   ipv6_enable=$(uci_get_config "ipv6_enable")
+   ipv6_dns=$(uci_get_config "ipv6_dns" || echo 0)
    ipv6_mode=$(uci_get_config "ipv6_mode" || echo 0)
    enable_v6_udp_proxy=$(uci_get_config "enable_v6_udp_proxy" || echo 0)
-   http_port="${CLASHNIVO_NETWORK_HTTP_PORT}"
-   socks_port="${CLASHNIVO_NETWORK_SOCKS_PORT}"
-   enable_redirect_dns="${CLASHNIVO_NETWORK_ENABLE_REDIRECT_DNS}"
+   http_port=$(uci_get_config "http_port")
+   socks_port=$(uci_get_config "socks_port")
+   enable_redirect_dns=$(uci_get_config "enable_redirect_dns" || echo 1)
    if [ "$(uci_get_config "fakeip_range")"  == "0" ]; then
       fakeip_range=$(ruby_read "$RAW_CONFIG_FILE" "['dns']['fake-ip-range']")
    else
@@ -3779,23 +3793,23 @@ get_config()
    log_level=$(uci_get_config "log_level")
    intranet_allowed=$(uci_get_config "intranet_allowed")
    enable_udp_proxy=$(uci_get_config "enable_udp_proxy" || echo 1)
-   disable_udp_quic="${CLASHNIVO_NETWORK_DISABLE_UDP_QUIC}"
+   disable_udp_quic=$(uci_get_config "disable_udp_quic")
    operation_mode=$(uci_get_config "operation_mode")
    lan_ac_mode=$(uci_get_config "lan_ac_mode")
    enable_rule_proxy=$(uci_get_config "enable_rule_proxy")
-   stack_type="${CLASHNIVO_NETWORK_STACK_TYPE}"
-   stack_type_v6="${CLASHNIVO_NETWORK_STACK_TYPE_V6}"
-   china_ip_route="${CLASHNIVO_NETWORK_CHINA_IP_ROUTE}"
-   china_ip6_route="${CLASHNIVO_NETWORK_CHINA_IP6_ROUTE}"
+   stack_type=$(uci_get_config "stack_type")
+   stack_type_v6=$(uci_get_config "stack_type_v6" || echo "system")
+   china_ip_route=$(uci_get_config "china_ip_route"); [[ "$china_ip_route" != "0" && "$china_ip_route" != "1" && "$china_ip_route" != "2" ]] && china_ip_route=0
+   china_ip6_route=$(uci_get_config "china_ip6_route"); [[ "$china_ip6_route" != "0" && "$china_ip6_route" != "1" && "$china_ip6_route" != "2" ]] && china_ip6_route=0
    small_flash_memory=$(uci_get_config "small_flash_memory")
-   mixed_port="${CLASHNIVO_NETWORK_MIXED_PORT}"
-   interface_name="${CLASHNIVO_NETWORK_INTERFACE_NAME}"
-   common_ports="${CLASHNIVO_NETWORK_COMMON_PORTS}"
-   dns_port="${CLASHNIVO_NETWORK_DNS_PORT}"
+   mixed_port=$(uci_get_config "mixed_port")
+   interface_name=$(uci_get_config "interface_name" || echo 0)
+   common_ports=$(uci_get_config "common_ports")
+   dns_port=$(uci_get_config "dns_port")
    store_fakeip=$(uci_get_config "store_fakeip" || echo 0)
    bypass_gateway_compatible=$(uci_get_config "bypass_gateway_compatible" || echo 0)
    core_version=$(uci_get_config "core_version" || echo 0)
-   router_self_proxy="${CLASHNIVO_NETWORK_ROUTER_SELF_PROXY}"
+   router_self_proxy=$(uci_get_config "router_self_proxy" || echo 1)
    enable_meta_sniffer=$(uci_get_config "enable_meta_sniffer" || echo 0)
    enable_meta_sniffer_custom=$(uci_get_config "enable_meta_sniffer_custom" || echo 0)
    geodata_loader=$(uci_get_config "geodata_loader" || echo 0)

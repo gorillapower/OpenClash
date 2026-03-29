@@ -1,5 +1,10 @@
 #!/bin/sh
 
+clashnivo_service_composition_validation_error() {
+   CLASHNIVO_COMPOSITION_LAST_ERROR="${1:-Generated runtime config is invalid}"
+   return 1
+}
+
 clashnivo_service_composition_prepare_source() {
    config_check
 }
@@ -71,10 +76,86 @@ clashnivo_service_composition_apply_overwrite() {
    fi
 }
 
+clashnivo_service_composition_validate_generated_config() {
+   local yaml_file="${1:-${TMP_CONFIG_FILE}}"
+   local error_output=""
+
+   [ -n "${yaml_file}" ] || clashnivo_service_composition_validation_error "No generated runtime config was provided."
+   [ -f "${yaml_file}" ] || clashnivo_service_composition_validation_error "Generated runtime config does not exist."
+
+   error_output="$(
+      ruby -ryaml -rYAML -I "/usr/share/clashnivo" -E UTF-8 -e '
+begin
+  value = YAML.load_file(ARGV[0]) || {}
+  dns = value["dns"].is_a?(Hash) ? value["dns"] : {}
+  errors = []
+
+  check_port = lambda do |field|
+    raw = value[field]
+    if raw.nil? || raw.to_s.strip.empty?
+      errors << "#{field} is empty"
+      next
+    end
+
+    port = raw.to_i
+    errors << "#{field} must be greater than 0" if port <= 0
+  end
+
+  %w[port socks-port redir-port mixed-port].each(&check_port)
+
+  controller = value["external-controller"].to_s.strip
+  if controller.empty?
+    errors << "external-controller is empty"
+  elsif controller !~ /:(\d+)\z/ || Regexp.last_match(1).to_i <= 0
+    errors << "external-controller must include a valid port"
+  end
+
+  mode = value["mode"].to_s.strip
+  errors << "mode is empty" if mode.empty?
+
+  log_level = value["log-level"].to_s.strip
+  errors << "log-level is empty" if log_level.empty?
+
+  dns_listen = dns["listen"].to_s.strip
+  if dns_listen.empty?
+    errors << "dns.listen is empty"
+  elsif dns_listen !~ /:(\d+)\z/ || Regexp.last_match(1).to_i <= 0
+    errors << "dns.listen must include a valid port"
+  end
+
+  if dns["enhanced-mode"].to_s == "fake-ip"
+    fake_ip_range = dns["fake-ip-range"].to_s.strip
+    errors << "dns.fake-ip-range is empty" if fake_ip_range.empty?
+  end
+
+  if errors.empty?
+    exit 0
+  end
+
+  warn errors.join("; ")
+  exit 1
+rescue StandardError => e
+  warn e.message
+  exit 1
+end
+' "${yaml_file}" 2>&1 >/dev/null
+   )"
+
+   if [ $? -ne 0 ]; then
+      [ -n "${DEBUG_LOG_FILE:-}" ] && echo "composition:validate:error_output=${error_output:-Unknown validation error}" >> "${DEBUG_LOG_FILE}"
+      clashnivo_service_composition_validation_error "Generated runtime config is invalid: ${error_output:-Unknown validation error}."
+      return 1
+   fi
+
+   CLASHNIVO_COMPOSITION_LAST_ERROR=""
+   return 0
+}
+
 clashnivo_service_composition_build_generated_config() {
    clashnivo_service_composition_prepare_source
    clashnivo_service_composition_normalize_source
    clashnivo_service_composition_append_custom_proxy_groups
    clashnivo_service_composition_prepend_custom_rules
    clashnivo_service_composition_apply_overwrite
+   clashnivo_service_composition_validate_generated_config
 }

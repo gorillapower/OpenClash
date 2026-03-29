@@ -8,10 +8,37 @@ remote_script="${script_dir}/router/lifecycle-smoke.remote.sh"
 repo_root=$(CDPATH= cd -- "${script_dir}/.." && pwd)
 init_script="${repo_root}/luci-app-clashnivo/root/etc/init.d/clashnivo"
 lifecycle_script="${repo_root}/luci-app-clashnivo/root/usr/share/clashnivo/service/lifecycle.sh"
+inline_init=""
 guard_script="${repo_root}/luci-app-clashnivo/root/usr/share/clashnivo/service/guard.sh"
+composition_script="${repo_root}/luci-app-clashnivo/root/usr/share/clashnivo/service/composition.sh"
+preview_script="${repo_root}/luci-app-clashnivo/root/usr/share/clashnivo/service/preview.sh"
+finalizer_script="${repo_root}/luci-app-clashnivo/root/usr/share/clashnivo/service/lifecycle_finalize.sh"
+
+if [ "${INLINE_LIFECYCLE:-0}" = "1" ]; then
+  inline_init="$(mktemp /tmp/clashnivo.inline.init.XXXXXX)"
+  trap 'rm -f "$inline_init"' EXIT INT TERM
+  sed '$d' "$init_script" > "$inline_init"
+  printf '
+' >> "$inline_init"
+  cat "$lifecycle_script" >> "$inline_init"
+  chmod 0755 "$inline_init"
+  init_to_upload="$inline_init"
+else
+  init_to_upload="$init_script"
+fi
 
 scp -O "$remote_script" "${host}:/tmp/lifecycle-smoke.remote.sh"
-scp -O "$init_script" "${host}:/tmp/clashnivo.init.test"
+scp -O "$init_to_upload" "${host}:/tmp/clashnivo.init.test"
 scp -O "$lifecycle_script" "${host}:/tmp/clashnivo.lifecycle.test"
 scp -O "$guard_script" "${host}:/tmp/clashnivo.guard.test"
-exec ssh -o BatchMode=yes "$host" sh /tmp/lifecycle-smoke.remote.sh
+scp -O "$composition_script" "${host}:/tmp/clashnivo.composition.test"
+scp -O "$preview_script" "${host}:/tmp/clashnivo.preview.test"
+scp -O "$finalizer_script" "${host}:/tmp/clashnivo.lifecycle_finalize.test"
+env_args=""
+for name in CLASHNIVO_DEBUG_SKIP_CHECK_RUN_QUICK CLASHNIVO_DEBUG_NOOP_CHECK_RUN_QUICK CLASHNIVO_DEBUG_SKIP_OVERWRITE_FILE CLASHNIVO_DEBUG_SKIP_GET_CONFIG CLASHNIVO_DEBUG_SKIP_CONFIG_CHOOSE CLASHNIVO_DEBUG_SKIP_DO_RUN_MODE CLASHNIVO_DEBUG_SKIP_DO_RUN_FILE CLASHNIVO_DEBUG_SKIP_COMPOSE CLASHNIVO_DEBUG_SKIP_NETWORK_ENSURE_LOADED CLASHNIVO_DEBUG_SKIP_CLEAR_START_FAILED CLASHNIVO_DEBUG_FORCE_QUICK_START; do
+  eval "value=\${$name-}"
+  if [ -n "${value:-}" ]; then
+    env_args="$env_args $name=$value"
+  fi
+done
+exec ssh -o BatchMode=yes "$host" env $env_args sh /tmp/lifecycle-smoke.remote.sh

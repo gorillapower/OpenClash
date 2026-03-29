@@ -2,13 +2,10 @@
 
 set -eu
 
-DEBUG_LOG_FILE=/tmp/clashnivo_debug.log
+COMPARE_LOG_FILE=/tmp/clashnivo_compare_debug.log
 BACKUP_INIT=/tmp/clashnivo.init.backup
-BACKUP_LIFECYCLE=/tmp/clashnivo.lifecycle.backup
 BACKUP_GUARD=/tmp/clashnivo.guard.backup
 BACKUP_COMPOSITION=/tmp/clashnivo.composition.backup
-BACKUP_PREVIEW=/tmp/clashnivo.preview.backup
-BACKUP_LIFECYCLE_FINALIZER=/tmp/clashnivo.lifecycle_finalize.backup
 
 cat > /tmp/clashnivo_backend_status.lua <<'LUA'
 package.path = '/usr/lib/lua/?.lua;/usr/lib/lua/?/init.lua;' .. package.path
@@ -25,11 +22,7 @@ local backend = require('luci.clashnivo.backend')
 local field = arg[1]
 local status = backend.service_status()
 local value = status[field]
-
-if value == nil then
-  os.exit(2)
-end
-
+if value == nil then os.exit(2) end
 if type(value) == 'boolean' then
   io.write(value and 'true' or 'false')
 elseif type(value) == 'number' then
@@ -37,7 +30,6 @@ elseif type(value) == 'number' then
 else
   io.write(tostring(value))
 end
-
 io.write('\n')
 LUA
 
@@ -51,10 +43,6 @@ restore_files() {
     cp "$BACKUP_INIT" /etc/init.d/clashnivo
     chmod 0755 /etc/init.d/clashnivo
   fi
-  if [ -f "$BACKUP_LIFECYCLE" ]; then
-    cp "$BACKUP_LIFECYCLE" /usr/share/clashnivo/service/lifecycle.sh
-    chmod 0644 /usr/share/clashnivo/service/lifecycle.sh
-  fi
   if [ -f "$BACKUP_GUARD" ]; then
     cp "$BACKUP_GUARD" /usr/share/clashnivo/service/guard.sh
     chmod 0644 /usr/share/clashnivo/service/guard.sh
@@ -62,16 +50,6 @@ restore_files() {
   if [ -f "$BACKUP_COMPOSITION" ]; then
     cp "$BACKUP_COMPOSITION" /usr/share/clashnivo/service/composition.sh
     chmod 0644 /usr/share/clashnivo/service/composition.sh
-  fi
-  if [ -f "$BACKUP_PREVIEW" ]; then
-    cp "$BACKUP_PREVIEW" /usr/share/clashnivo/service/preview.sh
-    chmod 0644 /usr/share/clashnivo/service/preview.sh
-  fi
-  if [ -f "$BACKUP_LIFECYCLE_FINALIZER" ]; then
-    cp "$BACKUP_LIFECYCLE_FINALIZER" /usr/share/clashnivo/service/lifecycle_finalize.sh
-    chmod 0755 /usr/share/clashnivo/service/lifecycle_finalize.sh
-  else
-    rm -f /usr/share/clashnivo/service/lifecycle_finalize.sh
   fi
 }
 
@@ -98,52 +76,22 @@ bounded_stop() {
   /etc/init.d/clashnivo stop >/tmp/clashnivo.stop.recovery.out 2>&1 &
   stop_pid=$!
   waited=0
-
   while kill -0 "$stop_pid" >/dev/null 2>&1; do
-    state=""
-    if [ -r "/proc/${stop_pid}/status" ]; then
-      state="$(sed -n 's/^State:[[:space:]]*\\([^[:space:]]*\\).*/\\1/p' "/proc/${stop_pid}/status" 2>/dev/null)"
-    fi
-    if [ "$state" = "Z" ]; then
-      break
-    fi
     sleep 1
     waited=$((waited + 1))
     if [ "$waited" -ge 30 ]; then
       echo RECOVERY_FORCE_STOP
-      echo "--- STOP PID STATE ---"
-      if [ -r "/proc/${stop_pid}/status" ]; then
-        sed -n '1,40p' "/proc/${stop_pid}/status" 2>/dev/null || true
-      fi
-      echo "--- STOP PID CMDLINE ---"
-      if [ -r "/proc/${stop_pid}/cmdline" ]; then
-        tr '\000' ' ' < "/proc/${stop_pid}/cmdline" 2>/dev/null || true
-        echo
-      fi
-      echo "--- STOP PID WCHAN ---"
-      cat "/proc/${stop_pid}/wchan" 2>/dev/null || true
-      echo
-      echo "--- STOP PID CHILDREN ---"
-      cat "/proc/${stop_pid}/task/${stop_pid}/children" 2>/dev/null || true
-      echo
-      echo "--- STOP PID PPID CMDLINE ---"
-      ppid="$(sed -n 's/^PPid:[[:space:]]*//p' "/proc/${stop_pid}/status" 2>/dev/null | head -n1)"
-      if [ -n "${ppid}" ] && [ -r "/proc/${ppid}/cmdline" ]; then
-        tr '\000' ' ' < "/proc/${ppid}/cmdline" 2>/dev/null || true
-        echo
-      fi
       kill -9 "$stop_pid" 2>/dev/null || true
       hard_recover
       return 0
     fi
   done
-
   wait "$stop_pid" 2>/dev/null || true
 }
 
 cleanup() {
-  bounded_stop
   restore_files
+  bounded_stop
   if [ "$was_openclash" -eq 1 ]; then
     /etc/init.d/openclash start >/tmp/openclash.restore.out 2>&1 || /etc/init.d/openclash restart >/tmp/openclash.restore.out 2>&1 || true
     sleep 5
@@ -152,26 +100,15 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 cp /etc/init.d/clashnivo "$BACKUP_INIT"
-cp /usr/share/clashnivo/service/lifecycle.sh "$BACKUP_LIFECYCLE"
 cp /usr/share/clashnivo/service/guard.sh "$BACKUP_GUARD"
 cp /usr/share/clashnivo/service/composition.sh "$BACKUP_COMPOSITION"
-cp /usr/share/clashnivo/service/preview.sh "$BACKUP_PREVIEW"
-if [ -f /usr/share/clashnivo/service/lifecycle_finalize.sh ]; then
-  cp /usr/share/clashnivo/service/lifecycle_finalize.sh "$BACKUP_LIFECYCLE_FINALIZER"
-fi
-cp /tmp/clashnivo.init.test /etc/init.d/clashnivo
-cp /tmp/clashnivo.lifecycle.test /usr/share/clashnivo/service/lifecycle.sh
 cp /tmp/clashnivo.guard.test /usr/share/clashnivo/service/guard.sh
 cp /tmp/clashnivo.composition.test /usr/share/clashnivo/service/composition.sh
-cp /tmp/clashnivo.preview.test /usr/share/clashnivo/service/preview.sh
-cp /tmp/clashnivo.lifecycle_finalize.test /usr/share/clashnivo/service/lifecycle_finalize.sh
-chmod 0755 /etc/init.d/clashnivo
-chmod 0644 /usr/share/clashnivo/service/lifecycle.sh
 chmod 0644 /usr/share/clashnivo/service/guard.sh
 chmod 0644 /usr/share/clashnivo/service/composition.sh
-chmod 0644 /usr/share/clashnivo/service/preview.sh
-chmod 0755 /usr/share/clashnivo/service/lifecycle_finalize.sh
-rm -f "$DEBUG_LOG_FILE" /tmp/clashnivo.start.test.out /tmp/clashnivo.stop.recovery.out /tmp/openclash.stop.test.out /tmp/openclash.restore.out
+rm -f "$COMPARE_LOG_FILE" /tmp/clashnivo.compare.start.out /tmp/clashnivo.stop.recovery.out /tmp/openclash.stop.test.out /tmp/openclash.restore.out
+cp /tmp/clashnivo.compare.init.test /etc/init.d/clashnivo
+chmod 0755 /etc/init.d/clashnivo
 
 echo '--- BEFORE ---'
 status_json
@@ -193,8 +130,15 @@ if [ "$(status_field openclash_active)" != "false" ]; then
   exit 1
 fi
 
-echo '--- START CLASHNIVO ---'
-PROCD_DEBUG=1 /etc/init.d/clashnivo start >/tmp/clashnivo.start.test.out 2>&1 || true
+echo '--- START DIRECT COMPARE ---'
+ADD_CHECK_RUN_QUICK="${ADD_CHECK_RUN_QUICK:-0}" \
+ADD_OVERWRITE_FILE="${ADD_OVERWRITE_FILE:-0}" \
+ADD_DO_RUN_FILE="${ADD_DO_RUN_FILE:-0}" \
+ADD_COMPOSE="${ADD_COMPOSE:-0}" \
+ADD_NETWORK_ENSURE_LOADED="${ADD_NETWORK_ENSURE_LOADED:-0}" \
+ADD_CLEAR_START_FAILED="${ADD_CLEAR_START_FAILED:-0}" \
+DEBUG_LOG_FILE="$COMPARE_LOG_FILE" \
+/etc/init.d/clashnivo start >/tmp/clashnivo.compare.start.out 2>&1 || true
 
 count=0
 while [ "$count" -lt 20 ]; do
@@ -207,24 +151,12 @@ while [ "$count" -lt 20 ]; do
 done
 
 echo '--- START STDOUT ---'
-cat /tmp/clashnivo.start.test.out 2>/dev/null || true
-
+cat /tmp/clashnivo.compare.start.out 2>/dev/null || true
 echo '--- PROCESS LIST ---'
 ps | grep -E '/etc/init.d/clashnivo|/etc/clashnivo/clash -d /etc/clashnivo -f |openclash' | grep -v grep || true
-
 echo '--- DEBUG LOG ---'
-cat "$DEBUG_LOG_FILE" 2>/dev/null || true
-
-echo '--- STOP CLASHNIVO ---'
-bounded_stop
-echo '--- POST STOP STATUS ---'
-status_json
-
-echo '--- RECOVERY STOP STDOUT ---'
-cat /tmp/clashnivo.stop.recovery.out 2>/dev/null || true
-
+cat "$COMPARE_LOG_FILE" 2>/dev/null || true
 echo '--- START LOG ---'
 tail -n 40 /tmp/clashnivo.log 2>/dev/null || true
-
 echo '--- CORE LOG ---'
 tail -n 40 /tmp/clash.log 2>/dev/null || true

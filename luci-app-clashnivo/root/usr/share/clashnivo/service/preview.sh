@@ -194,6 +194,17 @@ clashnivo_service_preview_run_pipeline() {
       return 1
    fi
 
+   clashnivo_service_preview_run_stage "generated_runtime" clashnivo_service_composition_validate_generated_config
+   stage_result="${CLASHNIVO_PREVIEW_STAGE_RESULT}"
+   stages_json="${stages_json},${stage_result}"
+   if ! echo "${stage_result}" | grep -q '"status":"passed"'; then
+      failed_layer="generated_runtime"
+      stages_json="${stages_json}]"
+      cp "${TMP_CONFIG_FILE}" "${PREVIEW_CONFIG_FILE}" 2>/dev/null
+      clashnivo_service_preview_emit_result "${valid}" "${failed_layer}" "${stages_json}"
+      return 1
+   fi
+
    if clashnivo_service_preview_validate_yaml_file "${TMP_CONFIG_FILE}"; then
       stage_result="$(clashnivo_service_preview_stage_json "validation" "passed" "")"
       valid="true"
