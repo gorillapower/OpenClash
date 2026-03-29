@@ -18,6 +18,13 @@ vi.mock('$lib/queries/luci', () => ({
   useServiceStop: vi.fn(),
   useServiceRestart: vi.fn(),
   useServiceCancelJob: vi.fn(),
+  useCoreCurrent: vi.fn(),
+  useCoreLatestVersion: vi.fn(),
+  useCoreRefreshLatestVersion: vi.fn(),
+  useCoreProbeSources: vi.fn(),
+  useCoreUpdate: vi.fn(),
+  useCoreUpdateStatus: vi.fn(),
+  useSetUciConfigBatch: vi.fn(),
   useUciConfig: vi.fn(),
   useSubscriptionAdd: vi.fn(),
   useSubscriptionUpdate: vi.fn(),
@@ -34,7 +41,7 @@ vi.mock('$lib/queries/luci', () => ({
 
 vi.mock('@tanstack/svelte-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/svelte-query')>()
-  return { ...actual, useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })) }
+  return { ...actual, useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn(), refetchQueries: vi.fn() })) }
 })
 
 import {
@@ -43,6 +50,13 @@ import {
   useServiceStop,
   useServiceRestart,
   useServiceCancelJob,
+  useCoreCurrent,
+  useCoreLatestVersion,
+  useCoreRefreshLatestVersion,
+  useCoreProbeSources,
+  useCoreUpdate,
+  useCoreUpdateStatus,
+  useSetUciConfigBatch,
   useUciConfig,
   useSubscriptionAdd,
   useSubscriptionUpdate,
@@ -57,6 +71,13 @@ function setupMocks(serviceStatus: ServiceStatusResult) {
   vi.mocked(useServiceStatus).mockReturnValue(
     makeQueryResult(serviceStatus) as CreateQueryResult<ServiceStatusResult>
   )
+  vi.mocked(useCoreCurrent).mockReturnValue(makeQueryResult({ installed: true, version: '1.18.0', core_type: 'Meta' }) as never)
+  vi.mocked(useCoreLatestVersion).mockReturnValue(makeQueryResult({ version: '1.19.0', core_type: 'Meta', source_policy: 'auto' }) as never)
+  vi.mocked(useCoreRefreshLatestVersion).mockReturnValue(makeMutationResult() as never)
+  vi.mocked(useCoreProbeSources).mockReturnValue(makeMutationResult() as never)
+  vi.mocked(useCoreUpdate).mockReturnValue(makeMutationResult() as never)
+  vi.mocked(useCoreUpdateStatus).mockReturnValue(makeQueryResult({ status: 'idle' }) as never)
+  vi.mocked(useSetUciConfigBatch).mockReturnValue(makeMutationResult() as never)
   vi.mocked(useUciConfig).mockReturnValue(
     makeQueryResult({ config: { config_path: '/etc/clashnivo/config/work.yaml' } }) as CreateQueryResult<UciPackage>
   )

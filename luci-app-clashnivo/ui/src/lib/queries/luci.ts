@@ -200,7 +200,8 @@ export function useServiceStart(
   return createMutation<ServiceActionResult, unknown, void>(() => ({
     mutationFn: () => luciRpc.serviceStart(name),
     onSuccess(result) {
-      queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
+      void queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
+      void queryClient.refetchQueries({ queryKey: luciKeys.serviceStatus(name), type: 'active' })
       if (result.busy) {
         notifyBusy(titleCaseService(name), result.active_command)
         return
@@ -220,7 +221,8 @@ export function useServiceStop(
   return createMutation<ServiceActionResult, unknown, void>(() => ({
     mutationFn: () => luciRpc.serviceStop(name),
     onSuccess(result) {
-      queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
+      void queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
+      void queryClient.refetchQueries({ queryKey: luciKeys.serviceStatus(name), type: 'active' })
       if (result.busy) {
         notifyBusy(titleCaseService(name), result.active_command)
         return
@@ -240,7 +242,8 @@ export function useServiceRestart(
   return createMutation<ServiceActionResult, unknown, void>(() => ({
     mutationFn: () => luciRpc.serviceRestart(name),
     onSuccess(result) {
-      queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
+      void queryClient.invalidateQueries({ queryKey: luciKeys.serviceStatus(name) })
+      void queryClient.refetchQueries({ queryKey: luciKeys.serviceStatus(name), type: 'active' })
       if (result.busy) {
         notifyBusy(titleCaseService(name), result.active_command)
         return

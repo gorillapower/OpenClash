@@ -27,8 +27,12 @@
         <div class="flex min-w-max items-center gap-1">
           {#each navItems as item}
             <a
-              href="#{item.path}"
+              href={`#${item.path}`}
               aria-current={router.current === item.path ? 'page' : undefined}
+              onclick={(event) => {
+                event.preventDefault()
+                router.navigate(item.path)
+              }}
               class="rounded-md px-3 py-1.5 text-sm transition-colors
                 {router.current === item.path
                   ? 'bg-secondary font-medium text-foreground'

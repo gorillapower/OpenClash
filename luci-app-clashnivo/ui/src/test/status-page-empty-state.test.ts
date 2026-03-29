@@ -109,6 +109,42 @@ function setupEmptyState(addMutate = vi.fn().mockResolvedValue(undefined), addPe
 describe('StatusPage empty state', () => {
   beforeEach(() => vi.clearAllMocks())
 
+  it('shows a loading state before boot data is ready', () => {
+    vi.mocked(useServiceStatus).mockReturnValue(
+      { data: undefined, isPending: true, isError: false, isSuccess: false } as unknown as CreateQueryResult<ServiceStatusResult>
+    )
+    vi.mocked(useUciConfig).mockReturnValue(
+      { data: undefined, isPending: true, isError: false, isSuccess: false } as unknown as CreateQueryResult<UciPackage>
+    )
+    vi.mocked(useCoreCurrent).mockReturnValue(
+      { data: undefined, isPending: true, isError: false, isSuccess: false } as unknown as CreateQueryResult<InstalledCoreResult>
+    )
+    vi.mocked(useCoreLatestVersion).mockReturnValue(
+      makeQueryResult({ version: '1.19.0', core_type: 'Meta', source_policy: 'auto' } as CoreVersionResult) as CreateQueryResult<CoreVersionResult>
+    )
+    vi.mocked(useCoreRefreshLatestVersion).mockReturnValue(makeMutationResult() as never)
+    vi.mocked(useCoreProbeSources).mockReturnValue(makeMutationResult() as never)
+    vi.mocked(useCoreUpdate).mockReturnValue(makeMutationResult() as never)
+    vi.mocked(useCoreUpdateStatus).mockReturnValue(makeQueryResult({ status: 'idle' } as UpdateStatusResult) as never)
+    vi.mocked(useSetUciConfigBatch).mockReturnValue(makeMutationResult() as never)
+    vi.mocked(useProxyGroups).mockReturnValue(makeQueryResult([]) as never)
+    vi.mocked(useRuleProviders).mockReturnValue(makeQueryResult([]) as never)
+    vi.mocked(useCustomProxies).mockReturnValue(makeQueryResult([]) as never)
+    vi.mocked(useCustomRules).mockReturnValue(makeQueryResult([]) as never)
+    vi.mocked(useConfigOverwrite).mockReturnValue(makeQueryResult({ content: '' }) as never)
+    vi.mocked(useServiceStart).mockReturnValue(makeMutationResult() as never)
+    vi.mocked(useServiceStop).mockReturnValue(makeMutationResult() as never)
+    vi.mocked(useServiceRestart).mockReturnValue(makeMutationResult() as never)
+    vi.mocked(useServiceCancelJob).mockReturnValue(makeMutationResult() as never)
+    vi.mocked(useSubscriptionAdd).mockReturnValue(makeMutationResult() as never)
+    vi.mocked(useSubscriptionUpdate).mockReturnValue(makeMutationResult() as never)
+
+    render(StatusPage)
+
+    expect(screen.getByText(/loading runtime status/i)).toBeInTheDocument()
+    expect(screen.queryByText('Set up Clash Nivo')).not.toBeInTheDocument()
+  })
+
   it('shows the first-source setup flow when no config exists', () => {
     setupEmptyState()
     render(StatusPage)

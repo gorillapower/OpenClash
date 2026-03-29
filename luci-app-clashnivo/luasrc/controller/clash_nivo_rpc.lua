@@ -310,7 +310,7 @@ function handlers.file_read(p)
     if not f then error("cannot read file: " .. tostring(err)) end
     local content = f:read("*a")
     f:close()
-    return content
+    return { content = content or "" }
 end
 
 function handlers.file_write(p)

@@ -42,7 +42,7 @@ vi.mock('$lib/queries/luci', () => ({
 
 vi.mock('@tanstack/svelte-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/svelte-query')>()
-  return { ...actual, useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })) }
+  return { ...actual, useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn(), refetchQueries: vi.fn() })) }
 })
 
 import {

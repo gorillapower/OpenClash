@@ -106,15 +106,17 @@ function setupMocks({
   configs = [{ name: 'alpha', active: true }],
   preview = previewResult,
   validation = validateResult,
+  serviceStatus = { busy: false, busy_command: null, state: 'stopped' },
   overwrite = { content: '# overwrite' } satisfies FileReadResult
 }: {
   configs?: Array<{ name: string; active: boolean }>
   preview?: ConfigCompositionResult
   validation?: ConfigCompositionResult
+  serviceStatus?: Record<string, unknown>
   overwrite?: FileReadResult
 } = {}) {
   vi.mocked(useConfigs).mockReturnValue(makeQuery(configs) as never)
-  vi.mocked(useServiceStatus).mockReturnValue(makeQuery({ busy: false, busy_command: null }) as never)
+  vi.mocked(useServiceStatus).mockReturnValue(makeQuery(serviceStatus) as never)
   vi.mocked(useConfigSetActive).mockReturnValue(makeMutation(vi.fn().mockResolvedValue(undefined)) as never)
   vi.mocked(useConfigPreview).mockReturnValue(makeMutation(vi.fn().mockResolvedValue(preview)) as never)
   vi.mocked(useConfigValidate).mockReturnValue(makeMutation(vi.fn().mockResolvedValue(validation)) as never)
@@ -201,6 +203,26 @@ describe('ComposePage', () => {
     expect(setActiveMutate).not.toHaveBeenCalled()
     await fireEvent.click(screen.getByRole('button', { name: /^switch$/i }))
     await waitFor(() => expect(setActiveMutate).toHaveBeenCalledWith('beta.yaml'))
+  })
+
+  it('shows a restart-required notice when switching source while running', async () => {
+    const setActiveMutate = vi.fn().mockResolvedValue(undefined)
+    setupMocks({
+      configs: [{ name: 'alpha', active: true }, { name: 'beta.yaml', active: false }],
+      serviceStatus: { busy: false, busy_command: null, state: 'running' }
+    })
+    vi.mocked(useConfigSetActive).mockReturnValue(makeMutation(setActiveMutate) as never)
+
+    render(ComposePage)
+
+    await fireEvent.change(screen.getByRole('combobox', { name: /selected source/i }), {
+      target: { value: 'beta.yaml' }
+    })
+    await fireEvent.click(screen.getByRole('button', { name: /^switch$/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/restart clash nivo to apply it to the live runtime/i)).toBeInTheDocument()
+    })
   })
 
   it('requires successful validation before activation is enabled', async () => {

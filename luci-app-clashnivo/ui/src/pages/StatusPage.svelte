@@ -19,8 +19,7 @@
     useRuleProviders,
     useCustomProxies,
     useCustomRules,
-    useConfigOverwrite,
-    luciKeys
+    useConfigOverwrite
   } from '$lib/queries/luci'
   import { useQueryClient } from '@tanstack/svelte-query'
   import Button from '$lib/components/ui/button/button.svelte'
@@ -29,8 +28,37 @@
   import PageIntro from '$lib/components/PageIntro.svelte'
 
   const queryClient = useQueryClient()
+  const serviceStatusKey = ['luci', 'service', 'clashnivo', 'status'] as const
+  let lifecyclePulseUntil = $state(0)
+  let lifecyclePulseTimer: ReturnType<typeof setTimeout> | null = null
+  let optimisticRunning = $state<boolean | null>(null)
+  let subscriptionUrl = $state('')
+  let subscriptionName = $state('')
+  let urlError = $state<string | null>(null)
+  let localCoreCustomBaseUrl = $state('')
 
-  const serviceStatus = useServiceStatus('clashnivo', { refetchInterval: 5000 })
+  function pulseLifecycleStatus(ms = 15000) {
+    lifecyclePulseUntil = Date.now() + ms
+    if (lifecyclePulseTimer) clearTimeout(lifecyclePulseTimer)
+    lifecyclePulseTimer = setTimeout(() => {
+      lifecyclePulseUntil = 0
+      lifecyclePulseTimer = null
+    }, ms)
+    void queryClient.invalidateQueries({ queryKey: serviceStatusKey })
+    if (typeof queryClient.refetchQueries === 'function') {
+      void queryClient.refetchQueries({ queryKey: serviceStatusKey, type: 'active' })
+    }
+  }
+
+  const serviceStatus = useServiceStatus('clashnivo', {
+    refetchInterval: (query) =>
+      optimisticRunning !== null ||
+      Date.now() < lifecyclePulseUntil ||
+      query.state.data?.busy ||
+      query.state.data?.state === 'starting'
+        ? 1000
+        : 5000
+  })
   const uciConfig = useUciConfig('clashnivo')
   const currentCore = useCoreCurrent()
   const latestCore = useCoreLatestVersion()
@@ -59,12 +87,6 @@
   const subscriptionAdd = useSubscriptionAdd()
   const subscriptionUpdate = useSubscriptionUpdate()
 
-  let optimisticRunning = $state<boolean | null>(null)
-  let subscriptionUrl = $state('')
-  let subscriptionName = $state('')
-  let urlError = $state<string | null>(null)
-  let localCoreCustomBaseUrl = $state('')
-
   const cfg = $derived((uciConfig.data?.config as Record<string, string> | undefined) ?? {})
   const controllerPort = $derived((cfg.cn_port ?? '9093').trim() || '9093')
   const dashboardUrl = $derived(`http://${window.location.hostname}:${controllerPort}/ui`)
@@ -82,9 +104,11 @@
     if (optimisticRunning === false) return 'stopped'
     return serviceStatus.data?.state ?? (serviceStatus.data?.running ? 'running' : 'disabled')
   })
+  const pageBootPending = $derived(serviceStatus.isPending || uciConfig.isPending || currentCore.isPending)
   const isRunning = $derived(serviceState === 'running')
   const isBusy = $derived(
     (serviceStatus.data?.busy ?? false) ||
+    optimisticRunning !== null ||
     startMutation.isPending ||
     stopMutation.isPending ||
     restartMutation.isPending
@@ -120,7 +144,7 @@
   const serviceManaged = $derived(serviceStatus.data?.service_running ?? false)
   const watchdogRunning = $derived(serviceStatus.data?.watchdog_running ?? false)
 
-  const needsOnboarding = $derived(uciConfig.isSuccess && (!activeConfigPath || !installedCore))
+  const needsOnboarding = $derived(!pageBootPending && uciConfig.isSuccess && (!activeConfigPath || !installedCore))
 
   const proxyGroupCount = $derived(proxyGroups.data?.length ?? 0)
   const ruleProviderCount = $derived(ruleProviders.data?.length ?? 0)
@@ -343,28 +367,49 @@
 
   async function handleStart() {
     optimisticRunning = true
+    pulseLifecycleStatus()
     try {
       await startMutation.mutateAsync()
     } finally {
-      optimisticRunning = null
+      if (!startMutation.isError) {
+        setTimeout(() => {
+          if (optimisticRunning === true) optimisticRunning = null
+        }, 15000)
+      } else {
+        optimisticRunning = null
+      }
     }
   }
 
   async function handleStop() {
     optimisticRunning = false
+    pulseLifecycleStatus()
     try {
       await stopMutation.mutateAsync()
     } finally {
-      optimisticRunning = null
+      if (!stopMutation.isError) {
+        setTimeout(() => {
+          if (optimisticRunning === false) optimisticRunning = null
+        }, 15000)
+      } else {
+        optimisticRunning = null
+      }
     }
   }
 
   async function handleRestart() {
     optimisticRunning = true
+    pulseLifecycleStatus()
     try {
       await restartMutation.mutateAsync()
     } finally {
-      optimisticRunning = null
+      if (!restartMutation.isError) {
+        setTimeout(() => {
+          if (optimisticRunning === true) optimisticRunning = null
+        }, 15000)
+      } else {
+        optimisticRunning = null
+      }
     }
   }
 </script>
@@ -372,7 +417,17 @@
 <div class="space-y-8">
   <PageIntro eyebrow="Operations" title="Status" />
 
-  {#if needsOnboarding}
+  {#if pageBootPending}
+    <Card>
+      <CardContent class="flex min-h-[18rem] flex-col items-center justify-center gap-4 py-10">
+        <div class="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary"></div>
+        <div class="space-y-1 text-center">
+          <p class="text-sm font-medium text-foreground">Loading runtime status…</p>
+          <p class="text-sm text-muted-foreground">Clash Nivo is reconciling service state, source selection, and core status.</p>
+        </div>
+      </CardContent>
+    </Card>
+  {:else if needsOnboarding}
     <div class="space-y-5 py-2">
       {#if busyMessage}
         <div class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">

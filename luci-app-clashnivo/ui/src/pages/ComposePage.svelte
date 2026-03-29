@@ -37,9 +37,11 @@
   let previewResult = $state<ConfigCompositionResult | null>(null)
   let validateResult = $state<ConfigCompositionResult | null>(null)
   let pendingSourceName = $state('')
+  let restartRequiredSourceName = $state<string | null>(null)
 
   const selectedSource = $derived(configs.data?.find((config) => config.active) ?? null)
   const hasSelectedSource = $derived(Boolean(selectedSource))
+  const serviceState = $derived(serviceStatus.data?.state ?? 'disabled')
 
   const proxyGroupCount = $derived(proxyGroups.data?.length ?? 0)
   const ruleProviderCount = $derived(ruleProviders.data?.length ?? 0)
@@ -82,6 +84,28 @@
     pendingSourceName = selectedSource?.name ?? ''
   })
 
+  $effect(() => {
+    if (serviceState !== 'running') {
+      restartRequiredSourceName = null
+    }
+  })
+
+  function sameConfigName(resultName: string | undefined | null, selectedName: string | undefined | null): boolean {
+    if (!resultName || !selectedName) return false
+    const normalize = (value: string) => value.replace(/\.ya?ml$/i, '')
+    return normalize(resultName) === normalize(selectedName)
+  }
+
+  $effect(() => {
+    const selectedName = selectedSource?.name ?? null
+    if (previewResult && !sameConfigName(previewResult.config_name, selectedName)) {
+      previewResult = null
+    }
+    if (validateResult && !sameConfigName(validateResult.config_name, selectedName)) {
+      validateResult = null
+    }
+  })
+
   function formatStageName(value: string): string {
     return value
       .split('_')
@@ -120,6 +144,7 @@
     await configSetActive.mutateAsync(pendingSourceName)
     previewResult = null
     validateResult = null
+    restartRequiredSourceName = serviceState === 'running' ? pendingSourceName : null
   }
 </script>
 
@@ -164,6 +189,13 @@
               {configSetActive.isPending ? 'Switching…' : 'Switch'}
             </Button>
           </div>
+
+          {#if restartRequiredSourceName}
+            <div class="rounded-lg border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-muted-foreground">
+              Selected source changed to <span class="font-medium text-foreground">{restartRequiredSourceName}</span>.
+              Restart Clash Nivo to apply it to the live runtime.
+            </div>
+          {/if}
         {:else}
           <EmptyState
             compact

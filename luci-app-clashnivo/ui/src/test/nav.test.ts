@@ -31,6 +31,7 @@ describe('Nav component', () => {
     expect(screen.getByRole('link', { name: 'Compose' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Logs' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'System' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Sources' })).toHaveAttribute('href', '#/sources')
   })
 
   it('renders the Dashboard link with target="_blank"', () => {

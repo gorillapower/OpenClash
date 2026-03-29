@@ -110,6 +110,7 @@ const mockConfigs: ConfigFile[] = [
 function setupMocks({
   subs = mockSubs,
   configs = mockConfigs,
+  serviceStatus = { busy: false, busy_command: null, state: 'stopped' },
   isPending = false,
   addMutateAsync = vi.fn().mockResolvedValue({ name: 'My VPN' }),
   deleteMutateAsync = vi.fn().mockResolvedValue(undefined),
@@ -121,7 +122,7 @@ function setupMocks({
   configDeleteMutateAsync = vi.fn().mockResolvedValue(undefined),
   configWriteMutateAsync = vi.fn().mockResolvedValue(undefined)
 } = {}) {
-  vi.mocked(useServiceStatus).mockReturnValue(makeQuery({ busy: false, busy_command: null }) as never)
+  vi.mocked(useServiceStatus).mockReturnValue(makeQuery(serviceStatus) as never)
   vi.mocked(useServiceCancelJob).mockReturnValue(makeMutation() as never)
   vi.mocked(useSubscriptions).mockReturnValue(makeQuery(subs, isPending) as never)
   vi.mocked(useSubscriptionAdd).mockReturnValue(makeMutation(addMutateAsync) as never)
@@ -271,6 +272,22 @@ describe('SourcesPage', () => {
     expect(screen.getByText(/use this as the selected source/i)).toBeInTheDocument()
     await fireEvent.click(screen.getByRole('button', { name: /^select$/i }))
     await waitFor(() => expect(configSetActiveMutateAsync).toHaveBeenCalledWith('backup.yaml'))
+  })
+
+  it('shows a restart-required notice when the runtime is already running', async () => {
+    const configSetActiveMutateAsync = vi.fn().mockResolvedValue(undefined)
+    setupMocks({
+      configSetActiveMutateAsync,
+      serviceStatus: { busy: false, busy_command: null, state: 'running' }
+    })
+    render(SourcesPage)
+
+    await fireEvent.click(screen.getByRole('button', { name: /^select$/i }))
+    await fireEvent.click(screen.getByRole('button', { name: /^select$/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/restart clash nivo to apply it to the live runtime/i)).toBeInTheDocument()
+    })
   })
 
   it('opens the advanced YAML editor from uploaded sources', async () => {

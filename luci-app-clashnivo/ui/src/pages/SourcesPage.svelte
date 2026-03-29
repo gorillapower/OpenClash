@@ -47,6 +47,7 @@
   const activeSource = $derived(configs.data?.find((config) => config.active) ?? null)
   const globalBusy = $derived(serviceStatus.data?.busy ?? false)
   const busyCommand = $derived(serviceStatus.data?.busy_command ?? null)
+  const serviceState = $derived(serviceStatus.data?.state ?? 'disabled')
   const activeJobCancelable = $derived(serviceStatus.data?.active_job_cancelable ?? false)
   const activeJobKind = $derived(serviceStatus.data?.active_job_kind ?? null)
   const sourceJobActive = $derived(
@@ -83,6 +84,7 @@
   let confirmSelectName = $state<string | null>(null)
   let confirmDeleteName = $state<string | null>(null)
   let pendingSourceName = $state('')
+  let restartRequiredSourceName = $state<string | null>(null)
 
   const sourceSwitchPending = $derived(
     Boolean(pendingSourceName && pendingSourceName !== activeSource?.name)
@@ -94,6 +96,12 @@
 
   $effect(() => {
     pendingSourceName = activeSource?.name ?? ''
+  })
+
+  $effect(() => {
+    if (serviceState !== 'running') {
+      restartRequiredSourceName = null
+    }
   })
 
   $effect(() => {
@@ -198,6 +206,7 @@
     try {
       await configSetActive.mutateAsync(name)
       confirmSelectName = null
+      restartRequiredSourceName = serviceState === 'running' ? name : null
     } finally {
       selectingNames = new Set([...selectingNames].filter((value) => value !== name))
     }
@@ -355,6 +364,13 @@
             {configSetActive.isPending ? 'Switching…' : 'Switch'}
           </Button>
         </div>
+
+        {#if restartRequiredSourceName}
+          <div class="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-muted-foreground">
+            Selected source changed to <span class="font-medium text-foreground">{restartRequiredSourceName}</span>.
+            Restart Clash Nivo to apply it to the live runtime.
+          </div>
+        {/if}
       </CardContent>
     </Card>
   </section>
