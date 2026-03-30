@@ -137,9 +137,102 @@ clashnivo_service_composition_normalize_source() {
 }
 
 clashnivo_service_composition_append_custom_proxy_groups() {
-   # The inherited yml_groups_set/yml_proxys_set path rewrites proxy-groups in place.
-   # Keep this stage explicit in the service contract, but do not route through that
-   # destructive implementation until an append-only group composer exists.
+   _clashnivo_append_group() {
+      local section="$1"
+      local enabled name type test_url test_interval policy_filter
+      local ruby_output=""
+
+      config_get_bool enabled "$section" "enabled" "1"
+      [ "$enabled" = "1" ] || return 0
+      clashnivo_scope_section_applies "$section" "$CONFIG_NAME" || return 0
+
+      config_get name "$section" "name" ""
+      config_get type "$section" "type" ""
+      config_get test_url "$section" "test_url" ""
+      config_get test_interval "$section" "test_interval" ""
+      config_get policy_filter "$section" "policy_filter" ""
+
+      [ -n "$name" ] || return 0
+      [ -n "$type" ] || return 0
+
+      ruby_output="$(
+         ruby -ryaml -rYAML -I "/usr/share/clashnivo" -E UTF-8 -e '
+begin
+  path = ARGV[0]
+  name = ARGV[1].to_s
+  type = ARGV[2].to_s
+  test_url = ARGV[3].to_s
+  test_interval = ARGV[4].to_s
+  policy_filter = ARGV[5].to_s
+
+  value = YAML.load_file(path) || {}
+  groups = value["proxy-groups"]
+  groups = [] unless groups.is_a?(Array)
+  groups = groups.reject { |group| group.is_a?(Hash) && group["name"].to_s == name }
+
+  proxies = value["proxies"]
+  proxies = [] unless proxies.is_a?(Array)
+  proxy_names = proxies.filter_map do |proxy|
+    next unless proxy.is_a?(Hash)
+    proxy_name = proxy["name"].to_s.strip
+    proxy_name.empty? ? nil : proxy_name
+  end
+
+  begin
+    regex = policy_filter.empty? ? nil : Regexp.new(policy_filter)
+  rescue RegexpError => e
+    warn "Invalid proxy group filter for #{name}: #{e.message}"
+    exit 1
+  end
+
+  selected = if regex
+    proxy_names.select { |proxy_name| regex.match?(proxy_name) }
+  else
+    proxy_names
+  end
+
+  selected = ["DIRECT"] if selected.empty?
+
+  group = {
+    "name" => name,
+    "type" => type,
+    "proxies" => selected
+  }
+
+  if %w[url-test fallback].include?(type)
+    group["url"] = test_url unless test_url.empty?
+    group["interval"] = test_interval.to_i > 0 ? test_interval.to_i : test_interval unless test_interval.empty?
+  elsif type == "load-balance"
+    group["url"] = test_url unless test_url.empty?
+    group["interval"] = test_interval.to_i > 0 ? test_interval.to_i : test_interval unless test_interval.empty?
+  end
+
+  groups << group
+  value["proxy-groups"] = groups
+
+  File.open(path, "w") do |file|
+    YAML.dump(value, file)
+  end
+rescue StandardError => e
+  warn e.message
+  exit 1
+end
+' "${TMP_CONFIG_FILE}" "${name}" "${type}" "${test_url}" "${test_interval}" "${policy_filter}" 2>&1 >/dev/null
+      )"
+
+      if [ $? -ne 0 ]; then
+         CLASHNIVO_COMPOSITION_LAST_ERROR="${ruby_output:-Unable to append custom proxy groups}"
+         return 1
+      fi
+
+      return 0
+   }
+
+   . /lib/functions.sh
+   . /usr/share/clashnivo/lib/scope.sh
+   config_load "clashnivo"
+   config_foreach _clashnivo_append_group "groups" || return 1
+
    return 0
 }
 
