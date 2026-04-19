@@ -59,7 +59,7 @@ export interface JobCancelResult {
 
 export interface ServiceStatusResult {
   running: boolean
-  state?: 'disabled' | 'stopped' | 'starting' | 'running' | 'degraded' | 'blocked'
+  state?: 'disabled' | 'stopped' | 'starting' | 'stopping' | 'restarting' | 'running' | 'degraded' | 'blocked'
   pid?: number
   enabled?: boolean
   service_running?: boolean

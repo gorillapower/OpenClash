@@ -281,7 +281,7 @@ function handlers.service_stop()
     if busy then
         return busy
     end
-    return backend.service_action("stop")
+    return backend.service_action("stop", true)
 end
 
 function handlers.service_restart()

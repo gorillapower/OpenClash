@@ -76,8 +76,18 @@ clashnivo_service_runtime_state() {
       return
    fi
 
+   if [ "$busy" = "true" ] && [ "$busy_command" = "stop" ]; then
+      printf 'stopping'
+      return
+   fi
+
+   if [ "$busy" = "true" ] && [ "$busy_command" = "restart" ]; then
+      printf 'restarting'
+      return
+   fi
+
    if [ "$enabled" = "true" ] && [ "$busy" = "true" ] && \
-      { [ "$busy_command" = "start" ] || [ "$busy_command" = "restart" ] || [ "$busy_command" = "reload" ]; }; then
+      { [ "$busy_command" = "start" ] || [ "$busy_command" = "reload" ]; }; then
       printf 'starting'
       return
    fi
@@ -100,11 +110,49 @@ clashnivo_service_runtime_state() {
    printf 'disabled'
 }
 
+clashnivo_service_lifecycle_pending_action() {
+   [ -f "${LIFECYCLE_PENDING_ACTION_FILE}" ] && sed -n '1p' "${LIFECYCLE_PENDING_ACTION_FILE}" 2>/dev/null
+}
+
+clashnivo_service_lifecycle_pending_pid() {
+   [ -f "${LIFECYCLE_PENDING_PID_FILE}" ] && sed -n '1p' "${LIFECYCLE_PENDING_PID_FILE}" 2>/dev/null
+}
+
+clashnivo_service_lifecycle_pending_started_at() {
+   [ -f "${LIFECYCLE_PENDING_STARTED_AT_FILE}" ] && sed -n '1p' "${LIFECYCLE_PENDING_STARTED_AT_FILE}" 2>/dev/null
+}
+
+clashnivo_service_lifecycle_pending_cleanup_stale() {
+   local pid started_at now
+
+   [ -d "${LIFECYCLE_PENDING_DIR}" ] || return 0
+
+   pid="$(clashnivo_service_lifecycle_pending_pid)"
+   if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
+      return 0
+   fi
+
+   if [ -z "${pid}" ]; then
+      started_at="$(clashnivo_service_lifecycle_pending_started_at)"
+      now="$(date +%s 2>/dev/null)"
+      if [ -n "${started_at}" ] && [ -n "${now}" ] && [ $((now - started_at)) -lt 15 ] 2>/dev/null; then
+         return 0
+      fi
+   fi
+
+   rm -rf "${LIFECYCLE_PENDING_DIR}"
+}
+
+clashnivo_service_lifecycle_pending_busy() {
+   clashnivo_service_lifecycle_pending_cleanup_stale
+   [ -d "${LIFECYCLE_PENDING_DIR}" ]
+}
+
 clashnivo_service_status_json() {
    local enabled service_running watchdog_running core_running openclash_installed openclash_enabled openclash_active
    local openclash_service_running openclash_watchdog_running openclash_core_running
    local blocked blocked_reason can_start core_pid active_config core_type proxy_mode run_mode openclash_core_pid
-   local busy busy_command busy_pid busy_started_at runtime_state runtime_healthy
+   local busy busy_command busy_pid busy_started_at runtime_state runtime_healthy pending_action pending_pid pending_started_at
    local active_job_kind active_job_target active_job_cancelable active_job_timeout_at active_job_status_path active_job_log_path
 
    enabled="false"
@@ -146,6 +194,17 @@ clashnivo_service_status_json() {
    busy_command="$(clashnivo_service_command_lock_active_context)"
    busy_pid="$(clashnivo_service_command_lock_active_pid)"
    busy_started_at="$(clashnivo_service_command_lock_started_at)"
+
+   if [ "${busy}" != "true" ] && clashnivo_service_lifecycle_pending_busy; then
+      pending_action="$(clashnivo_service_lifecycle_pending_action)"
+      pending_pid="$(clashnivo_service_lifecycle_pending_pid)"
+      pending_started_at="$(clashnivo_service_lifecycle_pending_started_at)"
+      busy="true"
+      busy_command="${pending_action}"
+      busy_pid="${pending_pid}"
+      busy_started_at="${pending_started_at}"
+   fi
+
    active_job_kind="$(clashnivo_service_command_lock_kind)"
    active_job_target="$(clashnivo_service_command_lock_target)"
    active_job_cancelable="false"

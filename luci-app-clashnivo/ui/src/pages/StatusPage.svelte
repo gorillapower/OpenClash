@@ -31,7 +31,7 @@
   const serviceStatusKey = ['luci', 'service', 'clashnivo', 'status'] as const
   let lifecyclePulseUntil = $state(0)
   let lifecyclePulseTimer: ReturnType<typeof setTimeout> | null = null
-  let optimisticRunning = $state<boolean | null>(null)
+  let optimisticAction = $state<'start' | 'stop' | 'restart' | null>(null)
   let subscriptionUrl = $state('')
   let subscriptionName = $state('')
   let urlError = $state<string | null>(null)
@@ -52,10 +52,12 @@
 
   const serviceStatus = useServiceStatus('clashnivo', {
     refetchInterval: (query) =>
-      optimisticRunning !== null ||
+      optimisticAction !== null ||
       Date.now() < lifecyclePulseUntil ||
       query.state.data?.busy ||
-      query.state.data?.state === 'starting'
+      query.state.data?.state === 'starting' ||
+      query.state.data?.state === 'stopping' ||
+      query.state.data?.state === 'restarting'
         ? 1000
         : 5000
   })
@@ -100,15 +102,16 @@
   const selectedCoreSourceLatency = $derived(latestCore.data?.latency_ms ?? null)
 
   const serviceState = $derived.by(() => {
-    if (optimisticRunning === true) return 'starting'
-    if (optimisticRunning === false) return 'stopped'
+    if (optimisticAction === 'start') return 'starting'
+    if (optimisticAction === 'stop') return 'stopping'
+    if (optimisticAction === 'restart') return 'restarting'
     return serviceStatus.data?.state ?? (serviceStatus.data?.running ? 'running' : 'disabled')
   })
   const pageBootPending = $derived(serviceStatus.isPending || uciConfig.isPending || currentCore.isPending)
   const isRunning = $derived(serviceState === 'running')
   const isBusy = $derived(
     (serviceStatus.data?.busy ?? false) ||
-    optimisticRunning !== null ||
+    optimisticAction !== null ||
     startMutation.isPending ||
     stopMutation.isPending ||
     restartMutation.isPending
@@ -158,6 +161,10 @@
         return 'Blocked'
       case 'starting':
         return 'Starting'
+      case 'stopping':
+        return 'Stopping'
+      case 'restarting':
+        return 'Restarting'
       case 'running':
         return 'Running'
       case 'degraded':
@@ -175,6 +182,8 @@
         ? 'bg-green-500'
         : serviceState === 'starting'
           ? 'bg-sky-500'
+          : serviceState === 'stopping' || serviceState === 'restarting'
+            ? 'bg-indigo-500'
           : serviceState === 'degraded'
             ? 'bg-orange-500'
             : serviceState === 'stopped'
@@ -187,6 +196,12 @@
     }
     if (serviceState === 'starting') {
       return 'Clash Nivo is applying the active config and bringing the runtime online.'
+    }
+    if (serviceState === 'stopping') {
+      return 'Clash Nivo is releasing runtime ownership and winding the service down.'
+    }
+    if (serviceState === 'restarting') {
+      return 'Clash Nivo is cycling the runtime to apply the latest active service configuration.'
     }
     if (serviceState === 'degraded') {
       return 'Clash Nivo is in a partial runtime state. Service ownership and core health do not currently agree.'
@@ -204,8 +219,9 @@
   })
 
   const busyMessage = $derived.by(() => {
-    if (!busyCommand) return null
-    switch (busyCommand) {
+    const effectiveCommand = busyCommand ?? optimisticAction
+    if (!effectiveCommand) return null
+    switch (effectiveCommand) {
       case 'start':
         return 'Clash Nivo is starting.'
       case 'stop':
@@ -213,7 +229,7 @@
       case 'restart':
         return 'Clash Nivo is restarting.'
       default:
-        return `Clash Nivo is busy with ${busyCommand}.`
+        return `Clash Nivo is busy with ${effectiveCommand}.`
     }
   })
   const cancelLabel = $derived.by(() => {
@@ -288,6 +304,31 @@
 
   $effect(() => {
     localCoreCustomBaseUrl = coreCustomBaseUrl
+  })
+
+  $effect(() => {
+    if (!optimisticAction || !serviceStatus.data || (serviceStatus.data.busy ?? false)) return
+
+    if (optimisticAction === 'start' && serviceStatus.data.state === 'running') {
+      optimisticAction = null
+      return
+    }
+
+    if (
+      optimisticAction === 'stop' &&
+      serviceStatus.data.core_running === false &&
+      (serviceStatus.data.state === 'stopped' || serviceStatus.data.state === 'blocked' || serviceStatus.data.state === 'disabled')
+    ) {
+      optimisticAction = null
+      return
+    }
+
+    if (
+      optimisticAction === 'restart' &&
+      (serviceStatus.data.state === 'running' || serviceStatus.data.state === 'degraded')
+    ) {
+      optimisticAction = null
+    }
   })
 
   $effect(() => {
@@ -366,49 +407,49 @@
   }
 
   async function handleStart() {
-    optimisticRunning = true
+    optimisticAction = 'start'
     pulseLifecycleStatus()
     try {
       await startMutation.mutateAsync()
     } finally {
       if (!startMutation.isError) {
         setTimeout(() => {
-          if (optimisticRunning === true) optimisticRunning = null
+          if (optimisticAction === 'start') optimisticAction = null
         }, 15000)
       } else {
-        optimisticRunning = null
+        optimisticAction = null
       }
     }
   }
 
   async function handleStop() {
-    optimisticRunning = false
+    optimisticAction = 'stop'
     pulseLifecycleStatus()
     try {
       await stopMutation.mutateAsync()
     } finally {
       if (!stopMutation.isError) {
         setTimeout(() => {
-          if (optimisticRunning === false) optimisticRunning = null
+          if (optimisticAction === 'stop') optimisticAction = null
         }, 15000)
       } else {
-        optimisticRunning = null
+        optimisticAction = null
       }
     }
   }
 
   async function handleRestart() {
-    optimisticRunning = true
+    optimisticAction = 'restart'
     pulseLifecycleStatus()
     try {
       await restartMutation.mutateAsync()
     } finally {
       if (!restartMutation.isError) {
         setTimeout(() => {
-          if (optimisticRunning === true) optimisticRunning = null
+          if (optimisticAction === 'restart') optimisticAction = null
         }, 15000)
       } else {
-        optimisticRunning = null
+        optimisticAction = null
       }
     }
   }

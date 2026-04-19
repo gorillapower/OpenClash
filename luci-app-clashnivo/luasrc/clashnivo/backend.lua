@@ -23,6 +23,10 @@ local CLASHNIVO_COMMAND_LOCK_DIR = "/tmp/clashnivo_command.lock"
 local CLASHNIVO_COMMAND_LOCK_PID_FILE = CLASHNIVO_COMMAND_LOCK_DIR .. "/pid"
 local CLASHNIVO_COMMAND_LOCK_CONTEXT_FILE = CLASHNIVO_COMMAND_LOCK_DIR .. "/context"
 local CLASHNIVO_COMMAND_LOCK_STARTED_AT_FILE = CLASHNIVO_COMMAND_LOCK_DIR .. "/started_at"
+local CLASHNIVO_LIFECYCLE_PENDING_DIR = "/tmp/clashnivo_lifecycle.pending"
+local CLASHNIVO_LIFECYCLE_PENDING_ACTION_FILE = CLASHNIVO_LIFECYCLE_PENDING_DIR .. "/action"
+local CLASHNIVO_LIFECYCLE_PENDING_PID_FILE = CLASHNIVO_LIFECYCLE_PENDING_DIR .. "/pid"
+local CLASHNIVO_LIFECYCLE_PENDING_STARTED_AT_FILE = CLASHNIVO_LIFECYCLE_PENDING_DIR .. "/started_at"
 local VERSION_CACHE_TTL = 900
 local DASHBOARD_UI_BASE = "/usr/share/clashnivo/ui"
 local SUBSCRIPTION_PREFLIGHT_DEFAULT_UA = "clash.meta"
@@ -77,6 +81,56 @@ local function command_lock_started_at()
 	return read_trimmed_file(CLASHNIVO_COMMAND_LOCK_STARTED_AT_FILE)
 end
 
+local function lifecycle_pending_action()
+	return read_trimmed_file(CLASHNIVO_LIFECYCLE_PENDING_ACTION_FILE)
+end
+
+local function lifecycle_pending_pid()
+	return read_trimmed_file(CLASHNIVO_LIFECYCLE_PENDING_PID_FILE)
+end
+
+local function lifecycle_pending_started_at()
+	return read_trimmed_file(CLASHNIVO_LIFECYCLE_PENDING_STARTED_AT_FILE)
+end
+
+local function clear_lifecycle_pending()
+	fs.remove(CLASHNIVO_LIFECYCLE_PENDING_ACTION_FILE)
+	fs.remove(CLASHNIVO_LIFECYCLE_PENDING_PID_FILE)
+	fs.remove(CLASHNIVO_LIFECYCLE_PENDING_STARTED_AT_FILE)
+	fs.rmdir(CLASHNIVO_LIFECYCLE_PENDING_DIR)
+end
+
+local function lifecycle_pending_busy()
+	if not fs.access(CLASHNIVO_LIFECYCLE_PENDING_DIR) then
+		return false
+	end
+
+	local pid = lifecycle_pending_pid()
+	if pid ~= "" and sys.call(string.format("kill -0 %s >/dev/null 2>&1", shellquote(pid))) == 0 then
+		return true
+	end
+
+	local started_at = tonumber(lifecycle_pending_started_at() or "")
+	if pid == "" and started_at and (os.time() - started_at) < 15 then
+		return true
+	end
+
+	clear_lifecycle_pending()
+	return false
+end
+
+local function active_command_context()
+	if command_lock_busy() then
+		return command_lock_context(), command_lock_pid(), command_lock_started_at()
+	end
+
+	if lifecycle_pending_busy() then
+		return lifecycle_pending_action(), lifecycle_pending_pid(), lifecycle_pending_started_at()
+	end
+
+	return "", "", ""
+end
+
 local function command_lock_busy()
 	if not fs.access(CLASHNIVO_COMMAND_LOCK_DIR) then
 		return false
@@ -95,14 +149,15 @@ local function command_lock_busy()
 end
 
 local function busy_response(context)
+	local active_command, active_pid, started_at = active_command_context()
 	return {
 		accepted = false,
 		busy = true,
 		status = "busy",
 		context = context,
-		active_command = command_lock_context(),
-		active_pid = command_lock_pid(),
-		started_at = command_lock_started_at(),
+		active_command = active_command,
+		active_pid = active_pid,
+		started_at = started_at,
 	}
 end
 
@@ -119,6 +174,52 @@ local function spawn_detached_command(command)
 		"/bin/sh -c %s </dev/null >/dev/null 2>&1 &",
 		shellquote(command .. " >/dev/null 2>&1")
 	))
+end
+
+local function begin_lifecycle_pending(action)
+	if fs.access(CLASHNIVO_LIFECYCLE_PENDING_DIR) then
+		if lifecycle_pending_busy() then
+			return false
+		end
+		clear_lifecycle_pending()
+	end
+
+	if not fs.mkdir(CLASHNIVO_LIFECYCLE_PENDING_DIR) then
+		return false
+	end
+
+	write_file(CLASHNIVO_LIFECYCLE_PENDING_ACTION_FILE, action .. "\n")
+	write_file(CLASHNIVO_LIFECYCLE_PENDING_STARTED_AT_FILE, tostring(os.time()) .. "\n")
+	return true
+end
+
+local function spawn_detached_lifecycle_action(action)
+	if not begin_lifecycle_pending(action) then
+		return false
+	end
+
+	local inner = string.format(
+		"printf '%%s\\n' $$ > %s; %s %s >/dev/null 2>&1; rc=$?; rm -f %s %s %s; rmdir %s 2>/dev/null; exit $rc",
+		shellquote(CLASHNIVO_LIFECYCLE_PENDING_PID_FILE),
+		shellquote(CLASHNIVO_INIT),
+		shellquote(action),
+		shellquote(CLASHNIVO_LIFECYCLE_PENDING_ACTION_FILE),
+		shellquote(CLASHNIVO_LIFECYCLE_PENDING_PID_FILE),
+		shellquote(CLASHNIVO_LIFECYCLE_PENDING_STARTED_AT_FILE),
+		shellquote(CLASHNIVO_LIFECYCLE_PENDING_DIR)
+	)
+
+	local rc = sys.call(string.format(
+		"/bin/sh -c %s </dev/null >/dev/null 2>&1 &",
+		shellquote(inner)
+	))
+
+	if rc ~= 0 then
+		clear_lifecycle_pending()
+		return false
+	end
+
+	return true
 end
 
 local function service_helper_json(func_name)
@@ -263,7 +364,7 @@ local function classify_subscription_probe(url, user_agent)
 end
 
 function command_busy(context)
-	if command_lock_busy() then
+	if command_lock_busy() or lifecycle_pending_busy() then
 		return busy_response(context)
 	end
 
@@ -511,16 +612,16 @@ local function refresh_package_latest_now()
 end
 
 function service_action(action, async)
-	if command_lock_busy() then
+	if command_lock_busy() or lifecycle_pending_busy() then
 		return busy_response(action)
 	end
 
 	if async then
-		spawn_detached_command(string.format("%s %s", shellquote(CLASHNIVO_INIT), shellquote(action)))
+		local accepted = spawn_detached_lifecycle_action(action)
 		return {
-			accepted = true,
+			accepted = accepted,
 			busy = false,
-			status = "accepted",
+			status = accepted and "accepted" or "error",
 			action = action,
 			async = true,
 		}

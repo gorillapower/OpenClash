@@ -6,11 +6,12 @@ labels: ["codex"]
 assignees: []
 ---
 
-## Goal
+## Goal 
 
 Describe the exact outcome required.
 
 ## Background
+
 
 Summarize the relevant context in 3-8 lines.
 

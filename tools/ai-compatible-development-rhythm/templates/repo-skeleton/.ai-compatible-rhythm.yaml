@@ -1,0 +1,23 @@
+framework:
+  name: ai-compatible-development-rhythm
+  active: true
+project:
+  tier: medium
+  tracker: generic
+activation:
+  auto_when_configured: true
+  patch_lane_enabled: true
+workflow:
+  hierarchy:
+    roadmap: Epic
+    planning: Feature
+    execution: Task
+    defect: Bug
+  work_classes:
+    - Patch
+    - Standard Change
+    - Structural Change
+    - Decision Change
+verification:
+  mode: standard
+  tests_are_part_of_verification: true
